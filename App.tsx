@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Menu, X, Loader2, Database, AlertTriangle } from 'lucide-react';
+import { Menu, X, Loader2, Database, AlertTriangle, Save, Key, Globe } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import Home from './pages/Home';
 import ActivityDetail from './pages/ActivityDetail';
@@ -11,19 +11,27 @@ import MemberList from './pages/MemberList';
 import { Activity, Registration, AdminUser, Member, AttendanceRecord, AttendanceStatus } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_ADMINS, INITIAL_MEMBERS } from './constants';
 
-const getEnv = (key: string): string | undefined => {
+// 您提供的 Supabase 連線資訊 (預設值)
+const DEFAULT_URL = 'https://kpltydyspvzozgxfiwra.supabase.co';
+const DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwbHR5ZHlzcHZ6b3pneGZpd3JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjI0MTUsImV4cCI6MjA4NjEzODQxNX0.1jraR6m6sKWSUJxek2noJi0YqyO3Ak4kPZ-X2qdwtGA';
+
+// 優先順序：環境變數 > LocalStorage > 預設硬編碼值
+const getConfig = (envKey: string, storageKey: string, defaultValue: string): string => {
   try {
-    return (import.meta as any)?.env?.[key];
-  } catch (e) {
-    return undefined;
-  }
+    const envVal = (import.meta as any)?.env?.[envKey];
+    if (envVal) return envVal;
+  } catch (e) {}
+  
+  const storageVal = localStorage.getItem(storageKey);
+  if (storageVal) return storageVal;
+
+  return defaultValue;
 };
 
-// 修正：移除硬編碼的 Key，強制從環境變數讀取。若無環境變數，則為空字串，稍後會顯示設定引導。
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || ''; 
-const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || '';
+const SUPABASE_URL = getConfig('VITE_SUPABASE_URL', 'supabase_url', DEFAULT_URL);
+const SUPABASE_ANON_KEY = getConfig('VITE_SUPABASE_ANON_KEY', 'supabase_key', DEFAULT_KEY);
 
-// 僅在有 URL 時建立 Client，避免報錯
+// 僅在有 URL 時建立 Client
 const supabase = SUPABASE_URL && SUPABASE_ANON_KEY 
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
   : null;
@@ -84,41 +92,93 @@ const Footer: React.FC = () => {
   );
 };
 
-// 新增：設定引導畫面
-const SetupGuide: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-    <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
-      <div className="flex justify-center mb-6">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600">
-          <Database size={32} />
+// 改良版設定引導：允許直接輸入 Key
+const SetupGuide: React.FC = () => {
+  const [url, setUrl] = useState(SUPABASE_URL);
+  const [key, setKey] = useState(SUPABASE_ANON_KEY);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = () => {
+    if (!url || !key) {
+      alert('請輸入完整的 URL 和 Key');
+      return;
+    }
+    setIsSaving(true);
+    // 儲存到 LocalStorage
+    localStorage.setItem('supabase_url', url.trim());
+    localStorage.setItem('supabase_key', key.trim());
+    
+    // 重新整理頁面以套用設定
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 animate-pulse">
+            <Database size={32} />
+          </div>
         </div>
-      </div>
-      <h1 className="text-2xl font-bold text-center text-gray-900 mb-4">歡迎使用食在力量系統</h1>
-      <div className="space-y-4 text-gray-600 text-sm">
-        <p className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 flex gap-3 text-yellow-800 font-medium">
-          <AlertTriangle className="flex-shrink-0" size={20} />
-          尚未設定資料庫連線
-        </p>
-        <p>這是一個全新的網站環境。為了開始使用，請完成以下設定：</p>
-        <ol className="list-decimal pl-5 space-y-2">
-          <li>前往 Supabase 建立新專案。</li>
-          <li>執行專案中的 <code>supabase_schema.sql</code> 以建立資料表。</li>
-          <li>將 Supabase URL 與 Anon Key 設定到環境變數中：
-            <pre className="bg-gray-100 p-3 rounded mt-2 text-xs font-mono overflow-x-auto">
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-            </pre>
-          </li>
-        </ol>
-        <div className="mt-6 pt-6 border-t text-center">
-          <button onClick={() => window.location.reload()} className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors">
-            已完成設定，重新整理
+        <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">歡迎使用食在力量系統</h1>
+        <p className="text-center text-gray-500 mb-6 text-sm">請輸入您的資料庫連線資訊以啟動網站</p>
+        
+        <div className="space-y-4">
+          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-xs text-yellow-800 space-y-2">
+            <p className="flex items-center gap-2 font-bold">
+              <AlertTriangle size={14} /> 注意：
+            </p>
+            <p>1. 這是快速設定模式，資訊將儲存在您的瀏覽器中。</p>
+            <p>2. 若要讓所有訪客都能正常瀏覽，請務必將這些資訊設定在 <span className="font-bold">Vercel Environment Variables</span> 並重新部署。</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+              <Globe size={14} /> Supabase URL
+            </label>
+            <input 
+              type="text" 
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none"
+              placeholder="https://your-project.supabase.co"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+              <Key size={14} /> Supabase Anon Key
+            </label>
+            <input 
+              type="password" 
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none"
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            />
+          </div>
+
+          <button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 mt-4"
+          >
+            {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+            {isSaving ? '正在啟動...' : '儲存設定並啟動'}
           </button>
+          
+          <div className="text-center pt-4 border-t mt-4">
+            <a href="https://supabase.com/dashboard/project/_/settings/api" target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">
+              去哪裡找這些資訊？ (Supabase Dashboard)
+            </a>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const App: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -134,7 +194,7 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // 如果沒有設定環境變數，直接顯示設定引導
+  // 如果沒有設定環境變數且 LocalStorage 也沒有，顯示設定引導
   if (!supabase) {
     return <SetupGuide />;
   }
@@ -143,6 +203,8 @@ const App: React.FC = () => {
     if (isInitialLoad) setLoading(true);
     setDbError(null);
     try {
+      if (!supabase) throw new Error("Supabase client not initialized");
+
       // 1. 獲取活動
       const { data: actData, error: actError } = await supabase.from('activities').select('*').order('date', { ascending: true }).order('time', { ascending: true });
       if (actError) throw actError;
@@ -466,7 +528,7 @@ const App: React.FC = () => {
     );
   }
 
-  // 資料庫連線錯誤提示
+  // 資料庫連線錯誤提示 (但允許重設)
   if (dbError) {
      return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -476,10 +538,21 @@ const App: React.FC = () => {
              </div>
              <h2 className="text-xl font-bold text-gray-900 mb-2">資料庫連線失敗</h2>
              <p className="text-gray-600 mb-6">{dbError}</p>
-             <p className="text-sm text-gray-400 mb-6">請檢查 Supabase URL 與 Key 是否正確，或確認資料表是否已建立 (請參閱 README.md)。</p>
-             <button onClick={() => window.location.reload()} className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors">
-               重試連線
-             </button>
+             <div className="flex flex-col gap-3">
+               <button onClick={() => window.location.reload()} className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors">
+                 重試連線
+               </button>
+               <button 
+                onClick={() => {
+                  localStorage.removeItem('supabase_url');
+                  localStorage.removeItem('supabase_key');
+                  window.location.reload();
+                }}
+                className="text-gray-400 hover:text-gray-600 text-sm font-bold"
+               >
+                 重新輸入連線資訊
+               </button>
+             </div>
           </div>
         </div>
      );
