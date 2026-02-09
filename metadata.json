@@ -1,0 +1,7 @@
+{
+  "name": "食在力量活動&會員系統",
+  "description": "食在力量 - 連結產業，創造共好。提供產業小聚、企業參訪、專業課程等活動報名與會員管理服務。",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
