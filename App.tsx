@@ -78,7 +78,7 @@ const Footer: React.FC = () => {
           <div className="w-6 h-6 bg-red-600 rounded-md flex items-center justify-center text-white text-xs font-bold">食</div>
           <span className="font-bold text-gray-800 tracking-wider">食在力量</span>
         </div>
-        <p className="text-gray-400 text-xs">&copy; 2026 食在力量活動報名系統. All rights reserved.</p>
+        <p className="text-gray-400 text-xs">&copy; 2026 食在力量活動報名系統 v2.0. All rights reserved.</p>
       </div>
     </footer>
   );
