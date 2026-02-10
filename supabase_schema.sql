@@ -104,24 +104,32 @@ create table if not exists public.coupons (
   used_at timestamp with time zone
 );
 
--- 設定 RLS (Policies) ... (略，同前)
+-- 設定 RLS (Policies) 範例 (若有需要)
+-- alter table public.members enable row level security;
+-- create policy "Enable read access for all users" on public.members for select using (true);
+-- create policy "Enable insert for all users" on public.members for insert with check (true);
+-- create policy "Enable update for all users" on public.members for update using (true);
+-- create policy "Enable delete for all users" on public.members for delete using (true);
 
 -- ==========================================
--- ⚠️ 遷移指令 (MIGRATION COMMANDS)
--- 請在 Supabase SQL Editor 執行以下指令以更新現有 members 表格
+-- ⚠️ 資料庫遷移指令 (Database Migration)
+-- 若您的 members 表格已存在，請複製以下指令並在 Supabase SQL Editor 執行以新增欄位
 -- ==========================================
 
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS membership_expiry_date text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS notes text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS payment_records text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS id_number text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS phone text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS email text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS address text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS home_phone text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS referrer text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS brand_name text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS company_title text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS tax_id text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS job_title text;
--- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS main_service text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS membership_expiry_date text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS notes text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS payment_records text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS id_number text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS birthday text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS address text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS home_phone text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS referrer text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS industry_category text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS brand_name text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS company_title text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS tax_id text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS job_title text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS main_service text;
+ALTER TABLE public.members ADD COLUMN IF NOT EXISTS website text;

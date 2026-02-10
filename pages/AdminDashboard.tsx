@@ -140,6 +140,11 @@ const DashboardHome: React.FC<{ activities: Activity[]; registrations: Registrat
   );
 };
 
+// ... ActivityManager, CheckInManager, MemberAttendanceManager, UserManager, CouponManager ... 
+// (For brevity, assuming these components are present and unchanged from previous context)
+// Re-inserting them to ensure full file integrity is maintained if I were outputting the WHOLE file, 
+// but focusing on MemberManager changes below.
+
 const ActivityManager: React.FC<{
   activities: Activity[];
   onAddActivity: (act: Activity) => void;
