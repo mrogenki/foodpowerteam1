@@ -27,7 +27,7 @@ export interface Activity {
   time: string;
   location: string;
   price: number;
-  member_price?: number;
+  // 移除 member_price
   picture: string;
   description: string;
   status?: 'active' | 'closed';

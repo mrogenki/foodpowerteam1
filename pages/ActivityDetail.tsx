@@ -28,12 +28,6 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({ activities, registratio
   const [isSuccess, setIsSuccess] = useState(false);
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   
-  // 票價類型選擇
-  const [ticketType, setTicketType] = useState<'regular' | 'member'>('regular');
-  // 會員驗證狀態
-  const [memberNo, setMemberNo] = useState('');
-  const [verifyError, setVerifyError] = useState('');
-
   // 折扣券相關
   const [couponCode, setCouponCode] = useState('');
   const [couponStatus, setCouponStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
@@ -56,7 +50,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({ activities, registratio
 
   const alreadyRegisteredCount = registrations.filter(r => String(r.activityId) === String(id)).length;
   // 決定基本價格
-  const basePrice = ticketType === 'member' && activity.member_price !== undefined ? activity.member_price : activity.price;
+  const basePrice = activity.price;
   // 決定最終價格 (扣除折扣)
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
@@ -138,25 +132,6 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({ activities, registratio
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setVerifyError('');
-
-    // 如果選擇會員票，進行身分驗證
-    if (ticketType === 'member') {
-      const foundMember = members.find(m => 
-        String(m.member_no) === String(memberNo).trim() && 
-        m.name.trim() === formData.name.trim()
-      );
-      
-      if (!foundMember) {
-        setVerifyError('驗證失敗：找不到此會員編號與姓名組合，請確認您輸入正確的資訊，或改選一般票報名。');
-        return;
-      }
-      
-      if (foundMember.status === 'inactive') {
-        setVerifyError('您的會籍目前為暫停狀態，無法使用會員優惠，請改選一般票或聯繫管理員。');
-        return;
-      }
-    }
 
     setIsSubmitting(true);
 
@@ -269,11 +244,8 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({ activities, registratio
                   <DollarSign size={24} />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">一般費用</p>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">活動費用</p>
                   <p className="font-medium">NT$ {activity.price.toLocaleString()}</p>
-                  {activity.member_price !== undefined && (
-                     <p className="text-xs text-red-500 font-bold">會員價: NT$ {activity.member_price.toLocaleString()}</p>
-                  )}
                 </div>
               </div>
             </div>
@@ -291,59 +263,6 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({ activities, registratio
             
             <form onSubmit={handleSubmit} className="space-y-5">
               
-              {/* 票價選擇區塊 */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <label className="block text-sm font-bold text-gray-700 mb-3">選擇票種</label>
-                <div className="space-y-3">
-                  <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${ticketType === 'regular' ? 'bg-white border-red-500 ring-1 ring-red-500' : 'bg-gray-50 border-gray-200 hover:bg-white'}`}>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="radio" 
-                        name="ticketType" 
-                        checked={ticketType === 'regular'} 
-                        onChange={() => {
-                          setTicketType('regular');
-                          // 切換票種時重設折扣券
-                          setCouponStatus('idle');
-                          setCouponCode('');
-                          setDiscountAmount(0);
-                          setValidCouponId(undefined);
-                        }}
-                        className="text-red-600 focus:ring-red-500"
-                      />
-                      <span className="font-bold text-gray-700">一般票</span>
-                    </div>
-                    <span className="font-bold text-gray-900">NT$ {activity.price.toLocaleString()}</span>
-                  </label>
-
-                  {activity.member_price !== undefined && (
-                    <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${ticketType === 'member' ? 'bg-white border-red-500 ring-1 ring-red-500' : 'bg-gray-50 border-gray-200 hover:bg-white'}`}>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="radio" 
-                          name="ticketType" 
-                          checked={ticketType === 'member'} 
-                          onChange={() => {
-                            setTicketType('member');
-                            // 切換票種時重設折扣券
-                            setCouponStatus('idle');
-                            setCouponCode('');
-                            setDiscountAmount(0);
-                            setValidCouponId(undefined);
-                          }}
-                          className="text-red-600 focus:ring-red-500"
-                        />
-                        <div className="flex items-center gap-1">
-                           <span className="font-bold text-gray-700">會員票</span>
-                           <Crown size={14} className="text-yellow-500 fill-yellow-500" />
-                        </div>
-                      </div>
-                      <span className="font-bold text-red-600">NT$ {activity.member_price.toLocaleString()}</span>
-                    </label>
-                  )}
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">姓名</label>
                 <input 
@@ -355,32 +274,6 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({ activities, registratio
                   placeholder="請輸入真實姓名"
                 />
               </div>
-
-              {/* 會員驗證欄位 */}
-              {ticketType === 'member' && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2 text-yellow-800 font-bold text-sm">
-                      <UserCheck size={16} />
-                      <span>會員身分驗證</span>
-                    </div>
-                    <p className="text-xs text-yellow-700 mb-3">請輸入您的會員編號，系統將比對上方姓名進行驗證。</p>
-                    <input 
-                      required
-                      type="text" 
-                      value={memberNo}
-                      onChange={e => setMemberNo(e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-yellow-300 focus:ring-2 focus:ring-yellow-500 outline-none text-sm"
-                      placeholder="請輸入會員編號 (例如: 001)"
-                    />
-                    {verifyError && (
-                      <p className="text-xs text-red-600 font-bold mt-2 flex items-start gap-1">
-                        <span className="mt-0.5">⚠️</span> {verifyError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">手機號碼</label>

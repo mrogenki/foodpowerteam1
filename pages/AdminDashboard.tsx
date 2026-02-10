@@ -12,7 +12,7 @@ interface AdminDashboardProps {
   users: AdminUser[];
   members: Member[];
   attendance: AttendanceRecord[]; 
-  coupons: Coupon[]; // 新增
+  coupons: Coupon[];
   onUpdateActivity: (act: Activity) => void;
   onAddActivity: (act: Activity) => void;
   onDeleteActivity: (id: string | number) => void;
@@ -27,7 +27,7 @@ interface AdminDashboardProps {
   onUpdateAttendance: (activityId: string, memberId: string, status: AttendanceStatus) => void; 
   onDeleteAttendance: (activityId: string, memberId: string) => void; 
   onUploadImage: (file: File) => Promise<string>;
-  onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[]) => void; // 新增
+  onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[], sendEmail: boolean) => void;
 }
 
 // 獨立的輸入元件：解決輸入時頻繁更新導致卡頓的問題
@@ -93,7 +93,6 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void }> = ({ user, on
           <span>來賓報到 (訪客)</span>
         </Link>
         
-        {/* 新增：會員報到，所有後台權限皆可看 */}
         <Link to="/admin/attendance" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/attendance') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}>
           <ClipboardList size={20} />
           <span>會員報到 (活動)</span>
@@ -137,18 +136,15 @@ const DashboardHome: React.FC<{ activities: Activity[]; registrations: Registrat
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // 根據日期篩選活動
   const filteredActivities = activities.filter(activity => {
     if (startDate && activity.date < startDate) return false;
     if (endDate && activity.date > endDate) return false;
     return true;
   });
 
-  // 根據篩選後的活動，找出相關的報名資料
   const filteredActivityIds = new Set(filteredActivities.map(a => String(a.id)));
   const filteredRegistrations = registrations.filter(r => filteredActivityIds.has(String(r.activityId)));
 
-  // 計算活動統計資料 (基於篩選後的數據)
   const activityStats = filteredActivities.map(activity => {
     const activityRegs = registrations.filter(r => String(r.activityId) === String(activity.id));
     const checkedIn = activityRegs.filter(r => r.check_in_status === true).length; 
@@ -224,7 +220,6 @@ const DashboardHome: React.FC<{ activities: Activity[]; registrations: Registrat
           <p className="text-gray-500">掌握各場活動的報名與收益狀況。</p>
         </div>
         
-        {/* 日期篩選器 */}
         <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 px-2">
             <Filter size={16} className="text-gray-400" />
@@ -255,7 +250,6 @@ const DashboardHome: React.FC<{ activities: Activity[]; registrations: Registrat
         </div>
       </header>
 
-      {/* 總覽卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-start">
@@ -295,7 +289,6 @@ const DashboardHome: React.FC<{ activities: Activity[]; registrations: Registrat
         </div>
       </div>
 
-      {/* 活動列表與詳細數據 */}
       <section className="space-y-6">
         <h2 className="text-xl font-bold text-gray-800">各活動報名狀況</h2>
         <div className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden">
@@ -379,47 +372,49 @@ const DashboardHome: React.FC<{ activities: Activity[]; registrations: Registrat
   );
 };
 
-// ----------------------
-// CheckInManager (新增)
-// ----------------------
 const CheckInManager: React.FC<{
   activities: Activity[];
   registrations: Registration[];
   onUpdateRegistration: (reg: Registration) => void;
   onDeleteRegistration: (id: string | number) => void;
 }> = ({ activities, registrations, onUpdateRegistration, onDeleteRegistration }) => {
-  const [selectedActivityId, setSelectedActivityId] = useState<string | number>(activities.length > 0 ? activities[0].id : '');
+  const location = useLocation();
+  const stateActivityId = location.state?.activityId;
+  const [selectedActivityId, setSelectedActivityId] = useState<string>(stateActivityId ? String(stateActivityId) : (activities.length > 0 ? String(activities[0].id) : ''));
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if ((!selectedActivityId || !activities.find(a => String(a.id) === String(selectedActivityId))) && activities.length > 0) {
-      setSelectedActivityId(activities[0].id);
+    if (stateActivityId) {
+      setSelectedActivityId(String(stateActivityId));
+    } else if (!selectedActivityId && activities.length > 0) {
+      setSelectedActivityId(String(activities[0].id));
     }
-  }, [activities, selectedActivityId]);
+  }, [activities, stateActivityId]);
 
-  const currentRegistrations = registrations.filter(r => String(r.activityId) === String(selectedActivityId));
-  
+  const currentActivity = activities.find(a => String(a.id) === selectedActivityId);
+  const currentRegistrations = registrations.filter(r => String(r.activityId) === selectedActivityId);
+
   const filteredRegistrations = currentRegistrations.filter(r => 
-    r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    r.phone.includes(searchTerm) ||
-    (r.company && r.company.toLowerCase().includes(searchTerm.toLowerCase()))
+    r.name.includes(searchTerm) || 
+    r.phone.includes(searchTerm) || 
+    (r.company && r.company.includes(searchTerm))
   );
 
   const checkedInCount = currentRegistrations.filter(r => r.check_in_status).length;
+  const totalCount = currentRegistrations.length;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-           <h1 className="text-2xl font-bold text-gray-900">來賓報到管理</h1>
-           <p className="text-gray-500">管理一般報名來賓的報到狀態與繳費紀錄。</p>
+          <h1 className="text-2xl font-bold text-gray-900">報到管理 (來賓/訪客)</h1>
+          <p className="text-gray-500">管理活動報名人員，執行報到與繳費確認。</p>
         </div>
-        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
-           <div className="px-3 py-2 bg-gray-50 rounded text-xs font-bold text-gray-500">活動切換</div>
+        <div className="bg-white p-1 rounded-lg border border-gray-200 shadow-sm flex items-center">
            <select 
              value={selectedActivityId} 
-             onChange={(e) => setSelectedActivityId(e.target.value)}
-             className="bg-transparent outline-none font-bold text-gray-700 py-1 pr-2 cursor-pointer hover:text-red-600 transition-colors"
+             onChange={e => setSelectedActivityId(e.target.value)}
+             className="bg-transparent border-none outline-none text-sm font-bold text-gray-700 py-1 px-2 cursor-pointer w-64"
            >
              {activities.map(a => (
                <option key={a.id} value={a.id}>{a.date} {a.title}</option>
@@ -428,246 +423,207 @@ const CheckInManager: React.FC<{
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-            <div>
-               <p className="text-xs font-bold text-gray-400 uppercase">總報名人數</p>
-               <p className="text-2xl font-bold text-gray-900">{currentRegistrations.length}</p>
-            </div>
-            <Users size={24} className="text-blue-500 opacity-20"/>
-         </div>
-         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-            <div>
-               <p className="text-xs font-bold text-gray-400 uppercase">已報到人數</p>
-               <p className="text-2xl font-bold text-green-600">{checkedInCount}</p>
-            </div>
-            <CheckCircle size={24} className="text-green-500 opacity-20"/>
-         </div>
-         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-            <div>
-               <p className="text-xs font-bold text-gray-400 uppercase">報到率</p>
-               <p className="text-2xl font-bold text-gray-900">
-                 {currentRegistrations.length > 0 ? Math.round((checkedInCount / currentRegistrations.length) * 100) : 0}%
-               </p>
-            </div>
-            <TrendingUp size={24} className="text-red-500 opacity-20"/>
-         </div>
+      <div className="flex gap-4">
+        <div className="bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm flex-1 flex items-center justify-between">
+           <span className="text-sm font-bold text-gray-400">總報名</span>
+           <span className="text-2xl font-bold text-gray-800">{totalCount}</span>
+        </div>
+        <div className="bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm flex-1 flex items-center justify-between">
+           <span className="text-sm font-bold text-gray-400">已報到</span>
+           <span className="text-2xl font-bold text-green-600">{checkedInCount}</span>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-           <div className="relative flex-grow max-w-md">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-             <input 
-               type="text" 
-               placeholder="搜尋姓名、電話或公司..." 
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-               className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-             />
-           </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                <th className="px-6 py-4">狀態</th>
-                <th className="px-6 py-4">姓名 / 公司</th>
-                <th className="px-6 py-4">聯絡資訊</th>
-                <th className="px-6 py-4">繳費金額</th>
-                <th className="px-6 py-4 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredRegistrations.map(reg => (
-                <tr key={reg.id} className={`hover:bg-gray-50/50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''}`}>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => onUpdateRegistration({ ...reg, check_in_status: !reg.check_in_status })}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                        reg.check_in_status 
-                          ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                    >
-                      {reg.check_in_status ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300" />}
-                      {reg.check_in_status ? '已報到' : '未報到'}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-gray-900">{reg.name}</div>
-                    <div className="text-xs text-gray-500">{reg.company}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-600 font-mono">{reg.phone}</div>
-                    <div className="text-xs text-gray-400 truncate max-w-[150px]">{reg.email}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-gray-700 font-medium">
-                      <span className="text-xs text-gray-400">$</span>
-                      <PaidAmountInput 
-                        value={reg.paid_amount} 
-                        onSave={(val) => onUpdateRegistration({ ...reg, paid_amount: val })} 
-                      />
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => {
-                        if(window.confirm(`確定要刪除 ${reg.name} 的報名資料嗎？`)) {
-                           onDeleteRegistration(reg.id);
-                        }
-                      }}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredRegistrations.length === 0 && (
-             <div className="p-10 text-center text-gray-400">找不到符合條件的報名資料</div>
-          )}
-        </div>
+         <div className="p-4 border-b border-gray-100 flex items-center gap-4 bg-gray-50/50">
+            <div className="relative flex-1">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+               <input 
+                 type="text" 
+                 placeholder="搜尋姓名、電話或公司..." 
+                 value={searchTerm}
+                 onChange={e => setSearchTerm(e.target.value)}
+                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+               />
+            </div>
+         </div>
+         <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+               <thead className="bg-gray-50 text-gray-500 font-bold">
+                  <tr>
+                     <th className="px-6 py-4">狀態</th>
+                     <th className="px-6 py-4">姓名 / 公司</th>
+                     <th className="px-6 py-4">聯絡資訊</th>
+                     <th className="px-6 py-4">引薦人</th>
+                     <th className="px-6 py-4">繳費金額</th>
+                     <th className="px-6 py-4 text-right">操作</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-50">
+                  {filteredRegistrations.length === 0 ? (
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">無相關報名資料</td></tr>
+                  ) : (
+                    filteredRegistrations.map(reg => (
+                       <tr key={reg.id} className={reg.check_in_status ? 'bg-green-50/30' : ''}>
+                          <td className="px-6 py-4">
+                             <button 
+                               onClick={() => onUpdateRegistration({ ...reg, check_in_status: !reg.check_in_status })}
+                               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                 reg.check_in_status 
+                                 ? 'bg-green-100 text-green-700 ring-2 ring-green-200' 
+                                 : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                               }`}
+                             >
+                                {reg.check_in_status ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-400" />}
+                                {reg.check_in_status ? '已報到' : '未報到'}
+                             </button>
+                          </td>
+                          <td className="px-6 py-4">
+                             <div className="font-bold text-gray-900 text-base">{reg.name}</div>
+                             <div className="text-gray-500">{reg.company} {reg.title ? `- ${reg.title}` : ''}</div>
+                             {reg.coupon_code && <div className="text-xs text-red-500 mt-1">優惠碼: {reg.coupon_code}</div>}
+                          </td>
+                          <td className="px-6 py-4 text-gray-600">
+                             <div>{reg.phone}</div>
+                             <div className="text-xs text-gray-400">{reg.email}</div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-600">
+                             {reg.referrer || '-'}
+                          </td>
+                          <td className="px-6 py-4">
+                             <div className="flex items-center gap-1">
+                                <span className="text-gray-400 text-xs">$</span>
+                                <PaidAmountInput 
+                                  value={reg.paid_amount} 
+                                  onSave={(val) => onUpdateRegistration({ ...reg, paid_amount: val })} 
+                                />
+                             </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                             <button 
+                               onClick={() => {
+                                 if(window.confirm(`確定要刪除 ${reg.name} 的報名資料嗎？`)) {
+                                   onDeleteRegistration(reg.id);
+                                 }
+                               }}
+                               className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                             >
+                                <Trash2 size={16} />
+                             </button>
+                          </td>
+                       </tr>
+                    ))
+                  )}
+               </tbody>
+            </table>
+         </div>
       </div>
     </div>
   );
 };
 
-// ----------------------
-// MemberAttendanceManager (新增)
-// ----------------------
 const MemberAttendanceManager: React.FC<{
   activities: Activity[];
   members: Member[];
   attendance: AttendanceRecord[];
   onUpdateAttendance: (activityId: string, memberId: string, status: AttendanceStatus) => void;
-  onDeleteAttendance: (activityId: string, memberId: string) => void;
-}> = ({ activities, members, attendance, onUpdateAttendance, onDeleteAttendance }) => {
-  const [selectedActivityId, setSelectedActivityId] = useState<string | number>(activities.length > 0 ? activities[0].id : '');
-  const [filter, setFilter] = useState('');
+}> = ({ activities, members, attendance, onUpdateAttendance }) => {
+  const [selectedActivityId, setSelectedActivityId] = useState<string>(activities.length > 0 ? String(activities[0].id) : '');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // 僅顯示活躍會員
+  const activeMembers = members.filter(m => m.status === 'active' || !m.status);
 
   useEffect(() => {
-    if ((!selectedActivityId || !activities.find(a => String(a.id) === String(selectedActivityId))) && activities.length > 0) {
-      setSelectedActivityId(activities[0].id);
+    if (!selectedActivityId && activities.length > 0) {
+      setSelectedActivityId(String(activities[0].id));
     }
-  }, [activities, selectedActivityId]);
+  }, [activities]);
 
-  // 只顯示活躍會員
-  const activeMembers = members.filter(m => m.status === undefined || m.status === 'active');
-  
   const filteredMembers = activeMembers.filter(m => 
-     m.name.includes(filter) || 
-     m.company.includes(filter) || 
-     (m.member_no && String(m.member_no).includes(filter))
+    m.name.includes(searchTerm) || 
+    m.company.includes(searchTerm) ||
+    String(m.member_no).includes(searchTerm)
   );
 
-  // 取得該活動的所有出席紀錄
-  const currentAttendance = attendance.filter(r => String(r.activity_id) === String(selectedActivityId));
-  const presentCount = currentAttendance.filter(r => r.status === AttendanceStatus.PRESENT).length;
-
-  const getStatus = (memberId: string | number) => {
-     const record = currentAttendance.find(r => String(r.member_id) === String(memberId));
-     return record ? record.status : AttendanceStatus.ABSENT;
+  const getStatus = (memberId: string) => {
+    const record = attendance.find(r => String(r.activity_id) === String(selectedActivityId) && String(r.member_id) === String(memberId));
+    return record?.status || AttendanceStatus.ABSENT;
   };
 
-  const handleToggle = (memberId: string | number) => {
-     const currentStatus = getStatus(memberId);
-     const newStatus = currentStatus === AttendanceStatus.PRESENT ? AttendanceStatus.ABSENT : AttendanceStatus.PRESENT;
-     onUpdateAttendance(String(selectedActivityId), String(memberId), newStatus);
-  };
+  const presentCount = activeMembers.filter(m => getStatus(String(m.id)) === AttendanceStatus.PRESENT).length;
 
   return (
     <div className="space-y-6">
-       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-           <h1 className="text-2xl font-bold text-gray-900">會員出席管理</h1>
-           <p className="text-gray-500">管理正式會員在各場活動的出席狀況。</p>
+          <h1 className="text-2xl font-bold text-gray-900">會員出席管理</h1>
+          <p className="text-gray-500">紀錄分會成員的活動出席狀況。</p>
         </div>
-        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
-           <div className="px-3 py-2 bg-gray-50 rounded text-xs font-bold text-gray-500">活動切換</div>
-           <select 
-             value={selectedActivityId} 
-             onChange={(e) => setSelectedActivityId(e.target.value)}
-             className="bg-transparent outline-none font-bold text-gray-700 py-1 pr-2 cursor-pointer hover:text-red-600 transition-colors"
-           >
-             {activities.map(a => (
-               <option key={a.id} value={a.id}>{a.date} {a.title}</option>
-             ))}
-           </select>
-        </div>
+        <select 
+          value={selectedActivityId} 
+          onChange={e => setSelectedActivityId(e.target.value)}
+          className="bg-white border rounded-lg py-2 px-3 text-sm font-bold text-gray-700 shadow-sm w-full md:w-64"
+        >
+          {activities.map(a => (
+            <option key={a.id} value={a.id}>{a.date} {a.title}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-            <div>
-               <p className="text-xs font-bold text-gray-400 uppercase">應出席會員數 (活躍)</p>
-               <p className="text-2xl font-bold text-gray-900">{activeMembers.length}</p>
-            </div>
-            <Users size={24} className="text-purple-500 opacity-20"/>
-         </div>
-         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-            <div>
-               <p className="text-xs font-bold text-gray-400 uppercase">實際出席人數</p>
-               <p className="text-2xl font-bold text-blue-600">{presentCount}</p>
-            </div>
-            <CheckCircle size={24} className="text-blue-500 opacity-20"/>
-         </div>
+      <div className="bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <span className="text-sm font-bold text-gray-400">會員出席率</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-green-600">{presentCount}</span>
+            <span className="text-sm text-gray-400">/ {activeMembers.length}</span>
+          </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
-           <div className="relative max-w-md">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-             <input 
-               type="text" 
-               placeholder="搜尋會員..." 
-               value={filter}
-               onChange={(e) => setFilter(e.target.value)}
-               className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-             />
+        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+           <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="搜尋會員..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+              />
            </div>
         </div>
-
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-             <thead className="bg-gray-50 border-b border-gray-100">
-               <tr className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                 <th className="px-6 py-4">出席狀態</th>
-                 <th className="px-6 py-4">會員編號</th>
-                 <th className="px-6 py-4">姓名</th>
-                 <th className="px-6 py-4">公司</th>
-                 <th className="px-6 py-4">產業鏈</th>
-               </tr>
+          <table className="w-full text-left text-sm">
+             <thead className="bg-gray-50 text-gray-500 font-bold">
+                <tr>
+                   <th className="px-6 py-4 w-24">編號</th>
+                   <th className="px-6 py-4">會員姓名</th>
+                   <th className="px-6 py-4">公司/品牌</th>
+                   <th className="px-6 py-4 text-right">出席狀態</th>
+                </tr>
              </thead>
              <tbody className="divide-y divide-gray-50">
                {filteredMembers.map(member => {
-                 const status = getStatus(member.id);
+                 const status = getStatus(String(member.id));
                  const isPresent = status === AttendanceStatus.PRESENT;
                  return (
-                   <tr key={member.id} className={`hover:bg-gray-50/50 transition-colors ${isPresent ? 'bg-blue-50/30' : ''}`}>
-                     <td className="px-6 py-4">
-                        <button 
-                          onClick={() => handleToggle(member.id)}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                            isPresent
-                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-                              : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                          }`}
-                        >
-                          {isPresent ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300" />}
-                          {isPresent ? '出席' : '缺席'}
-                        </button>
-                     </td>
-                     <td className="px-6 py-4 font-mono text-gray-500 font-bold">{member.member_no}</td>
-                     <td className="px-6 py-4 font-bold text-gray-900">{member.name}</td>
-                     <td className="px-6 py-4 text-gray-600">{member.company}</td>
-                     <td className="px-6 py-4">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs font-medium">{member.industry_chain}</span>
-                     </td>
+                   <tr key={member.id} className={isPresent ? 'bg-green-50/30' : ''}>
+                      <td className="px-6 py-4 text-gray-400 font-mono">{member.member_no}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">{member.name}</td>
+                      <td className="px-6 py-4 text-gray-600">{member.company}</td>
+                      <td className="px-6 py-4 text-right">
+                         <button 
+                           onClick={() => onUpdateAttendance(selectedActivityId, String(member.id), isPresent ? AttendanceStatus.ABSENT : AttendanceStatus.PRESENT)}
+                           className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all ${
+                             isPresent 
+                             ? 'bg-green-600 text-white shadow-lg shadow-green-200 hover:bg-green-700' 
+                             : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                           }`}
+                         >
+                            {isPresent ? <CheckCircle size={16} /> : <div className="w-4 h-4 rounded-full border-2 border-gray-300" />}
+                            {isPresent ? '已出席' : '缺席'}
+                         </button>
+                      </td>
                    </tr>
                  );
                })}
@@ -679,9 +635,317 @@ const MemberAttendanceManager: React.FC<{
   );
 };
 
-// ----------------------
-// ActivityManager (新增)
-// ----------------------
+const MemberManager: React.FC<{
+  members: Member[];
+  onAddMember: (m: Member) => void;
+  onUpdateMember: (m: Member) => void;
+  onDeleteMember: (id: string | number) => void;
+  onAddMembers?: (ms: Member[]) => void;
+}> = ({ members, onAddMember, onUpdateMember, onDeleteMember, onAddMembers }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [formData, setFormData] = useState<Partial<Member>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // 匯入相關
+  const [importText, setImportText] = useState('');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const openModal = (member?: Member) => {
+    if (member) {
+      setEditingMember(member);
+      setFormData(member);
+    } else {
+      setEditingMember(null);
+      setFormData({ status: 'active', industry_chain: '工商' });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newMember: Member = {
+      id: editingMember?.id || Date.now().toString(),
+      member_no: formData.member_no || '',
+      industry_chain: formData.industry_chain as any || '工商',
+      industry_category: formData.industry_category || '',
+      name: formData.name || '',
+      company: formData.company || '',
+      website: formData.website || '',
+      intro: formData.intro || '',
+      status: formData.status as any || 'active'
+    };
+
+    if (editingMember) {
+      onUpdateMember(newMember);
+    } else {
+      onAddMember(newMember);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleImport = () => {
+    if (!onAddMembers) return;
+    try {
+      const parsed = JSON.parse(importText);
+      if (Array.isArray(parsed)) {
+        onAddMembers(parsed);
+        setIsImportModalOpen(false);
+        setImportText('');
+      } else {
+        alert('匯入格式錯誤：必須是陣列');
+      }
+    } catch (e) {
+      alert('JSON 解析失敗');
+    }
+  };
+
+  const filteredMembers = members.filter(m => 
+    m.name.includes(searchTerm) || 
+    m.company.includes(searchTerm) || 
+    String(m.member_no).includes(searchTerm)
+  );
+
+  return (
+    <div className="space-y-6">
+       <div className="flex justify-between items-center">
+         <h1 className="text-2xl font-bold text-gray-900">會員管理</h1>
+         <div className="flex gap-2">
+            {onAddMembers && (
+               <button onClick={() => setIsImportModalOpen(true)} className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-900">
+                  匯入會員
+               </button>
+            )}
+            <button onClick={() => openModal()} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2">
+               <Plus size={18} /> 新增會員
+            </button>
+         </div>
+       </div>
+
+       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+         <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+            <div className="relative max-w-md">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+               <input 
+                 type="text" 
+                 placeholder="搜尋會員..." 
+                 value={searchTerm}
+                 onChange={e => setSearchTerm(e.target.value)}
+                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+               />
+            </div>
+         </div>
+         <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+               <thead className="bg-gray-50 text-gray-500 font-bold">
+                  <tr>
+                     <th className="px-6 py-4">No.</th>
+                     <th className="px-6 py-4">姓名 / 公司</th>
+                     <th className="px-6 py-4">產業分類</th>
+                     <th className="px-6 py-4">狀態</th>
+                     <th className="px-6 py-4 text-right">操作</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-50">
+                  {filteredMembers.map(m => (
+                     <tr key={m.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 font-mono text-gray-400">{m.member_no}</td>
+                        <td className="px-6 py-4">
+                           <div className="font-bold text-gray-900">{m.name}</div>
+                           <div className="text-gray-500">{m.company}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                           <span className="px-2 py-0.5 rounded bg-gray-100 text-xs font-bold text-gray-600 mr-2">{m.industry_chain}</span>
+                           <span className="text-gray-500">{m.industry_category}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                           <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                              (m.status === 'active' || !m.status) ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'
+                           }`}>
+                              {(m.status === 'active' || !m.status) ? '活躍' : '停權'}
+                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                           <div className="flex justify-end gap-2">
+                              <button onClick={() => openModal(m)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Edit size={16} /></button>
+                              <button onClick={() => { if(window.confirm('確定刪除？')) onDeleteMember(m.id); }} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                           </div>
+                        </td>
+                     </tr>
+                  ))}
+               </tbody>
+            </table>
+         </div>
+       </div>
+
+       {isModalOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+             <div className="bg-white w-full max-w-lg rounded-2xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <h2 className="text-xl font-bold mb-6">{editingMember ? '編輯會員' : '新增會員'}</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                         <label className="block text-sm font-bold text-gray-700 mb-1">會員編號</label>
+                         <input value={formData.member_no || ''} onChange={e => setFormData({...formData, member_no: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                      </div>
+                      <div>
+                         <label className="block text-sm font-bold text-gray-700 mb-1">姓名</label>
+                         <input required value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                      </div>
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">公司/品牌</label>
+                      <input required value={formData.company || ''} onChange={e => setFormData({...formData, company: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                         <label className="block text-sm font-bold text-gray-700 mb-1">產業鏈</label>
+                         <select value={formData.industry_chain} onChange={e => setFormData({...formData, industry_chain: e.target.value as any})} className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500">
+                            {['美食','工程','健康','幸福','工商'].map(c => <option key={c} value={c}>{c}</option>)}
+                         </select>
+                      </div>
+                      <div>
+                         <label className="block text-sm font-bold text-gray-700 mb-1">行業別</label>
+                         <input value={formData.industry_category || ''} onChange={e => setFormData({...formData, industry_category: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                      </div>
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">網站 (選填)</label>
+                      <input value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">簡介 (選填)</label>
+                      <textarea value={formData.intro || ''} onChange={e => setFormData({...formData, intro: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none" />
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">狀態</label>
+                      <select value={formData.status || 'active'} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500">
+                         <option value="active">活躍</option>
+                         <option value="inactive">停權/隱藏</option>
+                      </select>
+                   </div>
+                   <div className="flex gap-4 pt-4">
+                      <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 border py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50">取消</button>
+                      <button type="submit" className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700">儲存</button>
+                   </div>
+                </form>
+             </div>
+          </div>
+       )}
+
+       {isImportModalOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+             <div className="bg-white w-full max-w-lg rounded-2xl p-8 shadow-2xl">
+                <h2 className="text-xl font-bold mb-4">大量匯入會員</h2>
+                <p className="text-sm text-gray-500 mb-2">請貼上符合格式的 JSON 陣列。</p>
+                <textarea 
+                   className="w-full h-64 border rounded-lg p-3 font-mono text-xs mb-4" 
+                   value={importText} 
+                   onChange={e => setImportText(e.target.value)}
+                   placeholder='[{"member_no": "1", "name": "...", ...}]'
+                />
+                <div className="flex gap-4">
+                   <button onClick={() => setIsImportModalOpen(false)} className="flex-1 border py-2 rounded-lg font-bold text-gray-500">取消</button>
+                   <button onClick={handleImport} className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold">匯入</button>
+                </div>
+             </div>
+          </div>
+       )}
+    </div>
+  );
+};
+
+const UserManager: React.FC<{
+    users: AdminUser[];
+    onAddUser: (u: AdminUser) => void;
+    onDeleteUser: (id: string) => void;
+    currentUser: AdminUser;
+}> = ({ users, onAddUser, onDeleteUser, currentUser }) => {
+   const [formData, setFormData] = useState<Partial<AdminUser>>({ role: UserRole.STAFF });
+
+   const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!formData.name || !formData.phone || !formData.password) return;
+      onAddUser({
+         id: Date.now().toString(),
+         name: formData.name,
+         phone: formData.phone,
+         password: formData.password,
+         role: formData.role || UserRole.STAFF
+      });
+      setFormData({ role: UserRole.STAFF, name: '', phone: '', password: '' });
+   };
+
+   return (
+      <div className="space-y-6">
+         <h1 className="text-2xl font-bold text-gray-900">權限管理</h1>
+         
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+               <h3 className="font-bold text-lg mb-4">新增管理員</h3>
+               <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                     <label className="block text-sm font-bold text-gray-700 mb-1">姓名</label>
+                     <input required value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                     <label className="block text-sm font-bold text-gray-700 mb-1">手機 (帳號)</label>
+                     <input required value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                     <label className="block text-sm font-bold text-gray-700 mb-1">密碼</label>
+                     <input required type="text" value={formData.password || ''} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                     <label className="block text-sm font-bold text-gray-700 mb-1">角色</label>
+                     <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as any})} className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500">
+                        <option value={UserRole.STAFF}>工作人員</option>
+                        <option value={UserRole.MANAGER}>管理員</option>
+                        <option value={UserRole.SUPER_ADMIN}>總管理員</option>
+                     </select>
+                  </div>
+                  <button type="submit" className="w-full bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 mt-2">新增</button>
+               </form>
+            </div>
+
+            <div className="md:col-span-2 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+               <h3 className="font-bold text-lg mb-4">現有管理員</h3>
+               <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                     <thead className="bg-gray-50 text-gray-500">
+                        <tr>
+                           <th className="px-4 py-2">姓名</th>
+                           <th className="px-4 py-2">手機</th>
+                           <th className="px-4 py-2">角色</th>
+                           <th className="px-4 py-2 text-right">操作</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-50">
+                        {users.map(u => (
+                           <tr key={u.id}>
+                              <td className="px-4 py-3 font-bold">{u.name}</td>
+                              <td className="px-4 py-3">{u.phone}</td>
+                              <td className="px-4 py-3">
+                                 <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{u.role}</span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                 {u.id !== currentUser.id && (
+                                    <button onClick={() => { if(window.confirm('確定刪除？')) onDeleteUser(u.id); }} className="text-red-500 hover:text-red-700">
+                                       <Trash2 size={16} />
+                                    </button>
+                                 )}
+                              </td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+};
+
 const ActivityManager: React.FC<{
   activities: Activity[];
   onAddActivity: (act: Activity) => void;
@@ -693,7 +957,6 @@ const ActivityManager: React.FC<{
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // 初始化表單狀態 (避免 uncontrolled/controlled 錯誤)
   const defaultFormState: Partial<Activity> = {
     type: ActivityType.GATHERING,
     title: '',
@@ -701,7 +964,6 @@ const ActivityManager: React.FC<{
     time: '',
     location: '',
     price: 0,
-    member_price: 0,
     picture: '',
     description: '',
     status: 'active'
@@ -747,7 +1009,6 @@ const ActivityManager: React.FC<{
       time: formData.time || '14:00',
       location: formData.location || '',
       price: Number(formData.price) || 0,
-      member_price: formData.member_price ? Number(formData.member_price) : undefined,
       picture: formData.picture || 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=2070&auto=format&fit=crop',
       description: formData.description || '',
       status: formData.status || 'active'
@@ -780,7 +1041,7 @@ const ActivityManager: React.FC<{
                  <th className="px-6 py-4">狀態</th>
                  <th className="px-6 py-4">活動名稱 / 類型</th>
                  <th className="px-6 py-4">時間 / 地點</th>
-                 <th className="px-6 py-4">費用 (一般/會員)</th>
+                 <th className="px-6 py-4">報名費用</th>
                  <th className="px-6 py-4 text-right">操作</th>
               </tr>
            </thead>
@@ -806,9 +1067,6 @@ const ActivityManager: React.FC<{
                   </td>
                   <td className="px-6 py-4">
                      <div className="font-bold text-gray-900">${activity.price}</div>
-                     {activity.member_price !== undefined && (
-                        <div className="text-xs text-red-500 font-bold">${activity.member_price}</div>
-                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
@@ -903,8 +1161,7 @@ const ActivityManager: React.FC<{
                            className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
                          />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
+                      <div>
                           <label className="block text-sm font-bold text-gray-700 mb-1">一般價格</label>
                           <input 
                             type="number" 
@@ -913,17 +1170,6 @@ const ActivityManager: React.FC<{
                             onChange={e => setFormData({...formData, price: Number(e.target.value)})} 
                             className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
                           />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-1">會員價格 (選填)</label>
-                          <input 
-                            type="number" 
-                            value={formData.member_price || ''} 
-                            onChange={e => setFormData({...formData, member_price: e.target.value ? Number(e.target.value) : undefined})} 
-                            className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
-                            placeholder="留空則無優惠"
-                          />
-                        </div>
                       </div>
                    </div>
 
@@ -992,23 +1238,20 @@ const ActivityManager: React.FC<{
   );
 };
 
-// ----------------------
-// 折扣券管理 (新增)
-// ----------------------
 const CouponManager: React.FC<{
   activities: Activity[],
   members: Member[],
   coupons: Coupon[],
-  onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[]) => void
+  onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[], sendEmail: boolean) => void
 }> = ({ activities, members, coupons, onGenerateCoupons }) => {
   const [selectedActivityId, setSelectedActivityId] = useState(activities.length > 0 ? activities[0].id : '');
   const [amount, setAmount] = useState(500);
   const [targetType, setTargetType] = useState<'all' | 'single'>('all');
   const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [sendEmail, setSendEmail] = useState(true);
   
   const activeMembers = members.filter(m => m.status === 'active' || !m.status);
   
-  // 當活動資料更新時，確保選中的活動ID有效
   useEffect(() => {
     if (!selectedActivityId && activities.length > 0) {
       setSelectedActivityId(activities[0].id);
@@ -1022,7 +1265,10 @@ const CouponManager: React.FC<{
       return;
     }
     
-    if (window.confirm(`確定要產生折扣券嗎？\n金額: ${amount}\n對象: ${targetType === 'all' ? `全體活躍會員 (${activeMembers.length}人)` : '指定會員'}`)) {
+    const targetName = targetType === 'all' ? `全體活躍會員 (${activeMembers.length}人)` : '指定會員';
+    const emailConfirm = sendEmail ? '並寄送 Email 通知' : '不寄送通知';
+
+    if (window.confirm(`確定要產生折扣券嗎？\n金額: ${amount}\n對象: ${targetName}\n設定: ${emailConfirm}`)) {
       let targets: string[] = [];
       if (targetType === 'all') {
         targets = activeMembers.map(m => String(m.id));
@@ -1034,7 +1280,7 @@ const CouponManager: React.FC<{
         targets = [selectedMemberId];
       }
       
-      onGenerateCoupons(String(selectedActivityId), amount, targets);
+      onGenerateCoupons(String(selectedActivityId), amount, targets, sendEmail);
     }
   };
 
@@ -1043,7 +1289,6 @@ const CouponManager: React.FC<{
      const headers = ['活動名稱', '折扣碼', '金額', '會員編號', '會員姓名', '公司', '使用狀態', '產生時間'];
      csvContent += headers.join(',') + '\n';
      
-     // 排序：活動 > 姓名
      const sortedCoupons = [...coupons].sort((a, b) => {
         if (a.activity_id !== b.activity_id) return String(a.activity_id).localeCompare(String(b.activity_id));
         const mA = members.find(m => String(m.id) === String(a.member_id));
@@ -1143,6 +1388,20 @@ const CouponManager: React.FC<{
                   </select>
                </div>
              )}
+             
+             <div className="flex items-center gap-2 pb-3">
+                <input 
+                  type="checkbox" 
+                  id="sendEmail" 
+                  checked={sendEmail} 
+                  onChange={e => setSendEmail(e.target.checked)}
+                  className="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                />
+                <label htmlFor="sendEmail" className="text-sm font-bold text-gray-700 cursor-pointer select-none">
+                   同步寄送 Email 通知
+                </label>
+             </div>
+
              <button 
                 onClick={handleGenerate}
                 className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors h-[42px]"
@@ -1195,503 +1454,64 @@ const CouponManager: React.FC<{
   );
 };
 
-
-const MemberManager: React.FC<{ 
-  members: Member[], 
-  onAddMember: (m: Member) => void, 
-  onAddMembers?: (m: Member[]) => void, // 批次匯入
-  onUpdateMember: (m: Member) => void, 
-  onDeleteMember: (id: string | number) => void 
-}> = ({ members, onAddMember, onAddMembers, onUpdateMember, onDeleteMember }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const memberData: Member = {
-      id: editingMember?.id || '',
-      member_no: formData.get('member_no') as string,
-      industry_chain: formData.get('industry_chain') as any,
-      industry_category: formData.get('industry_category') as string,
-      name: formData.get('name') as string,
-      company: formData.get('company') as string,
-      website: formData.get('website') as string,
-      intro: formData.get('intro') as string,
-      birthday: formData.get('birthday') as string, // 新增
-      status: formData.get('status') as 'active' | 'inactive',
-      join_date: formData.get('join_date') as string,
-      quit_date: formData.get('quit_date') as string
-    };
-
-    if (editingMember) onUpdateMember(memberData);
-    else onAddMember(memberData);
-
-    setIsModalOpen(false);
-    setEditingMember(null);
-  };
-
-  const confirmDelete = (member: Member) => {
-    if (window.confirm(`確定要刪除會員「${member.name} (${member.company})」嗎？\n注意：這會永久刪除會員資料。若只是要停止會籍，建議使用「編輯」並將狀態改為「停權/離會」。`)) {
-      onDeleteMember(member.id);
-    }
-  };
-
-  const handleDownloadTemplate = () => {
-    const csvContent = '\uFEFF會員編號,產業鏈(美食/工程/健康/幸福/工商),行業別,姓名,公司名稱,會員簡介,網站連結,狀態(active/inactive),入會日,離會日,生日(YYYY-MM-DD)\n001,工商,網站設計,王小明,長展科技,專注於高質感網站設計...,https://example.com,active,2024-01-01,,1990-01-01';
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', '會員匯入範本.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        if (!text) {
-          alert('檔案內容為空');
-          return;
-        }
-        
-        // 優化：同時支援 \r\n, \n, \r (解決 Excel/Mac 格式問題)
-        const lines = text.split(/\r\n|\n|\r/);
-        const newMembers: Member[] = [];
-        
-        // 判斷是否有標題列 (檢查第一行是否包含 "會員" 或 "編號")
-        let startIndex = 0;
-        if (lines.length > 0 && (lines[0].includes('會員') || lines[0].includes('編號'))) {
-          startIndex = 1;
-        }
-        
-        for (let i = startIndex; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          // 簡易 CSV 解析
-          const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(s => s.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-          
-          // 寬鬆檢查：只要有前 4 個欄位 (編號, 產業, 行業, 姓名) 就算有效
-          if (cols.length < 4) {
-             console.warn(`Line ${i+1} skipped due to insufficient columns:`, line);
-             continue;
-          }
-
-          // 處理 "-" 符號，轉為空字串
-          const cleanVal = (val: string) => (val === '-' || !val) ? '' : val;
-
-          newMembers.push({
-            id: Date.now() + i, // 暫時 ID，資料庫會重產
-            member_no: cleanVal(cols[0]),
-            industry_chain: (['美食', '工程', '健康', '幸福', '工商'].includes(cols[1]) ? cols[1] : '工商') as any,
-            industry_category: cleanVal(cols[2]),
-            name: cleanVal(cols[3]),
-            company: cleanVal(cols[4]),
-            intro: cleanVal(cols[5]),
-            website: cleanVal(cols[6]),
-            status: cols[7] === 'inactive' ? 'inactive' : 'active',
-            join_date: cleanVal(cols[8]),
-            quit_date: cleanVal(cols[9]),
-            birthday: cleanVal(cols[10])
-          });
-        }
-
-        if (newMembers.length > 0) {
-          if (window.confirm(`解析成功！共發現 ${newMembers.length} 筆資料。\n確定要匯入嗎？`)) {
-            if (onAddMembers) {
-              onAddMembers(newMembers);
-            } else {
-              alert('系統錯誤：找不到匯入函式 (onAddMembers is undefined)');
-            }
-          }
-        } else {
-          alert(`解析失敗。讀取到 ${lines.length} 行，但無法識別有效資料。\n原因可能是：\n1. 檔案格式不正確 (需為逗號分隔 CSV)\n2. 沒有有效資料行\n3. 編碼問題 (請嘗試另存為 UTF-8 編碼)`);
-        }
-      } catch (err) {
-        console.error(err);
-        alert('讀取檔案發生錯誤，請檢查檔案是否損毀。');
-      } finally {
-        // 清空 input 讓同一檔案可以再次選取
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  // 排序顯示：依照會員編號 (修正：安全轉換為字串後比較)
-  const sortedMembers = [...members].sort((a, b) => {
-    const valA = a.member_no !== undefined && a.member_no !== null ? String(a.member_no) : '';
-    const valB = b.member_no !== undefined && b.member_no !== null ? String(b.member_no) : '';
-    
-    // 如果兩者都沒有編號，保持原順序或用 ID 排
-    if (!valA && !valB) return 0;
-    if (!valA) return 1;
-    if (!valB) return -1;
-    
-    return valA.localeCompare(valB, undefined, { numeric: true });
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">會員資料管理</h1>
-        <div className="flex gap-2">
-          <button 
-            onClick={handleDownloadTemplate} 
-            className="flex items-center gap-2 bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
-            title="下載 CSV 範本"
-          >
-            <Download size={18} /> <span className="hidden sm:inline">下載範本</span>
-          </button>
-          <div className="relative">
-            <button 
-              onClick={() => fileInputRef.current?.click()} 
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-            >
-              <FileUp size={18} /> 匯入 CSV
-            </button>
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              accept=".csv" 
-              className="hidden" 
-              onChange={handleImportCSV} 
-            />
-          </div>
-          <button onClick={() => { setEditingMember(null); setIsModalOpen(true); }} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors shadow-sm">
-            <UserPlus size={18} /> 新增會員
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-              <th className="px-6 py-4">編號</th>
-              <th className="px-6 py-4">產業鏈</th>
-              <th className="px-6 py-4">狀態</th>
-              <th className="px-6 py-4">品牌/公司</th>
-              <th className="px-6 py-4">姓名</th>
-              <th className="px-6 py-4">生日</th>
-              <th className="px-6 py-4 text-right">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {sortedMembers.map(member => (
-              <tr key={member.id} className={`hover:bg-gray-50/50 transition-colors ${member.status === 'inactive' ? 'opacity-60 bg-gray-50' : ''}`}>
-                <td className="px-6 py-4 font-mono text-gray-400 font-bold">{member.member_no}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${
-                    member.industry_chain === '美食' ? 'bg-orange-100 text-orange-600' :
-                    member.industry_chain === '工程' ? 'bg-blue-100 text-blue-600' :
-                    member.industry_chain === '健康' ? 'bg-green-100 text-green-600' :
-                    member.industry_chain === '幸福' ? 'bg-pink-100 text-pink-600' :
-                    'bg-purple-100 text-purple-600'
-                  }`}>
-                    {member.industry_chain}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`flex w-fit items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                    member.status === 'inactive' ? 'bg-gray-200 text-gray-600' : 'bg-green-100 text-green-600'
-                  }`}>
-                    {member.status === 'inactive' ? <EyeOff size={12}/> : <Eye size={12}/>}
-                    {member.status === 'inactive' ? '停權/離會' : '活躍'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-bold text-gray-900">
-                  {member.company || <span className="text-gray-300 font-normal">-</span>}
-                  {member.website && (
-                    <a href={member.website} target="_blank" rel="noopener noreferrer" className="ml-2 inline-block text-gray-400 hover:text-red-600">
-                      <Globe size={14} />
-                    </a>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-gray-700">{member.name}</td>
-                <td className="px-6 py-4 text-gray-500 text-sm">{member.birthday || '-'}</td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => { setEditingMember(member); setIsModalOpen(true); }} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Edit size={16} /></button>
-                    <button onClick={() => confirmDelete(member)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {members.length === 0 && (
-          <div className="p-10 text-center text-gray-400">目前尚無會員資料</div>
-        )}
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-6">{editingMember ? '修改會員資料' : '新增會員'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="bg-gray-50 p-4 rounded-xl space-y-4 border border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield size={16} className="text-red-600"/>
-                  <h3 className="font-bold text-gray-700">會籍管理</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">目前狀態</label>
-                      <select 
-                        name="status" 
-                        defaultValue={editingMember?.status || 'active'} 
-                        className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                      >
-                        <option value="active">活躍 (Active)</option>
-                        <option value="inactive">停權/離會 (Inactive)</option>
-                      </select>
-                   </div>
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">入會日期</label>
-                      <input name="join_date" type="date" defaultValue={editingMember?.join_date} className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500" />
-                   </div>
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">離會日期</label>
-                      <input name="quit_date" type="date" defaultValue={editingMember?.quit_date} className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500" />
-                   </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">※ 設定為「停權/離會」後，該會員將不會出現在前台列表與點名表中，但資料會保留。</p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">會員編號</label>
-                  <input name="member_no" required defaultValue={editingMember?.member_no} className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500 font-mono" placeholder="001" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">產業鏈</label>
-                  <select name="industry_chain" defaultValue={editingMember?.industry_chain || '工商'} className="w-full border rounded-lg px-3 py-3 bg-white outline-none focus:ring-2 focus:ring-red-500">
-                    <option value="美食">美食產業鏈</option>
-                    <option value="工程">工程產業鏈</option>
-                    <option value="健康">健康產業鏈</option>
-                    <option value="幸福">幸福產業鏈</option>
-                    <option value="工商">工商產業鏈</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                   <label className="block text-sm font-bold text-gray-700 mb-1">行業別</label>
-                   <input name="industry_category" required defaultValue={editingMember?.industry_category} className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" placeholder="例如：網站設計" />
-                </div>
-                <div>
-                   <label className="block text-sm font-bold text-gray-700 mb-1">大名</label>
-                   <input name="name" required defaultValue={editingMember?.name} className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" placeholder="姓名" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                   <label className="block text-sm font-bold text-gray-700 mb-1">生日 (新增)</label>
-                   <input 
-                     name="birthday" 
-                     type="date"
-                     defaultValue={editingMember?.birthday} 
-                     className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" 
-                   />
-                </div>
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">品牌 / 公司名稱</label>
-                    <input name="company" required defaultValue={editingMember?.company} className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" placeholder="公司名稱" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">會員簡介 (選填)</label>
-                <textarea 
-                  name="intro" 
-                  rows={3} 
-                  defaultValue={editingMember?.intro} 
-                  className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500 resize-none" 
-                  placeholder="請輸入簡短的服務介紹或個人簡介..." 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">網站連結 (選填)</label>
-                <input name="website" type="url" defaultValue={editingMember?.website} className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" placeholder="https://..." />
-              </div>
-              
-              <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 border py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50 transition-colors">取消</button>
-                <button type="submit" className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold shadow-lg shadow-red-100 hover:bg-red-700 active:scale-95 transition-all">確認儲存</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const UserManager: React.FC<{ 
-  users: AdminUser[], 
-  onAddUser: (u: AdminUser) => void, 
-  onDeleteUser: (id: string) => void,
-  currentUser: AdminUser
-}> = ({ users, onAddUser, onDeleteUser, currentUser }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const newUser: AdminUser = {
-      id: Date.now().toString(),
-      name: formData.get('name') as string,
-      phone: formData.get('phone') as string,
-      password: formData.get('password') as string,
-      role: formData.get('role') as UserRole
-    };
-    onAddUser(newUser);
-    setIsModalOpen(false);
-  };
-
-  const confirmDelete = (user: AdminUser) => {
-    if (user.id === currentUser.id) {
-        alert('無法刪除自己');
-        return;
-    }
-    if (window.confirm(`確定要刪除管理員「${user.name}」嗎？`)) {
-      onDeleteUser(user.id);
-    }
-  };
-
-  return (
-    <div className="space-y-6 text-gray-900">
-        <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">人員權限管理</h1>
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors shadow-sm">
-                <UserPlus size={18} /> 新增人員
-            </button>
-        </div>
-        
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full text-left">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                        <th className="px-6 py-4">姓名</th>
-                        <th className="px-6 py-4">電話</th>
-                        <th className="px-6 py-4">權限角色</th>
-                        <th className="px-6 py-4 text-right">操作</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                    {users.map(user => (
-                        <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-6 py-4 font-bold text-gray-900">
-                                {user.name} 
-                                {user.id === currentUser.id && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded ml-2 uppercase font-bold tracking-wider">You</span>}
-                            </td>
-                            <td className="px-6 py-4 font-mono text-gray-500">{user.phone}</td>
-                            <td className="px-6 py-4">
-                                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                    user.role === UserRole.SUPER_ADMIN ? 'bg-purple-100 text-purple-600' :
-                                    user.role === UserRole.MANAGER ? 'bg-blue-100 text-blue-600' :
-                                    'bg-gray-100 text-gray-600'
-                                }`}>
-                                    {user.role}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                                {user.role !== UserRole.SUPER_ADMIN && user.id !== currentUser.id && (
-                                    <button onClick={() => confirmDelete(user)} className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors">
-                                        <Trash2 size={18} />
-                                    </button>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-
-        {isModalOpen && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl">
-                    <h2 className="text-xl font-bold mb-6">新增管理人員</h2>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">姓名</label>
-                            <input name="name" required className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" placeholder="姓名" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">手機號碼 (登入帳號)</label>
-                            <input name="phone" required className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" placeholder="09xx-xxx-xxx" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">密碼</label>
-                            <input name="password" type="password" required className="w-full border rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-red-500" placeholder="設定密碼" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">權限角色</label>
-                            <select name="role" className="w-full border rounded-lg px-3 py-3 bg-white outline-none focus:ring-2 focus:ring-red-500">
-                                <option value={UserRole.STAFF}>工作人員 (僅查看報到)</option>
-                                <option value={UserRole.MANAGER}>管理員 (可管理活動與會員)</option>
-                                <option value={UserRole.SUPER_ADMIN}>總管理員 (完全權限)</option>
-                            </select>
-                        </div>
-                        <div className="flex gap-4 pt-4">
-                            <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 border py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50 transition-colors">取消</button>
-                            <button type="submit" className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold shadow-lg shadow-red-100 hover:bg-red-700 active:scale-95 transition-all">確認新增</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        )}
-    </div>
-  );
-};
-
 const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
-  const canAccessActivities = props.currentUser.role === UserRole.MANAGER || props.currentUser.role === UserRole.SUPER_ADMIN;
-  const canAccessUsers = props.currentUser.role === UserRole.SUPER_ADMIN;
   return (
-    <div className="flex bg-gray-50 min-h-screen">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={props.currentUser} onLogout={props.onLogout} />
-      <div className="flex-grow p-8">
+      <div className="flex-1 p-8 overflow-y-auto max-h-screen">
         <Routes>
           <Route path="/" element={<DashboardHome activities={props.activities} registrations={props.registrations} />} />
-          <Route path="/check-in" element={<CheckInManager activities={props.activities} registrations={props.registrations} onUpdateRegistration={props.onUpdateRegistration} onDeleteRegistration={props.onDeleteRegistration} />} />
-          {/* 加入新的路由，所有管理員等級皆可訪問 */}
-          <Route path="/attendance" element={<MemberAttendanceManager activities={props.activities} members={props.members} attendance={props.attendance} onUpdateAttendance={props.onUpdateAttendance} onDeleteAttendance={props.onDeleteAttendance} />} />
-          
-          {canAccessActivities && (
-            <>
-              <Route path="/activities" element={<ActivityManager activities={props.activities} onAddActivity={props.onAddActivity} onUpdateActivity={props.onUpdateActivity} onDeleteActivity={props.onDeleteActivity} onUploadImage={props.onUploadImage} />} />
-              <Route path="/members" element={
-                <MemberManager 
-                  members={props.members} 
-                  onAddMember={props.onAddMember} 
-                  onAddMembers={props.onAddMembers} // 傳遞批次匯入
-                  onUpdateMember={props.onUpdateMember} 
-                  onDeleteMember={props.onDeleteMember} 
-                />
-              } />
-              <Route path="/coupons" element={
-                <CouponManager 
-                  activities={props.activities}
-                  members={props.members}
-                  coupons={props.coupons}
-                  onGenerateCoupons={props.onGenerateCoupons}
-                />
-              } />
-            </>
-          )}
-          {canAccessUsers && <Route path="/users" element={<UserManager users={props.users} onAddUser={props.onAddUser} onDeleteUser={props.onDeleteUser} currentUser={props.currentUser} />} />}
-          <Route path="*" element={<Navigate to="/admin" replace />} />
+          <Route path="/activities" element={
+             <ActivityManager 
+               activities={props.activities} 
+               onAddActivity={props.onAddActivity} 
+               onUpdateActivity={props.onUpdateActivity} 
+               onDeleteActivity={props.onDeleteActivity} 
+               onUploadImage={props.onUploadImage}
+             />
+          } />
+          <Route path="/members" element={
+             <MemberManager 
+               members={props.members}
+               onAddMember={props.onAddMember}
+               onUpdateMember={props.onUpdateMember}
+               onDeleteMember={props.onDeleteMember}
+               onAddMembers={props.onAddMembers}
+             />
+          } />
+          <Route path="/check-in" element={
+             <CheckInManager 
+               activities={props.activities} 
+               registrations={props.registrations} 
+               onUpdateRegistration={props.onUpdateRegistration}
+               onDeleteRegistration={props.onDeleteRegistration}
+             />
+          } />
+          <Route path="/attendance" element={
+             <MemberAttendanceManager
+               activities={props.activities}
+               members={props.members}
+               attendance={props.attendance}
+               onUpdateAttendance={props.onUpdateAttendance}
+             />
+          } />
+          <Route path="/users" element={
+             <UserManager 
+               users={props.users} 
+               onAddUser={props.onAddUser} 
+               onDeleteUser={props.onDeleteUser}
+               currentUser={props.currentUser}
+             />
+          } />
+          <Route path="/coupons" element={
+             <CouponManager
+               activities={props.activities}
+               members={props.members}
+               coupons={props.coupons}
+               onGenerateCoupons={props.onGenerateCoupons}
+             />
+          } />
+          <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
       </div>
     </div>

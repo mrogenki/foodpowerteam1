@@ -9,7 +9,7 @@ export const INITIAL_ACTIVITIES: Activity[] = [
     date: '2025-10-18',
     time: '14:00',
     location: '台北市大安區忠孝東路四段 (食在力量總部)',
-    price: 300,
+    price: 500,
     picture: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=2070&auto=format&fit=crop',
     description: '匯聚食品產業上下游夥伴，透過輕鬆的下午茶形式，交流近期市場動態與合作機會。',
     status: 'active'

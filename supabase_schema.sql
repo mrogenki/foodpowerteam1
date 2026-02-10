@@ -11,7 +11,7 @@ create table public.activities (
   time text not null,
   location text not null,
   price numeric default 0,
-  member_price numeric default 0,
+  -- 移除 member_price
   picture text,
   description text,
   status text default 'active',
