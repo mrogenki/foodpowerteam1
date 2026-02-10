@@ -27,6 +27,7 @@ export interface Activity {
   time: string;
   location: string;
   price: number;
+  member_price?: number;
   picture: string;
   description: string;
   status?: 'active' | 'closed';
@@ -45,6 +46,7 @@ export interface Registration {
   referrer?: string;
   check_in_status?: boolean; // 後台管理用：報到狀態
   paid_amount?: number;      // 後台管理用：繳費金額
+  coupon_code?: string;      // 新增：使用的折扣碼
   
   created_at: string;
 }
@@ -66,6 +68,7 @@ export interface Member {
   company: string; // 品牌/公司名稱
   website?: string; // 網站
   intro?: string; // 新增：會員簡介
+  birthday?: string; // 新增：生日 (YYYY-MM-DD)
   
   // 新增：會籍管理
   status?: 'active' | 'inactive'; // active=活躍(顯示), inactive=停權/離會(隱藏)
@@ -80,4 +83,16 @@ export interface AttendanceRecord {
   member_id: string;
   status: AttendanceStatus;
   updated_at?: string;
+}
+
+// 新增：折扣券介面
+export interface Coupon {
+  id: string | number;
+  code: string;           // 流水號代碼
+  activity_id: string;    // 綁定特定活動
+  member_id?: string;     // 綁定特定會員 (可選)
+  discount_amount: number;// 折扣金額
+  is_used: boolean;       // 是否已使用
+  created_at: string;
+  used_at?: string;
 }

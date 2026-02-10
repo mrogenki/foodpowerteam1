@@ -8,7 +8,7 @@ import ActivityDetail from './pages/ActivityDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import MemberList from './pages/MemberList';
-import { Activity, Registration, AdminUser, Member, AttendanceRecord, AttendanceStatus } from './types';
+import { Activity, Registration, AdminUser, Member, AttendanceRecord, AttendanceStatus, Coupon } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_ADMINS, INITIAL_MEMBERS } from './constants';
 
 // 您提供的 Supabase 連線資訊 (預設值)
@@ -186,6 +186,7 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]); // 新增
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
   
@@ -217,7 +218,7 @@ const App: React.FC = () => {
         setActivities(mappedActs);
       } else if (actData && actData.length === 0) {
         // 資料庫無資料時初始化
-        const initActs = INITIAL_ACTIVITIES.map(({ id, status, ...rest }) => rest);
+        const initActs = INITIAL_ACTIVITIES;
         const { data: inserted, error: insertError } = await supabase.from('activities').insert(initActs).select();
         if (insertError) throw insertError;
         if (inserted) {
@@ -238,7 +239,7 @@ const App: React.FC = () => {
       if (userData && userData.length > 0) {
         setUsers(userData);
       } else if (!userError && userData && userData.length === 0) {
-        const initAdmins = INITIAL_ADMINS.map(({ id, ...rest }) => rest);
+        const initAdmins = INITIAL_ADMINS;
         const { data: inserted } = await supabase.from('admins').insert(initAdmins).select();
         if (inserted) setUsers(inserted);
       }
@@ -248,8 +249,7 @@ const App: React.FC = () => {
       if (memberData && memberData.length > 0) {
         setMembers(memberData);
       } else if (!memberError && memberData && memberData.length === 0) {
-        // 資料庫無資料時初始化
-        const initMembers = INITIAL_MEMBERS.map(({ id, ...rest }) => rest);
+        const initMembers = INITIAL_MEMBERS;
         const { data: inserted } = await supabase.from('members').insert(initMembers).select();
         if (inserted) setMembers(inserted);
       }
@@ -258,6 +258,12 @@ const App: React.FC = () => {
       const { data: attendanceData } = await supabase.from('attendance').select('*');
       if (attendanceData) {
         setAttendance(attendanceData as AttendanceRecord[]);
+      }
+
+      // 6. 獲取折扣券
+      const { data: couponData } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+      if (couponData) {
+        setCoupons(couponData as Coupon[]);
       }
 
     } catch (err: any) {
@@ -351,14 +357,78 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRegister = async (newReg: Registration): Promise<boolean> => {
+  // 驗證折扣券
+  const validateCoupon = async (code: string, activityId: string): Promise<{valid: boolean, discount?: number, message: string, couponId?: string}> => {
+    if (!supabase) return { valid: false, message: '系統連線錯誤' };
+    
+    // 直接從資料庫查詢最新狀態，避免前端狀態不同步
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code)
+      .single();
+
+    if (error || !data) {
+      return { valid: false, message: '無效的折扣碼' };
+    }
+
+    if (String(data.activity_id) !== String(activityId)) {
+      return { valid: false, message: '此折扣碼不適用於本活動' };
+    }
+
+    if (data.is_used) {
+      return { valid: false, message: '此折扣碼已被使用' };
+    }
+
+    return { 
+      valid: true, 
+      discount: data.discount_amount, 
+      message: '折扣碼適用',
+      couponId: data.id
+    };
+  };
+
+  // 產生折扣券
+  const handleGenerateCoupons = async (activityId: string, amount: number, memberIds: string[]) => {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+      const coupons = memberIds.map(mid => ({
+        activity_id: activityId,
+        member_id: mid,
+        discount_amount: amount,
+        is_used: false,
+        code: `ACT${activityId.slice(-3)}-M${mid.slice(-3)}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
+      }));
+      
+      const { error } = await supabase.from('coupons').insert(coupons);
+      
+      if (error) throw error;
+      alert(`成功產生 ${coupons.length} 張折扣券！`);
+      fetchData();
+    } catch (err: any) {
+      alert('產生折扣券失敗: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (newReg: Registration, couponId?: string): Promise<boolean> => {
     if (!supabase) return false;
-    const { id, ...regData } = newReg as any;
-    const { error } = await supabase.from('registrations').insert([regData]);
+    // 修正：必須傳送 id
+    const { error } = await supabase.from('registrations').insert([newReg]);
     if (error) {
       alert('報名失敗：' + error.message);
       return false;
     } else {
+      // 如果有使用 Coupon，更新其狀態為已使用
+      if (couponId) {
+        await supabase
+          .from('coupons')
+          .update({ is_used: true, used_at: new Date().toISOString() })
+          .eq('id', couponId);
+      }
+
       await fetchData(); 
       return true;
     }
@@ -374,8 +444,7 @@ const App: React.FC = () => {
 
   const handleAddActivity = async (newAct: Activity) => {
     if (!supabase) return;
-    const { id, status, ...actData } = newAct as any;
-    const { error } = await supabase.from('activities').insert([actData]);
+    const { error } = await supabase.from('activities').insert([newAct]);
     if (error) alert('新增活動失敗：' + error.message);
     else fetchData();
   };
@@ -404,8 +473,7 @@ const App: React.FC = () => {
 
   const handleAddUser = async (newUser: AdminUser) => {
     if (!supabase) return;
-    const { id, ...userData } = newUser as any;
-    const { error } = await supabase.from('admins').insert([userData]);
+    const { error } = await supabase.from('admins').insert([newUser]);
     if (error) alert('新增管理員失敗：' + error.message);
     else fetchData();
   };
@@ -422,8 +490,7 @@ const App: React.FC = () => {
 
   const handleAddMember = async (newMember: Member) => {
     if (!supabase) return;
-    const { id, ...memberData } = newMember as any;
-    const { error } = await supabase.from('members').insert([memberData]);
+    const { error } = await supabase.from('members').insert([newMember]);
     if (error) alert('新增會員失敗：' + error.message);
     else fetchData();
   };
@@ -432,8 +499,12 @@ const App: React.FC = () => {
     if (!supabase) return;
     setLoading(true);
     try {
-      const membersData = newMembers.map(({ id, ...rest }) => rest);
-      const { error } = await supabase.from('members').insert(membersData);
+      const membersToInsert = newMembers.map(m => ({
+        ...m,
+        id: m.id ? String(m.id) : crypto.randomUUID()
+      }));
+
+      const { error } = await supabase.from('members').insert(membersToInsert);
       if (error) {
         alert('批次匯入失敗：' + error.message);
       } else {
@@ -465,7 +536,6 @@ const App: React.FC = () => {
   const handleUpdateAttendance = async (activityId: string, memberId: string, status: AttendanceStatus) => {
     if (!supabase) return;
     const now = new Date().toISOString();
-    const tempId = `temp-${Date.now()}`;
     
     setAttendance(prev => {
       const existingIndex = prev.findIndex(r => String(r.activity_id) === String(activityId) && String(r.member_id) === String(memberId));
@@ -474,7 +544,7 @@ const App: React.FC = () => {
         newArr[existingIndex] = { ...newArr[existingIndex], status, updated_at: now };
         return newArr;
       } else {
-        return [...prev, { id: tempId, activity_id: activityId, member_id: memberId, status, updated_at: now }];
+        return [...prev, { id: crypto.randomUUID(), activity_id: activityId, member_id: memberId, status, updated_at: now }];
       }
     });
 
@@ -566,7 +636,8 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home activities={activities} />} />
             <Route path="/members" element={<MemberList members={members} />} />
-            <Route path="/activity/:id" element={<ActivityDetail activities={activities} onRegister={handleRegister} registrations={registrations} />} />
+            {/* 傳遞 validateCoupon 函式 */}
+            <Route path="/activity/:id" element={<ActivityDetail activities={activities} members={members} onRegister={handleRegister} registrations={registrations} validateCoupon={validateCoupon} />} />
             <Route path="/admin/login" element={currentUser ? <Navigate to="/admin" /> : <LoginPage users={users} onLogin={handleLogin} />} />
             <Route path="/admin/*" element={
               currentUser ? (
@@ -578,6 +649,7 @@ const App: React.FC = () => {
                   users={users}
                   members={members}
                   attendance={attendance}
+                  coupons={coupons}
                   onUpdateActivity={handleUpdateActivity}
                   onAddActivity={handleAddActivity}
                   onDeleteActivity={handleDeleteActivity}
@@ -591,7 +663,8 @@ const App: React.FC = () => {
                   onDeleteMember={handleDeleteMember}
                   onUpdateAttendance={handleUpdateAttendance}
                   onDeleteAttendance={handleDeleteAttendance}
-                  onUploadImage={handleUploadImage} 
+                  onUploadImage={handleUploadImage}
+                  onGenerateCoupons={handleGenerateCoupons}
                 />
               ) : (
                 <Navigate to="/admin/login" />

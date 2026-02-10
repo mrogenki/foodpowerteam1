@@ -11,6 +11,7 @@ create table public.activities (
   time text not null,
   location text not null,
   price numeric default 0,
+  member_price numeric default 0,
   picture text,
   description text,
   status text default 'active',
@@ -29,6 +30,7 @@ create table public.registrations (
   referrer text,
   check_in_status boolean default false,
   paid_amount numeric default 0,
+  coupon_code text, -- 新增：紀錄使用的折扣碼
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
@@ -52,6 +54,7 @@ create table public.members (
   company text,
   website text,
   intro text,
+  birthday text, -- 新增：生日欄位
   status text default 'active',
   join_date text,
   quit_date text,
@@ -66,6 +69,18 @@ create table public.attendance (
   status text not null, -- 'present' or 'absent'
   updated_at timestamp with time zone default timezone('utc'::text, now()),
   unique(activity_id, member_id) -- 確保同一活動同一會員只有一筆紀錄
+);
+
+-- 6. 建立折扣券資料表 (coupons)
+create table public.coupons (
+  id text primary key default uuid_generate_v4()::text,
+  code text not null unique,
+  activity_id text not null,
+  member_id text, -- 可選，若指定則限制該會員使用
+  discount_amount numeric not null default 0,
+  is_used boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  used_at timestamp with time zone
 );
 
 -- 設定 RLS (Row Level Security) 策略
@@ -85,6 +100,9 @@ create policy "Allow public access to members" on public.members for all using (
 
 alter table public.attendance enable row level security;
 create policy "Allow public access to attendance" on public.attendance for all using (true) with check (true);
+
+alter table public.coupons enable row level security;
+create policy "Allow public access to coupons" on public.coupons for all using (true) with check (true);
 
 -- 建立 Storage Bucket (若需要上傳圖片)
 -- 需至 Supabase Dashboard > Storage > Create new bucket 'activity-images'
