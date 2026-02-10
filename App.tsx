@@ -251,14 +251,35 @@ const App: React.FC = () => {
         if (inserted) setUsers(inserted);
       }
 
-      // 4. 獲取會員
+      // 4. 獲取會員 (並進行編號排序)
       const { data: memberData, error: memberError } = await supabase.from('members').select('*');
       if (memberData && memberData.length > 0) {
-        setMembers(memberData);
+        // 這裡進行統一排序，確保 member_no 從小到大 (支援數字字串正確排序)
+        const sortedMembers = memberData.sort((a: any, b: any) => {
+          const valA = String(a.member_no || '');
+          const valB = String(b.member_no || '');
+          // 若無編號則排在最後
+          if (!valA && !valB) return 0;
+          if (!valA) return 1;
+          if (!valB) return -1;
+          // numeric: true 確保 "10" 排在 "2" 後面
+          return valA.localeCompare(valB, undefined, { numeric: true });
+        });
+        setMembers(sortedMembers);
       } else if (!memberError && memberData && memberData.length === 0) {
         const initMembers = INITIAL_MEMBERS;
         const { data: inserted } = await supabase.from('members').insert(initMembers).select();
-        if (inserted) setMembers(inserted);
+        if (inserted) {
+          const sortedInserted = inserted.sort((a: any, b: any) => {
+            const valA = String(a.member_no || '');
+            const valB = String(b.member_no || '');
+            if (!valA && !valB) return 0;
+            if (!valA) return 1;
+            if (!valB) return -1;
+            return valA.localeCompare(valB, undefined, { numeric: true });
+          });
+          setMembers(sortedInserted);
+        }
       }
 
       // 5. 獲取出席紀錄

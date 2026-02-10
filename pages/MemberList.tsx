@@ -24,9 +24,10 @@ const MemberList: React.FC<MemberListProps> = ({ members }) => {
 
   const activeMembers = members.filter(isMemberActive);
 
+  // 排序邏輯：Member No 小到大 (支援數字與文字混合，例如 M1, M2, M10 排序)
   const sortedMembers = [...activeMembers].sort((a, b) => {
-    const valA = a.member_no || '';
-    const valB = b.member_no || '';
+    const valA = String(a.member_no || '');
+    const valB = String(b.member_no || '');
     if (!valA && !valB) return 0;
     if (!valA) return 1;
     if (!valB) return -1;

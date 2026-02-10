@@ -140,11 +140,6 @@ const DashboardHome: React.FC<{ activities: Activity[]; registrations: Registrat
   );
 };
 
-// ... ActivityManager, CheckInManager, MemberAttendanceManager, UserManager, CouponManager ... 
-// (For brevity, assuming these components are present and unchanged from previous context)
-// Re-inserting them to ensure full file integrity is maintained if I were outputting the WHOLE file, 
-// but focusing on MemberManager changes below.
-
 const ActivityManager: React.FC<{
   activities: Activity[];
   onAddActivity: (act: Activity) => void;
@@ -845,6 +840,20 @@ const MemberManager: React.FC<{
         '網站': 'website'
       };
 
+      // 產業分類正規化
+      const normalizeIndustryCategory = (input: any): string => {
+        const s = String(input || '').trim();
+        if (s.includes('餐飲服務')) return '餐飲服務';
+        if (s.includes('美食產品')) return '美食產品';
+        if (s.includes('通路行銷')) return '通路行銷';
+        if (s.includes('營運協作') || s.includes('營運寫作')) return '營運協作';
+        if (s.includes('原物料')) return '原物料';
+        if (s.includes('加工製造')) return '加工製造';
+        // 如果是標準清單中的其中一個，直接返回
+        if (IndustryCategories.includes(s as any)) return s;
+        return '其他';
+      };
+
       const importedMembers: Member[] = jsonData.map((row: any) => {
         const member: any = {
            id: crypto.randomUUID(), // 生成臨時ID，後端可能會覆蓋
@@ -859,6 +868,11 @@ const MemberManager: React.FC<{
               member[mappedKey] = row[key];
            }
         });
+
+        // 處理正規化分類
+        if (member.industry_category) {
+            member.industry_category = normalizeIndustryCategory(member.industry_category);
+        }
 
         // 補全必要欄位
         if (!member.member_no) member.member_no = `TMP${Math.floor(Math.random()*10000)}`;
