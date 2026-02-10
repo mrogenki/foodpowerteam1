@@ -13,10 +13,9 @@ export enum UserRole {
   SUPER_ADMIN = '總管理員'
 }
 
-// 修改：簡化出席狀態，僅保留出席與缺席(未出席)
 export enum AttendanceStatus {
-  PRESENT = 'present',       // 出席 (已簽到)
-  ABSENT = 'absent',         // 缺席 (預設/取消簽到)
+  PRESENT = 'present',
+  ABSENT = 'absent',
 }
 
 export interface Activity {
@@ -27,7 +26,6 @@ export interface Activity {
   time: string;
   location: string;
   price: number;
-  // 移除 member_price
   picture: string;
   description: string;
   status?: 'active' | 'closed';
@@ -39,44 +37,73 @@ export interface Registration {
   name: string;
   phone: string;
   email: string;
-  
-  // 以下欄位若資料庫尚未建立，設為選填以避免前端錯誤
   company?: string;
   title?: string;
   referrer?: string;
-  check_in_status?: boolean; // 後台管理用：報到狀態
-  paid_amount?: number;      // 後台管理用：繳費金額
-  coupon_code?: string;      // 新增：使用的折扣碼
-  
+  check_in_status?: boolean;
+  paid_amount?: number;
+  coupon_code?: string;
   created_at: string;
 }
 
 export interface AdminUser {
   id: string;
   name: string;
-  phone: string; // 改為手機號碼
+  phone: string;
   role: UserRole;
   password?: string;
 }
 
+// 新增：產業分類列舉
+export const IndustryCategories = [
+  '餐飲服務', // 餐廳/外燴
+  '美食產品', // 糕餅/飲品/伴手禮
+  '通路行銷', // 團購/零售/社群/行銷工具
+  '營運協作', // 設備/包材/物流/檢驗
+  '原物料',   // 生鮮/蔬果/雜糧
+  '加工製造', // 生產/代工
+  '其他'     // 其他
+] as const;
+
+export type IndustryCategoryType = typeof IndustryCategories[number];
+
 export interface Member {
   id: string | number;
-  member_no: string | number; // 修改：允許 string 或 number
-  industry_chain: '美食' | '工程' | '健康' | '幸福' | '工商'; // 產業鏈
-  industry_category: string; // 行業別
-  name: string; // 大名
-  company: string; // 品牌/公司名稱
-  website?: string; // 網站
-  intro?: string; // 新增：會員簡介
-  birthday?: string; // 新增：生日 (YYYY-MM-DD)
   
-  // 新增：會籍管理
-  status?: 'active' | 'inactive'; // active=活躍(顯示), inactive=停權/離會(隱藏)
-  join_date?: string; // 入會日期
-  quit_date?: string; // 離會日期
+  // --- 會籍管理 ---
+  status: 'active' | 'inactive'; // 活躍/失效 (邏輯判斷：若今日 > 到期日 ? inactive : status)
+  membership_expiry_date?: string; // 會籍到期日 (YYYY-MM-DD)
+  notes?: string; // 備註
+  payment_records?: string; // 會籍繳費記錄 (文字描述或 JSON string)
+
+  // --- 個人資料 ---
+  member_no: string; // 會員編號 (系統自動產生)
+  name: string; // 中文姓名
+  id_number?: string; // 身分證字號
+  birthday?: string; // 生日
+  phone?: string; // 手機
+  email?: string; // 信箱 (新增，用於寄送折扣券)
+  address?: string; // 通訊地址
+  home_phone?: string; // 室內電話
+  referrer?: string; // 引薦人
+
+  // --- 事業資料 ---
+  industry_category: IndustryCategoryType | string; // 產業分類 (取代原本的 chain/category)
+  brand_name?: string; // 品牌名稱
+  company_title?: string; // 公司抬頭
+  tax_id?: string; // 統一編號
+  job_title?: string; // 職稱
+  main_service?: string; // 主要服務/產品
+  website?: string; // 網站
+
+  // 相容性保留 (Optional)
+  company?: string; // 對應到 brand_name 或 company_title
+  intro?: string;   // 對應到 main_service
+  industry_chain?: string; // 舊分類，可選
+  join_date?: string;
+  quit_date?: string;
 }
 
-// 新增：出席紀錄介面
 export interface AttendanceRecord {
   id?: string | number;
   activity_id: string;
@@ -85,14 +112,13 @@ export interface AttendanceRecord {
   updated_at?: string;
 }
 
-// 新增：折扣券介面
 export interface Coupon {
   id: string | number;
-  code: string;           // 流水號代碼
-  activity_id: string;    // 綁定特定活動
-  member_id?: string;     // 綁定特定會員 (可選)
-  discount_amount: number;// 折扣金額
-  is_used: boolean;       // 是否已使用
+  code: string;
+  activity_id: string;
+  member_id?: string;
+  discount_amount: number;
+  is_used: boolean;
   created_at: string;
   used_at?: string;
 }

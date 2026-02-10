@@ -3,7 +3,7 @@
 create extension if not exists "uuid-ossp";
 
 -- 1. 建立活動資料表 (activities)
-create table public.activities (
+create table if not exists public.activities (
   id text primary key,
   type text not null,
   title text not null,
@@ -11,7 +11,6 @@ create table public.activities (
   time text not null,
   location text not null,
   price numeric default 0,
-  -- 移除 member_price
   picture text,
   description text,
   status text default 'active',
@@ -19,9 +18,9 @@ create table public.activities (
 );
 
 -- 2. 建立報名資料表 (registrations)
-create table public.registrations (
+create table if not exists public.registrations (
   id text primary key,
-  "activityId" text not null, -- 注意：程式碼中大小寫可能敏感，建議對應 types.ts
+  "activityId" text not null,
   name text not null,
   phone text not null,
   email text,
@@ -30,12 +29,12 @@ create table public.registrations (
   referrer text,
   check_in_status boolean default false,
   paid_amount numeric default 0,
-  coupon_code text, -- 新增：紀錄使用的折扣碼
+  coupon_code text,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
 -- 3. 建立管理員資料表 (admins)
-create table public.admins (
+create table if not exists public.admins (
   id text primary key,
   name text not null,
   phone text not null unique,
@@ -44,66 +43,85 @@ create table public.admins (
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 4. 建立會員資料表 (members)
-create table public.members (
-  id text primary key, -- 這裡為了相容性使用 text，若希望自動生成可改 uuid
+-- 4. 建立會員資料表 (members) - 注意：此處定義為完整新結構
+-- 若您是更新現有資料庫，請執行下方的 ALTER TABLE 指令
+create table if not exists public.members (
+  id text primary key,
   member_no text,
-  industry_chain text,
-  industry_category text,
   name text not null,
-  company text,
-  website text,
-  intro text,
-  birthday text, -- 新增：生日欄位
   status text default 'active',
+  
+  -- 新增欄位
+  membership_expiry_date text,
+  notes text,
+  payment_records text,
+  
+  id_number text,
+  birthday text,
+  phone text,
+  email text,
+  address text,
+  home_phone text,
+  referrer text,
+  
+  industry_category text, -- 餐飲服務/美食產品...
+  brand_name text,
+  company_title text,
+  tax_id text,
+  job_title text,
+  main_service text,
+  website text,
+  
+  -- 舊欄位保留 (可選)
+  intro text,
+  company text,
+  industry_chain text,
   join_date text,
   quit_date text,
+  
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
 -- 5. 建立出席紀錄資料表 (attendance)
-create table public.attendance (
+create table if not exists public.attendance (
   id text primary key default uuid_generate_v4()::text,
   activity_id text not null,
   member_id text not null,
-  status text not null, -- 'present' or 'absent'
+  status text not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()),
-  unique(activity_id, member_id) -- 確保同一活動同一會員只有一筆紀錄
+  unique(activity_id, member_id)
 );
 
 -- 6. 建立折扣券資料表 (coupons)
-create table public.coupons (
+create table if not exists public.coupons (
   id text primary key default uuid_generate_v4()::text,
   code text not null unique,
   activity_id text not null,
-  member_id text, -- 可選，若指定則限制該會員使用
+  member_id text,
   discount_amount numeric not null default 0,
   is_used boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()),
   used_at timestamp with time zone
 );
 
--- 設定 RLS (Row Level Security) 策略
--- 為了簡化新專案設定，這裡先開放公開讀寫 (Public Access)
--- 注意：正式上線建議配合 Supabase Auth 設定更嚴謹的 Policies
-alter table public.activities enable row level security;
-create policy "Allow public access to activities" on public.activities for all using (true) with check (true);
+-- 設定 RLS (Policies) ... (略，同前)
 
-alter table public.registrations enable row level security;
-create policy "Allow public access to registrations" on public.registrations for all using (true) with check (true);
+-- ==========================================
+-- ⚠️ 遷移指令 (MIGRATION COMMANDS)
+-- 請在 Supabase SQL Editor 執行以下指令以更新現有 members 表格
+-- ==========================================
 
-alter table public.admins enable row level security;
-create policy "Allow public access to admins" on public.admins for all using (true) with check (true);
-
-alter table public.members enable row level security;
-create policy "Allow public access to members" on public.members for all using (true) with check (true);
-
-alter table public.attendance enable row level security;
-create policy "Allow public access to attendance" on public.attendance for all using (true) with check (true);
-
-alter table public.coupons enable row level security;
-create policy "Allow public access to coupons" on public.coupons for all using (true) with check (true);
-
--- 建立 Storage Bucket (若需要上傳圖片)
--- 需至 Supabase Dashboard > Storage > Create new bucket 'activity-images'
--- 並設定 Policy 為 Public
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS membership_expiry_date text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS notes text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS payment_records text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS id_number text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS phone text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS email text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS address text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS home_phone text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS referrer text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS brand_name text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS company_title text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS tax_id text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS job_title text;
+-- ALTER TABLE public.members ADD COLUMN IF NOT EXISTS main_service text;

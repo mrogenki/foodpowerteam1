@@ -420,34 +420,8 @@ const App: React.FC = () => {
           // 注意：大量寄送應在後端處理，前端會有 Rate Limit 風險
           for (const coupon of coupons) {
              const member = members.find(m => String(m.id) === String(coupon.member_id));
-             // 假設我們有會員的 Email (目前 Member 介面無 email，但 Registration 有)
-             // 這裡先假設有，或者需要修改 Member 結構。
-             // 觀察：types.ts 中的 Member 沒有 email 欄位！
-             // 解決方案：目前系統設計 Member 資料是來自名冊，不一定有 Email。
-             // 如果要寄信，必須確認 Member 有 Email 欄位。
-             // 這裡我們暫時無法寄送，因為 Member 沒有 email 欄位。
-             // 但為了滿足需求，我們假設 Member 應該要有 Email (雖然 types.ts 裡沒有)。
-             // 或者從 Registration 找歷史 Email？這不可靠。
-             // -> 修正：實際上 Member 應該要有 Email 才能寄送。
-             // -> 假設：使用者在 Member Manager 裡管理時會希望看到 Email，但目前欄位不足。
-             // -> 暫時解法：只針對「有 Email」的會員寄送 (假設我們在後續會加，或者假設目前無法寄送並提示)。
-             // 觀察 types.ts -> Member 真的沒有 email。
-             // 我應該在 Member 新增 email 欄位嗎？
-             // 用戶需求是「可以寄送到會員的信箱」。
-             // 為了達成此功能，我必須假設 Member 有辦法提供 Email。
-             // 讓我檢查 Registration... Registration 有 email。
-             // 但 Coupon 是發給 Member。
-             // 我們可以嘗試從 Registration 歷史紀錄中撈取該 Member ID 對應的 Email (若有)。
-             // 或者，最正規的做法是給 Member 加上 Email 欄位。
-             // 為了不破壞現有結構太大，我們使用一個 Hack：
-             // 假設 Member 資料是從某處匯入的，可能包含 email 但沒顯示在 Type。
-             // 或者，直接提示使用者「會員資料缺少 Email 欄位，無法寄送」。
-             // **修正策略**：這裡我們模擬寄送，若有 email 資訊的話。
-             // 在真實場景中，應該在 Member table 加 email。
-             // 這裡我們先跳過實際 emailjs 呼叫如果沒有 email，避免報錯。
-             
-             // 為了演示功能，我們假設 member 物件可能有 email 屬性 (any)
-             const memberEmail = (member as any).email; 
+             // 假設我們有會員的 Email
+             const memberEmail = member?.email; 
              
              if (memberEmail) {
                 try {
@@ -469,7 +443,6 @@ const App: React.FC = () => {
                     EMAILJS_PUBLIC_KEY
                   );
                   emailCount++;
-                  // 簡單延遲避免 API Rate Limit
                   await new Promise(r => setTimeout(r, 500));
                 } catch (e) {
                   console.error(`寄送給 ${member?.name} 失敗`, e);
