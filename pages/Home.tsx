@@ -1,14 +1,15 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ChevronRight, Clock } from 'lucide-react';
-import { Activity, ActivityType } from '../types';
+import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users } from 'lucide-react';
+import { Activity, MemberActivity, ActivityType } from '../types';
 
 interface HomeProps {
   activities: Activity[];
+  memberActivities: MemberActivity[];
 }
 
-const ActivityCard: React.FC<{ activity: Activity }> = ({ activity }) => {
+const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActivity?: boolean }> = ({ activity, isMemberActivity = false }) => {
   // 根據不同活動類型給予不同標籤顏色
   const getTypeColor = (type: ActivityType) => {
     switch(type) {
@@ -21,14 +22,21 @@ const ActivityCard: React.FC<{ activity: Activity }> = ({ activity }) => {
     }
   };
 
+  const linkPath = isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`;
+
   return (
-    <Link to={`/activity/${activity.id}`} className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+    <Link to={linkPath} className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
       <div className="relative h-48 overflow-hidden">
         <img src={activity.picture} alt={activity.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-4 left-4 flex gap-2">
           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getTypeColor(activity.type)}`}>
             {activity.type}
           </span>
+          {isMemberActivity && (
+             <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+               <Crown size={12} /> 會員專屬
+             </span>
+          )}
         </div>
       </div>
       <div className="p-6">
@@ -58,18 +66,18 @@ const ActivityCard: React.FC<{ activity: Activity }> = ({ activity }) => {
   );
 };
 
-const Home: React.FC<HomeProps> = ({ activities }) => {
+const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
   const now = new Date();
 
-  const filterUpcoming = (a: Activity) => {
-    // 結合日期與時間進行比較
+  // 基本篩選：時間 + 狀態
+  const filterUpcoming = (a: Activity | MemberActivity) => {
     const activityFullDate = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`);
-    // 如果 status 不存在 (undefined)，默認為 active
     const isActive = a.status === 'active' || !a.status;
     return isActive && activityFullDate > now;
   };
 
   const upcomingActivities = activities.filter(filterUpcoming);
+  const upcomingMemberActivities = memberActivities.filter(filterUpcoming);
 
   return (
     <div className="pb-20">
@@ -82,26 +90,48 @@ const Home: React.FC<HomeProps> = ({ activities }) => {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10">
-        <div className="space-y-16">
-          {/* Upcoming Activities List */}
+        <div className="space-y-12">
+          
+          {/* 會員專屬活動區塊 */}
+          {upcomingMemberActivities.length > 0 && (
+             <div>
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-bold flex items-center gap-3 text-red-700">
+                    <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-red-600">
+                      <Crown size={24} />
+                    </span>
+                    會員專屬活動
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {upcomingMemberActivities.map(activity => (
+                    <ActivityCard key={activity.id} activity={activity} isMemberActivity={true} />
+                  ))}
+                </div>
+             </div>
+          )}
+
+          {/* 一般公開活動區塊 */}
           <div>
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <span className="w-2 h-8 bg-red-600 rounded-full"></span>
-                近期活動
+              <h2 className="text-2xl font-bold flex items-center gap-3 text-gray-800">
+                <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-gray-700">
+                  <Users size={24} />
+                </span>
+                一般公開活動
               </h2>
             </div>
             
             {upcomingActivities.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {upcomingActivities.map(activity => (
-                  <ActivityCard key={activity.id} activity={activity} />
+                  <ActivityCard key={activity.id} activity={activity} isMemberActivity={false} />
                 ))}
               </div>
             ) : (
               <div className="bg-white p-20 rounded-3xl border border-dashed text-center">
                 <Calendar className="mx-auto text-gray-200 mb-4" size={48} />
-                <h3 className="text-xl font-bold text-gray-400">目前暫無即將舉行的活動</h3>
+                <h3 className="text-xl font-bold text-gray-400">目前暫無公開活動</h3>
                 <p className="text-gray-300 mt-2">請稍後再回來查看，或聯繫食在力量秘書處。</p>
               </div>
             )}

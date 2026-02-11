@@ -18,6 +18,7 @@ export enum AttendanceStatus {
   ABSENT = 'absent',
 }
 
+// 一般公開活動
 export interface Activity {
   id: string | number;
   type: ActivityType;
@@ -31,6 +32,12 @@ export interface Activity {
   status?: 'active' | 'closed';
 }
 
+// 會員專屬活動 (結構相似但邏輯獨立)
+export interface MemberActivity extends Activity {
+  // 未來可擴充專屬欄位，目前結構相同
+}
+
+// 一般報名
 export interface Registration {
   id: string | number;
   activityId: string | number;
@@ -40,6 +47,19 @@ export interface Registration {
   company?: string;
   title?: string;
   referrer?: string;
+  check_in_status?: boolean;
+  paid_amount?: number;
+  coupon_code?: string;
+  created_at: string;
+}
+
+// 會員報名 (連結 member_id)
+export interface MemberRegistration {
+  id: string | number;
+  activityId: string | number; // 對應 member_activities 的 ID
+  memberId: string | number;   // 對應 members 的 ID
+  member_name: string;         // 冗餘儲存方便顯示
+  member_no: string;           // 冗餘儲存方便顯示
   check_in_status?: boolean;
   paid_amount?: number;
   coupon_code?: string;
