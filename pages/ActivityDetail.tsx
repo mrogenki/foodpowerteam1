@@ -134,12 +134,15 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
         {
           to_name: name,
           to_email: email,
+          phone: formData.phone,      // 新增：傳送電話
+          company: formData.company,  // 新增：傳送公司
+          job_title: formData.title,  // 新增：傳送職稱
+          
           activity_title: activity.title,
           activity_date: activity.date,
           activity_time: activity.time,
           activity_location: activity.location,
           activity_price: finalPrice,
-          // 這裡可以加入更多變數，對應到 EmailJS 模板
         },
         EMAIL_CONFIG.PUBLIC_KEY
       );

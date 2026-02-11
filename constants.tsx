@@ -2,12 +2,12 @@
 import { Activity, ActivityType, AdminUser, UserRole, Member } from './types';
 
 // ==========================================
-// EmailJS 設定 (請在此處更新您的 ID)
+// EmailJS 設定 (已更新為正式金鑰)
 // ==========================================
 export const EMAIL_CONFIG = {
-  SERVICE_ID: 'service_z0iyas9',   // 請填入步驟1取得的 Service ID
-  TEMPLATE_ID: 'template_ih0plai', // 請填入步驟2取得的 Template ID
-  PUBLIC_KEY: 'ajJknYqtnk3p1_WmI'        // 請填入步驟3取得的 Public Key
+  SERVICE_ID: 'service_z0iyas9',
+  TEMPLATE_ID: 'template_ih0plai',
+  PUBLIC_KEY: 'ajJknYqtnk3p1_WmI'
 };
 
 export const INITIAL_ACTIVITIES: Activity[] = [
