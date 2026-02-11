@@ -10,12 +10,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import MemberList from './pages/MemberList';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, AttendanceRecord, AttendanceStatus, Coupon } from './types';
-import { INITIAL_ACTIVITIES, INITIAL_ADMINS, INITIAL_MEMBERS } from './constants';
-
-// EmailJS 設定
-const EMAILJS_SERVICE_ID = 'service_3cvfu3x';
-const EMAILJS_TEMPLATE_ID = 'template_tsptg0x'; 
-const EMAILJS_PUBLIC_KEY = 'ajJknYqtnk3p1_WmI';
+import { INITIAL_ACTIVITIES, INITIAL_ADMINS, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 
 // Supabase 設定
 const DEFAULT_URL = 'https://kpltydyspvzozgxfiwra.supabase.co';
@@ -335,7 +330,12 @@ const App: React.FC = () => {
         code: `ACT${activityId.slice(-3)}-M${mid.slice(-3)}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
       }));
       await supabase.from('coupons').insert(coupons);
-      // Email sending logic omitted for brevity, same as before
+      
+      // Email sending logic omitted for brevity in admin
+      if (sendEmail && EMAIL_CONFIG.SERVICE_ID !== 'YOUR_NEW_SERVICE_ID') {
+         // 這裡未來可以實作批次寄信
+      }
+
       alert(`成功產生 ${coupons.length} 張折扣券`);
       fetchData();
     } catch (err: any) { alert(err.message); } finally { setLoading(false); }

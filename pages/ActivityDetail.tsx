@@ -4,11 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { Activity, MemberActivity, Registration, MemberRegistration, Member } from '../types';
-
-// TODO: 請替換為您 EmailJS 後台的實際資訊
-const EMAILJS_SERVICE_ID: string = 'service_3cvfu3x';
-const EMAILJS_TEMPLATE_ID: string = 'template_tsptg0x';
-const EMAILJS_PUBLIC_KEY: string = 'ajJknYqtnk3p1_WmI';
+import { EMAIL_CONFIG } from '../constants';
 
 interface ActivityDetailProps {
   type: 'general' | 'member';
@@ -91,7 +87,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
   const handleShare = async () => {
     const shareUrl = window.location.href;
-    const shareText = `【長展分會活動推薦】\n活動：${activity.title}\n日期：${activity.date}\n時間：${activity.time}\n地點：${activity.location}\n\n立即點擊連結報名：\n${shareUrl}`;
+    const shareText = `【食在力量活動推薦】\n活動：${activity.title}\n日期：${activity.date}\n時間：${activity.time}\n地點：${activity.location}\n\n立即點擊連結報名：\n${shareUrl}`;
 
     if (navigator.share) {
       try {
@@ -125,11 +121,16 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   };
 
   const sendConfirmationEmail = async (name: string, email: string) => {
-    if (EMAILJS_SERVICE_ID === 'YOUR_SERVICE_ID') return;
+    if (!EMAIL_CONFIG.SERVICE_ID || EMAIL_CONFIG.SERVICE_ID === 'YOUR_NEW_SERVICE_ID') {
+      console.warn('EmailJS 未設定，跳過發送');
+      return;
+    }
+
     setIsSendingEmail(true);
     try {
       await emailjs.send(
-        EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID,
+        EMAIL_CONFIG.SERVICE_ID, 
+        EMAIL_CONFIG.TEMPLATE_ID,
         {
           to_name: name,
           to_email: email,
@@ -138,9 +139,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
           activity_time: activity.time,
           activity_location: activity.location,
           activity_price: finalPrice,
-          message: `感謝您報名 ${activity.title}，我們期待您的蒞臨！`
+          // 這裡可以加入更多變數，對應到 EmailJS 模板
         },
-        EMAILJS_PUBLIC_KEY
+        EMAIL_CONFIG.PUBLIC_KEY
       );
     } catch (error) { console.error('報名確認信發送失敗:', error); } 
     finally { setIsSendingEmail(false); }
