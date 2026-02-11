@@ -121,33 +121,47 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   };
 
   const sendConfirmationEmail = async (name: string, email: string) => {
+    // 檢查是否有設定 SERVICE_ID，若為預設值則不執行
     if (!EMAIL_CONFIG.SERVICE_ID || EMAIL_CONFIG.SERVICE_ID === 'YOUR_NEW_SERVICE_ID') {
-      console.warn('EmailJS 未設定，跳過發送');
+      console.warn('EmailJS 未設定或為預設值，跳過發送');
       return;
     }
 
     setIsSendingEmail(true);
     try {
+      const templateParams = {
+        // 關鍵修正：這裡必須包含 'email'，因為您的 EmailJS 後台設定收件人為 {{email}}
+        email: email, 
+        
+        // 內文變數
+        to_name: name,
+        phone: formData.phone,
+        company: formData.company,
+        job_title: formData.title, // 對應內文的職稱
+        
+        // 活動資訊
+        activity_title: activity.title,
+        activity_date: activity.date,
+        activity_time: activity.time,
+        activity_location: activity.location,
+        activity_price: finalPrice,
+      };
+
+      console.log('Sending email with params:', templateParams); // Debug log
+
       await emailjs.send(
         EMAIL_CONFIG.SERVICE_ID, 
         EMAIL_CONFIG.TEMPLATE_ID,
-        {
-          to_name: name,
-          to_email: email,
-          phone: formData.phone,      // 新增：傳送電話
-          company: formData.company,  // 新增：傳送公司
-          job_title: formData.title,  // 新增：傳送職稱
-          
-          activity_title: activity.title,
-          activity_date: activity.date,
-          activity_time: activity.time,
-          activity_location: activity.location,
-          activity_price: finalPrice,
-        },
+        templateParams,
         EMAIL_CONFIG.PUBLIC_KEY
       );
-    } catch (error) { console.error('報名確認信發送失敗:', error); } 
-    finally { setIsSendingEmail(false); }
+      console.log('Email sent successfully');
+    } catch (error) { 
+      console.error('報名確認信發送失敗:', error); 
+      // 不阻擋 UI 顯示成功，因為報名資料已寫入資料庫
+    } finally { 
+      setIsSendingEmail(false); 
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -192,7 +206,10 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       }
 
       if (success) {
-        if (formData.email) await sendConfirmationEmail(formData.name, formData.email);
+        // 確保在資料庫寫入成功後才發送 Email
+        if (formData.email) {
+          await sendConfirmationEmail(formData.name, formData.email);
+        }
         setIsSuccess(true);
       } else {
         setIsSubmitting(false);
@@ -208,7 +225,10 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <div className="flex justify-center mb-6"><CheckCircle2 size={80} className="text-green-500 animate-in zoom-in duration-300" /></div>
         <h2 className="text-3xl font-bold mb-4">報名成功！</h2>
-        <p className="text-gray-500 mb-8">感謝您的參與，我們期待在活動現場見到您。</p>
+        <p className="text-gray-500 mb-8">
+          感謝您的參與，我們期待在活動現場見到您。<br/>
+          {formData.email && <span className="text-sm text-gray-400">(確認信已發送至 {formData.email})</span>}
+        </p>
         <button onClick={() => navigate('/')} className="bg-red-600 text-white px-8 py-3 rounded-full font-bold hover:bg-red-700 transition-colors shadow-lg">返回活動列表</button>
       </div>
     );
