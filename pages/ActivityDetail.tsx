@@ -51,14 +51,15 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     return <div className="p-20 text-center">活動不存在</div>;
   }
 
-  // 判斷會員是否有效 (Active 且 未過期)
+  // 判斷會員是否有效 (優先以日期判斷)
   const isMemberActive = (m: Member): boolean => {
-    if (m.status === 'inactive') return false;
+    // 1. 若有到期日，以到期日為準 (大於等於今天即為有效)
     if (m.membership_expiry_date) {
       const today = new Date().toISOString().slice(0, 10);
-      if (m.membership_expiry_date < today) return false;
+      return m.membership_expiry_date >= today;
     }
-    return true;
+    // 2. 若無到期日 (例如永久會員)，則依照 status 判斷
+    return m.status === 'active';
   };
 
   // 計算已報名人數

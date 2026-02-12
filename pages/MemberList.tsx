@@ -12,14 +12,13 @@ const MemberList: React.FC<MemberListProps> = ({ members }) => {
 
   // 自動判斷會籍是否有效 (前端顯示邏輯)
   const isMemberActive = (m: Member) => {
-    // 1. 檢查 status 欄位
-    if (m.status === 'inactive') return false;
-    // 2. 檢查到期日
+    // 1. 若有到期日，以到期日為準 (大於等於今天即為有效)
     if (m.membership_expiry_date) {
       const today = new Date().toISOString().slice(0, 10);
-      if (m.membership_expiry_date < today) return false;
+      return m.membership_expiry_date >= today;
     }
-    return true;
+    // 2. 若無到期日 (例如永久會員)，則依照 status 判斷
+    return m.status === 'active';
   };
 
   const activeMembers = members.filter(isMemberActive);
