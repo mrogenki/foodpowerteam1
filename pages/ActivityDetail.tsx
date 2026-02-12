@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { Activity, MemberActivity, Registration, MemberRegistration, Member } from '../types';
 import { EMAIL_CONFIG } from '../constants';
@@ -51,6 +51,16 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     return <div className="p-20 text-center">活動不存在</div>;
   }
 
+  // 判斷會員是否有效 (Active 且 未過期)
+  const isMemberActive = (m: Member): boolean => {
+    if (m.status === 'inactive') return false;
+    if (m.membership_expiry_date) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (m.membership_expiry_date < today) return false;
+    }
+    return true;
+  };
+
   // 計算已報名人數
   let alreadyRegisteredCount = 0;
   if (props.type === 'general' && props.registrations) {
@@ -72,6 +82,12 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     : [];
 
   const handleSelectMember = (member: Member) => {
+    // 再次確保過期會員無法被選取 (防呆)
+    if (!isMemberActive(member)) {
+      alert('您的會籍已到期，請聯繫管理員續約後再報名。');
+      return;
+    }
+
     setFormData({
       name: member.name,
       phone: member.phone || '',
@@ -302,12 +318,27 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
                        <input type="text" value={memberSearchTerm} onChange={(e) => { setMemberSearchTerm(e.target.value); setShowMemberResults(true); }} placeholder="輸入姓名或電話搜尋..." className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none" />
                        {showMemberResults && filteredMembers.length > 0 && (
                          <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 overflow-hidden">
-                           {filteredMembers.map(m => (
-                             <button key={m.id} type="button" onClick={() => handleSelectMember(m)} className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 flex justify-between items-center group">
-                               <div><div className="font-bold text-gray-800 group-hover:text-red-600">{m.name}</div><div className="text-xs text-gray-400">{m.member_no} | {m.brand_name || m.company}</div></div>
-                               <ChevronDown size={14} className="text-gray-300 -rotate-90" />
-                             </button>
-                           ))}
+                           {filteredMembers.map(m => {
+                             const active = isMemberActive(m);
+                             return (
+                               <button 
+                                 key={m.id} 
+                                 type="button" 
+                                 onClick={() => handleSelectMember(m)} 
+                                 disabled={!active}
+                                 className={`w-full text-left px-4 py-3 border-b border-gray-50 last:border-0 flex justify-between items-center group transition-colors ${active ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50 opacity-60 cursor-not-allowed'}`}
+                               >
+                                 <div>
+                                    <div className="font-bold text-gray-800 group-hover:text-red-600 flex items-center gap-2">
+                                      {m.name}
+                                      {!active && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><AlertCircle size={10} /> 會籍已過期</span>}
+                                    </div>
+                                    <div className="text-xs text-gray-400">{m.member_no} | {m.brand_name || m.company}</div>
+                                 </div>
+                                 {active && <ChevronDown size={14} className="text-gray-300 -rotate-90" />}
+                               </button>
+                             );
+                           })}
                          </div>
                        )}
                        {showMemberResults && memberSearchTerm.length > 0 && filteredMembers.length === 0 && <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 p-3 text-center text-xs text-gray-400">無相符會員資料</div>}
