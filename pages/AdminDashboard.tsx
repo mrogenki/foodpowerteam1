@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
@@ -35,7 +34,7 @@ interface AdminDashboardProps {
   onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[], sendEmail: boolean) => void;
 }
 
-// 獨立的輸入元件
+// 獨立的輸入元件 (保留)
 const PaidAmountInput: React.FC<{ value?: number; onSave: (val: number) => void }> = ({ value, onSave }) => {
   const [localValue, setLocalValue] = useState(value?.toString() || '0');
   useEffect(() => { setLocalValue(value?.toString() || '0'); }, [value]);
@@ -88,7 +87,6 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void }> = ({ user, on
   );
 };
 
-// 儀表板首頁元件
 interface DashboardHomeProps {
   members: Member[];
   activities: Activity[];
@@ -97,30 +95,36 @@ interface DashboardHomeProps {
   memberRegistrations: MemberRegistration[];
 }
 
+// 儀表板首頁元件
 const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memberActivities, registrations, memberRegistrations }) => {
-  // Stats Calculation
-  const activeMembers = members.filter(m => {
-     if (m.membership_expiry_date) {
-        return m.membership_expiry_date >= new Date().toISOString().slice(0, 10);
-     }
-     return m.status === 'active';
-  }).length;
+  // Stats Calculation with useMemo to prevent re-calculation on every render
+  const stats = useMemo(() => {
+    const activeMembers = members.filter(m => {
+       if (m.membership_expiry_date) {
+          return m.membership_expiry_date >= new Date().toISOString().slice(0, 10);
+       }
+       return m.status === 'active';
+    }).length;
 
-  const totalRevenue = 
-    registrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0) + 
-    memberRegistrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
+    const totalRevenue = 
+      registrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0) + 
+      memberRegistrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
 
-  const upcomingActivitiesCount = 
-    activities.filter(a => a.status !== 'closed').length + 
-    memberActivities.filter(a => a.status !== 'closed').length;
+    const upcomingActivitiesCount = 
+      activities.filter(a => a.status !== 'closed').length + 
+      memberActivities.filter(a => a.status !== 'closed').length;
+      
+    return { activeMembers, totalRevenue, upcomingActivitiesCount };
+  }, [members, activities, memberActivities, registrations, memberRegistrations]);
 
-  // Combine and sort registrations
-  const recentRegs = [
-    ...registrations.map(r => ({ ...r, type: 'general', display_name: r.name })),
-    ...memberRegistrations.map(r => ({ ...r, type: 'member', display_name: r.member_name }))
-  ]
-  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  .slice(0, 5);
+  const recentRegs = useMemo(() => {
+    return [
+      ...registrations.map(r => ({ ...r, type: 'general', display_name: r.name })),
+      ...memberRegistrations.map(r => ({ ...r, type: 'member', display_name: r.member_name }))
+    ]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+  }, [registrations, memberRegistrations]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -130,7 +134,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Members */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
@@ -142,12 +145,11 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between text-xs">
-            <span className="text-green-600 font-bold bg-green-50 px-2 py-1 rounded-full">活躍 {activeMembers}</span>
-            <span className="text-gray-400">失效 {members.length - activeMembers}</span>
+            <span className="text-green-600 font-bold bg-green-50 px-2 py-1 rounded-full">活躍 {stats.activeMembers}</span>
+            <span className="text-gray-400">失效 {members.length - stats.activeMembers}</span>
           </div>
         </div>
 
-        {/* Activities */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
@@ -155,7 +157,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
             </div>
             <div>
                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">進行中活動</p>
-               <h3 className="text-2xl font-bold text-gray-900">{upcomingActivitiesCount}</h3>
+               <h3 className="text-2xl font-bold text-gray-900">{stats.upcomingActivitiesCount}</h3>
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400 flex justify-between">
@@ -164,7 +166,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
           </div>
         </div>
 
-        {/* Total Registrations */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
@@ -180,7 +181,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
           </div>
         </div>
 
-        {/* Revenue */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
@@ -188,7 +188,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
             </div>
             <div>
                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">累積營收</p>
-               <h3 className="text-2xl font-bold text-gray-900">NT$ {totalRevenue.toLocaleString()}</h3>
+               <h3 className="text-2xl font-bold text-gray-900">NT$ {stats.totalRevenue.toLocaleString()}</h3>
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400">
@@ -227,7 +227,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
   );
 };
 
-// 通用活動編輯器 (共用於一般與會員活動)
+// ... ActivityEditor 和 ActivityManager 保持不變 ...
 const ActivityEditor: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -345,6 +345,42 @@ const MemberActivityManager: React.FC<{
   );
 };
 
+// ----------------------------------------------------------------------
+// Memoized Table Rows for Performance (一般活動報到)
+// ----------------------------------------------------------------------
+const GeneralCheckInRow = React.memo(({ reg, onUpdateRegistration, onDeleteRegistration }: { 
+  reg: Registration; 
+  onUpdateRegistration: (reg: Registration) => void; 
+  onDeleteRegistration: (id: string | number) => void; 
+}) => {
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4 font-bold text-gray-900">{reg.name}</td>
+      <td className="px-6 py-4 text-gray-500">
+        <div>{reg.phone}</div>
+        <div className="text-xs">{reg.email}</div>
+      </td>
+      <td className="px-6 py-4 text-gray-500">
+        <div>{reg.company}</div>
+        <div className="text-xs">{reg.title}</div>
+      </td>
+      <td className="px-6 py-4">
+        <PaidAmountInput value={reg.paid_amount} onSave={(val) => onUpdateRegistration({...reg, paid_amount: val})} />
+      </td>
+      <td className="px-6 py-4">
+        <button onClick={() => onUpdateRegistration({...reg, check_in_status: !reg.check_in_status})} className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${reg.check_in_status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+          {reg.check_in_status ? '已報到' : '未報到'}
+        </button>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <button onClick={() => { if(window.confirm('確定刪除此報名紀錄？')) onDeleteRegistration(reg.id); }} className="text-gray-400 hover:text-red-600 p-2">
+          <Trash2 size={16} />
+        </button>
+      </td>
+    </tr>
+  );
+});
+
 const GeneralCheckInManager: React.FC<{
   activities: Activity[];
   registrations: Registration[];
@@ -353,9 +389,21 @@ const GeneralCheckInManager: React.FC<{
 }> = ({ activities, registrations, onUpdateRegistration, onDeleteRegistration }) => {
   const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   useEffect(() => { if (activities.length > 0 && !selectedActivityId) setSelectedActivityId(String(activities[0].id)); }, [activities]);
+  
   const [searchTerm, setSearchTerm] = useState('');
-  const filtered = registrations.filter(r => String(r.activityId) === selectedActivityId && (r.name.includes(searchTerm) || r.phone.includes(searchTerm)));
-  const stats = { total: filtered.length, checkedIn: filtered.filter(r => r.check_in_status).length, paid: filtered.reduce((acc, r) => acc + (r.paid_amount || 0), 0) };
+  
+  // Use useMemo for heavy filtering
+  const filtered = useMemo(() => {
+    return registrations.filter(r => String(r.activityId) === selectedActivityId && (r.name.includes(searchTerm) || r.phone.includes(searchTerm)));
+  }, [registrations, selectedActivityId, searchTerm]);
+
+  const stats = useMemo(() => {
+    return { 
+      total: filtered.length, 
+      checkedIn: filtered.filter(r => r.check_in_status).length, 
+      paid: filtered.reduce((acc, r) => acc + (r.paid_amount || 0), 0) 
+    };
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
@@ -369,11 +417,51 @@ const GeneralCheckInManager: React.FC<{
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex gap-4"><div className="relative flex-grow max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input type="text" placeholder="搜尋姓名或電話..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none" /></div></div>
-        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-bold"><tr><th className="px-6 py-4">姓名</th><th className="px-6 py-4">聯絡資訊</th><th className="px-6 py-4">公司職稱</th><th className="px-6 py-4">繳費金額</th><th className="px-6 py-4">報到狀態</th><th className="px-6 py-4 text-right">操作</th></tr></thead><tbody className="divide-y divide-gray-50">{filtered.map(reg => (<tr key={reg.id} className="hover:bg-gray-50"><td className="px-6 py-4 font-bold text-gray-900">{reg.name}</td><td className="px-6 py-4 text-gray-500"><div>{reg.phone}</div><div className="text-xs">{reg.email}</div></td><td className="px-6 py-4 text-gray-500"><div>{reg.company}</div><div className="text-xs">{reg.title}</div></td><td className="px-6 py-4"><PaidAmountInput value={reg.paid_amount} onSave={(val) => onUpdateRegistration({...reg, paid_amount: val})} /></td><td className="px-6 py-4"><button onClick={() => onUpdateRegistration({...reg, check_in_status: !reg.check_in_status})} className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${reg.check_in_status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>{reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="px-6 py-4 text-right"><button onClick={() => { if(window.confirm('確定刪除此報名紀錄？')) onDeleteRegistration(reg.id); }} className="text-gray-400 hover:text-red-600 p-2"><Trash2 size={16} /></button></td></tr>))}</tbody></table></div>
+        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-bold"><tr><th className="px-6 py-4">姓名</th><th className="px-6 py-4">聯絡資訊</th><th className="px-6 py-4">公司職稱</th><th className="px-6 py-4">繳費金額</th><th className="px-6 py-4">報到狀態</th><th className="px-6 py-4 text-right">操作</th></tr></thead><tbody className="divide-y divide-gray-50">{filtered.map(reg => (
+          <GeneralCheckInRow 
+            key={reg.id} 
+            reg={reg} 
+            onUpdateRegistration={onUpdateRegistration} 
+            onDeleteRegistration={onDeleteRegistration} 
+          />
+        ))}</tbody></table></div>
       </div>
     </div>
   );
 };
+
+// ----------------------------------------------------------------------
+// Memoized Table Rows for Performance (會員活動報到)
+// ----------------------------------------------------------------------
+const MemberCheckInRow = React.memo(({ reg, member, onUpdateRegistration, onDeleteRegistration }: { 
+  reg: MemberRegistration; 
+  member?: Member;
+  onUpdateRegistration: (reg: MemberRegistration) => void; 
+  onDeleteRegistration: (id: string | number) => void; 
+}) => {
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4">
+        <div className="font-bold text-gray-900">{reg.member_name}</div>
+        <div className="text-gray-500 text-xs">{member?.brand_name || member?.company}</div>
+      </td>
+      <td className="px-6 py-4 text-gray-600">{member?.job_title || '-'}</td>
+      <td className="px-6 py-4">
+        <PaidAmountInput value={reg.paid_amount} onSave={(val) => onUpdateRegistration({...reg, paid_amount: val})} />
+      </td>
+      <td className="px-6 py-4">
+        <button onClick={() => onUpdateRegistration({...reg, check_in_status: !reg.check_in_status})} className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${reg.check_in_status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+          {reg.check_in_status ? '已出席' : '未出席'}
+        </button>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <button onClick={() => { if(window.confirm('確定刪除此報名紀錄？')) onDeleteRegistration(reg.id); }} className="text-gray-400 hover:text-red-600 p-2">
+          <Trash2 size={16} />
+        </button>
+      </td>
+    </tr>
+  );
+});
 
 const MemberCheckInManager: React.FC<{
   activities: MemberActivity[];
@@ -385,8 +473,19 @@ const MemberCheckInManager: React.FC<{
   const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   useEffect(() => { if (activities.length > 0 && !selectedActivityId) setSelectedActivityId(String(activities[0].id)); }, [activities]);
   const [searchTerm, setSearchTerm] = useState('');
-  const filtered = registrations.filter(r => String(r.activityId) === selectedActivityId && (r.member_name.includes(searchTerm)));
-  const stats = { total: filtered.length, checkedIn: filtered.filter(r => r.check_in_status).length, paid: filtered.reduce((acc, r) => acc + (r.paid_amount || 0), 0) };
+  
+  // Use useMemo for heavy filtering
+  const filtered = useMemo(() => {
+    return registrations.filter(r => String(r.activityId) === selectedActivityId && (r.member_name.includes(searchTerm)));
+  }, [registrations, selectedActivityId, searchTerm]);
+
+  const stats = useMemo(() => {
+    return { 
+      total: filtered.length, 
+      checkedIn: filtered.filter(r => r.check_in_status).length, 
+      paid: filtered.reduce((acc, r) => acc + (r.paid_amount || 0), 0) 
+    };
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
@@ -403,7 +502,13 @@ const MemberCheckInManager: React.FC<{
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-bold"><tr><th className="px-6 py-4">姓名 / 品牌</th><th className="px-6 py-4">職稱</th><th className="px-6 py-4">繳費金額</th><th className="px-6 py-4">出席狀態</th><th className="px-6 py-4 text-right">操作</th></tr></thead><tbody className="divide-y divide-gray-50">{filtered.map(reg => {
           const member = members.find(m => String(m.id) === String(reg.memberId));
           return (
-            <tr key={reg.id} className="hover:bg-gray-50"><td className="px-6 py-4"><div className="font-bold text-gray-900">{reg.member_name}</div><div className="text-gray-500 text-xs">{member?.brand_name || member?.company}</div></td><td className="px-6 py-4 text-gray-600">{member?.job_title || '-'}</td><td className="px-6 py-4"><PaidAmountInput value={reg.paid_amount} onSave={(val) => onUpdateRegistration({...reg, paid_amount: val})} /></td><td className="px-6 py-4"><button onClick={() => onUpdateRegistration({...reg, check_in_status: !reg.check_in_status})} className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${reg.check_in_status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>{reg.check_in_status ? '已出席' : '未出席'}</button></td><td className="px-6 py-4 text-right"><button onClick={() => { if(window.confirm('確定刪除此報名紀錄？')) onDeleteRegistration(reg.id); }} className="text-gray-400 hover:text-red-600 p-2"><Trash2 size={16} /></button></td></tr>
+            <MemberCheckInRow 
+              key={reg.id}
+              reg={reg}
+              member={member}
+              onUpdateRegistration={onUpdateRegistration}
+              onDeleteRegistration={onDeleteRegistration}
+            />
           );
         })}</tbody></table></div>
       </div>
@@ -437,7 +542,10 @@ const CouponManager: React.FC<{ activities: Activity[]; members: Member[]; coupo
   const currentActivity = activities.find(a => String(a.id) === selectedActivityId);
   const handleGenerate = () => { if (!currentActivity || !onGenerateCoupons) return; if (selectedMemberIds.length === 0) { alert('請至少選擇一位會員'); return; } if (window.confirm(`確定發送給 ${selectedMemberIds.length} 位會員？`)) { onGenerateCoupons(selectedActivityId, amount, selectedMemberIds, sendEmail); setSelectedMemberIds([]); } };
   const toggleAllMembers = () => { if (selectedMemberIds.length === members.length) setSelectedMemberIds([]); else setSelectedMemberIds(members.map(m => String(m.id))); };
-  const filteredCoupons = coupons.filter(c => String(c.activity_id) === selectedActivityId);
+  
+  // Use useMemo for filtering coupons
+  const filteredCoupons = useMemo(() => coupons.filter(c => String(c.activity_id) === selectedActivityId), [coupons, selectedActivityId]);
+
   return (
     <div className="space-y-6">
        <div className="flex justify-between items-center"><h1 className="text-2xl font-bold text-gray-900">折扣券派發 (僅一般活動)</h1><select value={selectedActivityId} onChange={e => setSelectedActivityId(e.target.value)} className="border border-gray-200 rounded-lg px-4 py-2 bg-white font-bold text-gray-700 min-w-[200px]">{activities.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}</select></div>
@@ -454,21 +562,46 @@ const MemberManager: React.FC<{ members: Member[]; onAddMember: (m: Member) => v
   const [activeTab, setActiveTab] = useState<'membership' | 'personal' | 'business'>('membership');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const generateMemberNo = () => { const today = new Date(); const dateStr = today.toISOString().slice(0,10).replace(/-/g, ''); const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); return `M${dateStr}${random}`; };
-  const openModal = (member?: Member) => { if (member) { setEditingMember(member); setFormData(member); } else { setEditingMember(null); setFormData({ status: 'active', industry_category: '餐飲服務', member_no: generateMemberNo() }); } setActiveTab('membership'); setIsModalOpen(true); };
+  
+  // 修改：會員編號自動生成邏輯 (5碼流水號)
+  const generateMemberNo = () => { 
+    // 1. 找出所有純數字的會員編號
+    const numbers = members
+      .map(m => m.member_no)
+      .filter(no => /^\d+$/.test(no)) // 只取純數字
+      .map(no => parseInt(no, 10));
+
+    // 2. 找出最大值，若無則從 0 開始 (下一個為 1)
+    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
+    
+    // 3. 回傳最大值 + 1，並補零至 5 碼 (例如 00269)
+    return (maxNum + 1).toString().padStart(5, '0');
+  };
+
+  const openModal = (member?: Member) => { 
+    if (member) { 
+      setEditingMember(member); 
+      setFormData(member); 
+    } else { 
+      setEditingMember(null); 
+      setFormData({ 
+        status: 'active', 
+        industry_category: '餐飲服務', 
+        member_no: generateMemberNo() 
+      }); 
+    } 
+    setActiveTab('membership'); 
+    setIsModalOpen(true); 
+  };
   
   const handleSubmit = (e: React.FormEvent) => { 
     e.preventDefault(); 
     let finalStatus = formData.status || 'active'; 
-    
-    // 修正邏輯：如果設定了未來的到期日，強制將狀態改為 active
-    // 避免使用者只改了日期但忘記改狀態，導致會員仍顯示失效
     if (formData.membership_expiry_date) { 
       const today = new Date().toISOString().slice(0, 10); 
       if (formData.membership_expiry_date < today) { 
         finalStatus = 'inactive'; 
       } else {
-        // 日期有效，強制設為 active (除非有特殊需求要手動 ban，但為了方便操作先設為 active)
         finalStatus = 'active';
       }
     } 
@@ -478,12 +611,14 @@ const MemberManager: React.FC<{ members: Member[]; onAddMember: (m: Member) => v
   
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { if (!onAddMembers) return; const file = e.target.files?.[0]; if (!file) return; try { const data = await file.arrayBuffer(); const workbook = XLSX.read(data); const sheetName = workbook.SheetNames[0]; const sheet = workbook.Sheets[sheetName]; const jsonData = XLSX.utils.sheet_to_json(sheet); const fieldMap: Record<string, keyof Member> = { '會員編號': 'member_no', '姓名': 'name', '中文姓名': 'name', '狀態': 'status', '會籍到期日': 'membership_expiry_date', '備註': 'notes', '會籍繳費記錄': 'payment_records', '身分證': 'id_number', '身分證字號': 'id_number', '生日': 'birthday', '手機': 'phone', '信箱': 'email', 'Email': 'email', '地址': 'address', '通訊地址': 'address', '室內電話': 'home_phone', '引薦人': 'referrer', '產業分類': 'industry_category', '品牌名稱': 'brand_name', '公司抬頭': 'company_title', '統編': 'tax_id', '統一編號': 'tax_id', '職稱': 'job_title', '主要服務': 'main_service', '主要服務/產品': 'main_service', '網站': 'website' }; const normalizeIndustryCategory = (input: any): string => { const s = String(input || '').trim(); if (s.includes('餐飲服務')) return '餐飲服務'; if (s.includes('美食產品')) return '美食產品'; if (s.includes('通路行銷')) return '通路行銷'; if (s.includes('營運協作') || s.includes('營運寫作')) return '營運協作'; if (s.includes('原物料')) return '原物料'; if (s.includes('加工製造')) return '加工製造'; if (IndustryCategories.includes(s as any)) return s; return '其他'; }; const importedMembers: Member[] = jsonData.map((row: any) => { const member: any = { id: crypto.randomUUID(), status: 'active', industry_category: '其他' }; Object.keys(row).forEach(key => { const mappedKey = fieldMap[key] || fieldMap[key.trim()]; if (mappedKey) { member[mappedKey] = row[key]; } }); if (member.industry_category) { member.industry_category = normalizeIndustryCategory(member.industry_category); } if (!member.member_no) member.member_no = `TMP${Math.floor(Math.random()*10000)}`; if (!member.name) member.name = '未命名匯入'; member.company = member.brand_name || member.company_title || ''; member.intro = member.main_service || ''; return member as Member; }); if (importedMembers.length > 0) { if (window.confirm(`解析成功！共 ${importedMembers.length} 筆資料。\n確定要匯入嗎？`)) { onAddMembers(importedMembers); setIsImportModalOpen(false); } } else { alert('檔案中沒有資料或格式無法辨識'); } } catch (err) { console.error(err); alert('檔案解析失敗'); } finally { if (fileInputRef.current) fileInputRef.current.value = ''; } };
   const handleExportExcel = () => { const dataToExport = members.map(m => ({ '會員編號': m.member_no, '姓名': m.name, '狀態': m.status === 'active' ? '活躍' : '失效', '會籍到期日': m.membership_expiry_date || '', '產業分類': m.industry_category, '品牌名稱': m.brand_name || '', '公司抬頭': m.company_title || '', '統編': m.tax_id || '', '職稱': m.job_title || '', '手機': m.phone || '', 'Email': m.email || '', '地址': m.address || '', '身分證字號': m.id_number || '', '生日': m.birthday || '', '室內電話': m.home_phone || '', '引薦人': m.referrer || '', '網站': m.website || '', '主要服務': m.main_service || '', '備註': m.notes || '', '繳費紀錄': m.payment_records || '' })); const ws = XLSX.utils.json_to_sheet(dataToExport); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "會員名單"); XLSX.writeFile(wb, `會員名單匯出_${new Date().toISOString().slice(0,10)}.xlsx`); };
-  const filteredMembers = members.filter(m => m.name.includes(searchTerm) || (m.brand_name && m.brand_name.includes(searchTerm)) || (m.company && m.company.includes(searchTerm)) || (m.member_no && String(m.member_no).includes(searchTerm)));
+  
+  // Use useMemo for filtering members
+  const filteredMembers = useMemo(() => members.filter(m => m.name.includes(searchTerm) || (m.brand_name && m.brand_name.includes(searchTerm)) || (m.company && m.company.includes(searchTerm)) || (m.member_no && String(m.member_no).includes(searchTerm))), [members, searchTerm]);
+
   return (
     <div className="space-y-6">
        <div className="flex justify-between items-center"><h1 className="text-2xl font-bold text-gray-900">會員資料管理</h1><div className="flex gap-2"><button onClick={handleExportExcel} className="bg-green-600 text-white border border-green-700 px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 shadow-sm"><FileDown size={18} /> 匯出 Excel</button>{onAddMembers && (<button onClick={() => setIsImportModalOpen(true)} className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-900 flex items-center gap-2"><UploadCloud size={18} /> 匯入 Excel/CSV</button>)}<button onClick={() => openModal()} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2"><Plus size={18} /> 新增會員</button></div></div>
        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"><div className="p-4 border-b border-gray-100 bg-gray-50/50"><div className="relative max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input type="text" placeholder="搜尋編號、姓名、品牌..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none" /></div></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 font-bold"><tr><th className="px-6 py-4">No.</th><th className="px-6 py-4">姓名 / 品牌</th><th className="px-6 py-4">產業分類</th><th className="px-6 py-4">狀態</th><th className="px-6 py-4">到期日</th><th className="px-6 py-4 text-right">操作</th></tr></thead><tbody className="divide-y divide-gray-50">{filteredMembers.map(m => { 
-         // 顯示邏輯修正：如果有到期日且大於等於今天，視為有效，不再單純看 status
          const hasValidDate = m.membership_expiry_date && m.membership_expiry_date >= new Date().toISOString().slice(0, 10);
          const isEffectivelyActive = hasValidDate || (m.status === 'active' && !m.membership_expiry_date);
          
@@ -495,8 +630,7 @@ const MemberManager: React.FC<{ members: Member[]; onAddMember: (m: Member) => v
                    <h2 className="text-xl font-bold text-gray-800">{editingMember ? '編輯會員資料卡' : '新增會員資料卡'}</h2>
                    <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><X size={20} /></button>
                 </div>
-                
-                {/* Tabs */}
+                {/* Tabs & Content - Same as before, just kept for brevity in XML diff but logic is same */}
                 <div className="flex border-b border-gray-200">
                    <button 
                      onClick={() => setActiveTab('membership')}
@@ -517,11 +651,9 @@ const MemberManager: React.FC<{ members: Member[]; onAddMember: (m: Member) => v
                      <Building2 size={18} /> 事業資料
                    </button>
                 </div>
-
                 <div className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
                    <form id="memberForm" onSubmit={handleSubmit} className="space-y-6">
-                      
-                      {/* 會籍管理 Tab */}
+                      {/* ... Form Content (same as previous) ... */}
                       {activeTab === 'membership' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
@@ -531,218 +663,68 @@ const MemberManager: React.FC<{ members: Member[]; onAddMember: (m: Member) => v
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                  <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">會籍狀態</label>
-                                    <select 
-                                      value={formData.status} 
-                                      onChange={e => setFormData({...formData, status: e.target.value as any})} 
-                                      className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500"
-                                    >
-                                       <option value="active">活躍 (Active)</option>
-                                       <option value="inactive">失效/停權 (Inactive)</option>
-                                    </select>
+                                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500"><option value="active">活躍 (Active)</option><option value="inactive">失效/停權 (Inactive)</option></select>
                                     <p className="text-xs text-gray-400 mt-1">* 系統將依據「到期日」自動判斷，若日期有效則視為活躍。</p>
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">會籍到期日</label>
-                                    <input 
-                                      type="date" 
-                                      value={formData.membership_expiry_date || ''} 
-                                      onChange={e => setFormData({...formData, membership_expiry_date: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
+                                    <input type="date" value={formData.membership_expiry_date || ''} onChange={e => setFormData({...formData, membership_expiry_date: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" />
                                  </div>
                               </div>
-                              <div>
-                                 <label className="block text-sm font-bold text-gray-700 mb-1">會籍繳費記錄</label>
-                                 <textarea 
-                                   value={formData.payment_records || ''} 
-                                   onChange={e => setFormData({...formData, payment_records: e.target.value})} 
-                                   className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none"
-                                   placeholder="例如：2024/01/01 繳交年費 $3000..."
-                                 />
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold text-gray-700 mb-1">備註</label>
-                                 <textarea 
-                                   value={formData.notes || ''} 
-                                   onChange={e => setFormData({...formData, notes: e.target.value})} 
-                                   className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 h-20 resize-none"
-                                 />
-                              </div>
+                              <div><label className="block text-sm font-bold text-gray-700 mb-1">會籍繳費記錄</label><textarea value={formData.payment_records || ''} onChange={e => setFormData({...formData, payment_records: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none" placeholder="例如：2024/01/01 繳交年費 $3000..." /></div>
+                              <div><label className="block text-sm font-bold text-gray-700 mb-1">備註</label><textarea value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 h-20 resize-none" /></div>
                            </div>
                         </div>
                       )}
-
-                      {/* 個人資料 Tab */}
                       {activeTab === 'personal' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                              <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
-                                <User size={18} className="text-red-600"/> 基本資料
-                              </h3>
+                              <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2"><User size={18} className="text-red-600"/> 基本資料</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                  <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">會員編號 (系統產生)</label>
+                                    {/* 允許手動修改流水號，方便管理者校正 */}
                                     <input 
                                       value={formData.member_no || ''} 
-                                      readOnly
-                                      className="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-500 font-mono cursor-not-allowed" 
+                                      onChange={e => setFormData({...formData, member_no: e.target.value})}
+                                      className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-mono" 
                                     />
                                  </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">中文姓名 <span className="text-red-500">*</span></label>
-                                    <input 
-                                      required 
-                                      value={formData.name || ''} 
-                                      onChange={e => setFormData({...formData, name: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">身分證字號</label>
-                                    <input 
-                                      value={formData.id_number || ''} 
-                                      onChange={e => setFormData({...formData, id_number: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 uppercase" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">生日</label>
-                                    <input 
-                                      type="date"
-                                      value={formData.birthday || ''} 
-                                      onChange={e => setFormData({...formData, birthday: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">中文姓名 <span className="text-red-500">*</span></label><input required value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">身分證字號</label><input value={formData.id_number || ''} onChange={e => setFormData({...formData, id_number: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 uppercase" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">生日</label><input type="date" value={formData.birthday || ''} onChange={e => setFormData({...formData, birthday: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
                               </div>
                            </div>
-                           
                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                              <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
-                                <Smartphone size={18} className="text-red-600"/> 聯絡方式
-                              </h3>
+                              <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2"><Smartphone size={18} className="text-red-600"/> 聯絡方式</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">手機</label>
-                                    <input 
-                                      type="tel"
-                                      value={formData.phone || ''} 
-                                      onChange={e => setFormData({...formData, phone: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">信箱 (接收優惠券)</label>
-                                    <input 
-                                      type="email"
-                                      value={formData.email || ''} 
-                                      onChange={e => setFormData({...formData, email: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">室內電話</label>
-                                    <input 
-                                      value={formData.home_phone || ''} 
-                                      onChange={e => setFormData({...formData, home_phone: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">引薦人</label>
-                                    <input 
-                                      value={formData.referrer || ''} 
-                                      onChange={e => setFormData({...formData, referrer: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">通訊地址</label>
-                                    <input 
-                                      value={formData.address || ''} 
-                                      onChange={e => setFormData({...formData, address: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">手機</label><input type="tel" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">信箱 (接收優惠券)</label><input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">室內電話</label><input value={formData.home_phone || ''} onChange={e => setFormData({...formData, home_phone: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">引薦人</label><input value={formData.referrer || ''} onChange={e => setFormData({...formData, referrer: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">通訊地址</label><input value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
                               </div>
                            </div>
                         </div>
                       )}
-
-                      {/* 事業資料 Tab */}
                       {activeTab === 'business' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                              <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
-                                <Building2 size={18} className="text-red-600"/> 公司資訊
-                              </h3>
+                              <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2"><Building2 size={18} className="text-red-600"/> 公司資訊</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">產業分類 <span className="text-red-500">*</span></label>
-                                    <select 
-                                      value={formData.industry_category} 
-                                      onChange={e => setFormData({...formData, industry_category: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500"
-                                    >
-                                       {IndustryCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">品牌名稱</label>
-                                    <input 
-                                      value={formData.brand_name || ''} 
-                                      onChange={e => setFormData({...formData, brand_name: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">公司抬頭</label>
-                                    <input 
-                                      value={formData.company_title || ''} 
-                                      onChange={e => setFormData({...formData, company_title: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">統一編號</label>
-                                    <input 
-                                      value={formData.tax_id || ''} 
-                                      onChange={e => setFormData({...formData, tax_id: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 font-mono" 
-                                    />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">職稱</label>
-                                    <input 
-                                      value={formData.job_title || ''} 
-                                      onChange={e => setFormData({...formData, job_title: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                    />
-                                 </div>
-                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">主要服務/產品</label>
-                                    <textarea 
-                                      value={formData.main_service || ''} 
-                                      onChange={e => setFormData({...formData, main_service: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none"
-                                    />
-                                 </div>
-                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">網站</label>
-                                    <input 
-                                      value={formData.website || ''} 
-                                      onChange={e => setFormData({...formData, website: e.target.value})} 
-                                      className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" 
-                                      placeholder="https://..."
-                                    />
-                                 </div>
+                                 <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">產業分類 <span className="text-red-500">*</span></label><select value={formData.industry_category} onChange={e => setFormData({...formData, industry_category: e.target.value})} className="w-full border rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500">{IndustryCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">品牌名稱</label><input value={formData.brand_name || ''} onChange={e => setFormData({...formData, brand_name: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">公司抬頭</label><input value={formData.company_title || ''} onChange={e => setFormData({...formData, company_title: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">統一編號</label><input value={formData.tax_id || ''} onChange={e => setFormData({...formData, tax_id: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 font-mono" /></div>
+                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">職稱</label><input value={formData.job_title || ''} onChange={e => setFormData({...formData, job_title: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" /></div>
+                                 <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">主要服務/產品</label><textarea value={formData.main_service || ''} onChange={e => setFormData({...formData, main_service: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none" /></div>
+                                 <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">網站</label><input value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500" placeholder="https://..." /></div>
                               </div>
                            </div>
                         </div>
                       )}
                    </form>
                 </div>
-
                 <div className="p-6 border-t border-gray-100 bg-white flex justify-end gap-4">
                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 border rounded-lg font-bold text-gray-500 hover:bg-gray-50 transition-colors">取消</button>
                    <button type="submit" form="memberForm" className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg shadow-red-200 transition-all">確認儲存</button>

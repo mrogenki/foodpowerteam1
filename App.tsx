@@ -120,10 +120,29 @@ const App: React.FC = () => {
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
 
+      // 使用 Promise.all 平行載入所有資料，大幅減少等待時間
+      const [
+        { data: actData },
+        { data: memActData },
+        { data: regData },
+        { data: memRegData },
+        { data: userData },
+        { data: memberData },
+        { data: couponData }
+      ] = await Promise.all([
+        supabase.from('activities').select('*').order('date', { ascending: true }),
+        supabase.from('member_activities').select('*').order('date', { ascending: true }),
+        supabase.from('registrations').select('*').order('created_at', { ascending: false }),
+        supabase.from('member_registrations').select('*').order('created_at', { ascending: false }),
+        supabase.from('admins').select('*'),
+        supabase.from('members').select('*'),
+        supabase.from('coupons').select('*').order('created_at', { ascending: false })
+      ]);
+
       // 1. 一般活動
-      const { data: actData } = await supabase.from('activities').select('*').order('date', { ascending: true });
-      if (actData) setActivities(actData.map((a: any) => ({ ...a, status: a.status || 'active' })));
-      else {
+      if (actData && actData.length > 0) {
+        setActivities(actData.map((a: any) => ({ ...a, status: a.status || 'active' })));
+      } else {
          // Init if empty
          const { data: hasAny } = await supabase.from('activities').select('id').limit(1);
          if (!hasAny || hasAny.length === 0) {
@@ -134,19 +153,15 @@ const App: React.FC = () => {
       }
 
       // 2. 會員活動
-      const { data: memActData } = await supabase.from('member_activities').select('*').order('date', { ascending: true });
       if (memActData) setMemberActivities(memActData.map((a: any) => ({ ...a, status: a.status || 'active' })));
 
       // 3. 一般報名
-      const { data: regData } = await supabase.from('registrations').select('*').order('created_at', { ascending: false });
       if (regData) setRegistrations(regData);
 
       // 4. 會員報名
-      const { data: memRegData } = await supabase.from('member_registrations').select('*').order('created_at', { ascending: false });
       if (memRegData) setMemberRegistrations(memRegData);
       
       // 5. 管理員
-      const { data: userData } = await supabase.from('admins').select('*');
       if (userData && userData.length > 0) setUsers(userData);
       else {
          const { data: inserted } = await supabase.from('admins').insert(INITIAL_ADMINS).select();
@@ -154,7 +169,6 @@ const App: React.FC = () => {
       }
 
       // 6. 會員
-      const { data: memberData } = await supabase.from('members').select('*');
       if (memberData && memberData.length > 0) {
         const sortedMembers = memberData.sort((a: any, b: any) => {
           const valA = String(a.member_no || '');
@@ -171,7 +185,6 @@ const App: React.FC = () => {
       }
 
       // 7. 折扣券
-      const { data: couponData } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
       if (couponData) setCoupons(couponData as Coupon[]);
 
     } catch (err: any) {
@@ -292,9 +305,6 @@ const App: React.FC = () => {
   };
 
   // --- 優化重點：樂觀更新 (Optimistic UI) ---
-  // 不等待 DB 回傳，先更新本地 State，背景執行 DB 更新。
-  // 只有發生錯誤時才重新抓取資料。
-
   const handleUpdateRegistration = async (updated: Registration) => {
     // 1. 立即更新本地 UI (無延遲)
     setRegistrations(prev => prev.map(r => r.id === updated.id ? updated : r));
