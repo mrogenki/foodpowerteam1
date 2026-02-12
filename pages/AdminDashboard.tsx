@@ -88,14 +88,144 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void }> = ({ user, on
   );
 };
 
-const DashboardHome: React.FC = () => {
+// 儀表板首頁元件
+interface DashboardHomeProps {
+  members: Member[];
+  activities: Activity[];
+  memberActivities: MemberActivity[];
+  registrations: Registration[];
+  memberRegistrations: MemberRegistration[];
+}
+
+const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memberActivities, registrations, memberRegistrations }) => {
+  // Stats Calculation
+  const activeMembers = members.filter(m => {
+     if (m.membership_expiry_date) {
+        return m.membership_expiry_date >= new Date().toISOString().slice(0, 10);
+     }
+     return m.status === 'active';
+  }).length;
+
+  const totalRevenue = 
+    registrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0) + 
+    memberRegistrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
+
+  const upcomingActivitiesCount = 
+    activities.filter(a => a.status !== 'closed').length + 
+    memberActivities.filter(a => a.status !== 'closed').length;
+
+  // Combine and sort registrations
+  const recentRegs = [
+    ...registrations.map(r => ({ ...r, type: 'general', display_name: r.name })),
+    ...memberRegistrations.map(r => ({ ...r, type: 'member', display_name: r.member_name }))
+  ]
+  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  .slice(0, 5);
+
   return (
-    <div className="p-10 text-center text-gray-500">
-      <h1 className="text-3xl font-bold text-gray-800 mb-4">歡迎回到管理後台</h1>
-      <p>請從左側選單選擇功能進行管理</p>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">儀表板概覽</h1>
+        <p className="text-gray-500">歡迎回到管理系統，以下是目前的營運狀況。</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Members */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+              <Users size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">總會員數</p>
+              <h3 className="text-2xl font-bold text-gray-900">{members.length}</h3>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between text-xs">
+            <span className="text-green-600 font-bold bg-green-50 px-2 py-1 rounded-full">活躍 {activeMembers}</span>
+            <span className="text-gray-400">失效 {members.length - activeMembers}</span>
+          </div>
+        </div>
+
+        {/* Activities */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
+              <Calendar size={24} />
+            </div>
+            <div>
+               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">進行中活動</p>
+               <h3 className="text-2xl font-bold text-gray-900">{upcomingActivitiesCount}</h3>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400 flex justify-between">
+             <span>一般 {activities.filter(a => a.status!=='closed').length}</span>
+             <span>會員 {memberActivities.filter(a => a.status!=='closed').length}</span>
+          </div>
+        </div>
+
+        {/* Total Registrations */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
+              <ClipboardList size={24} />
+            </div>
+            <div>
+               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">總報名數</p>
+               <h3 className="text-2xl font-bold text-gray-900">{registrations.length + memberRegistrations.length}</h3>
+            </div>
+          </div>
+           <div className="mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400">
+             累積人次 (含歷史資料)
+          </div>
+        </div>
+
+        {/* Revenue */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
+              <DollarSign size={24} />
+            </div>
+            <div>
+               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">累積營收</p>
+               <h3 className="text-2xl font-bold text-gray-900">NT$ {totalRevenue.toLocaleString()}</h3>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400">
+             包含所有活動款項
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+          <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><Clock size={20} className="text-gray-400"/> 最新報名動態</h3>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {recentRegs.map((reg, idx) => (
+              <div key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                 <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm ${reg.type === 'member' ? 'bg-purple-500' : 'bg-blue-500'}`}>
+                       {reg.display_name ? reg.display_name[0] : 'U'}
+                    </div>
+                    <div>
+                       <p className="font-bold text-gray-900 text-sm">{reg.display_name}</p>
+                       <p className="text-xs text-gray-500">{new Date(reg.created_at).toLocaleString()}</p>
+                    </div>
+                 </div>
+                 <div className="text-right">
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold ${reg.type === 'member' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+                       {reg.type === 'member' ? '會員報名' : '一般報名'}
+                    </span>
+                 </div>
+              </div>
+          ))}
+          {recentRegs.length === 0 && <div className="p-8 text-center text-gray-400 text-sm">尚無報名資料</div>}
+        </div>
+      </div>
     </div>
   );
-}
+};
 
 // 通用活動編輯器 (共用於一般與會員活動)
 const ActivityEditor: React.FC<{
@@ -631,7 +761,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
       <Sidebar user={props.currentUser} onLogout={props.onLogout} />
       <div className="flex-1 p-8 overflow-y-auto max-h-screen">
         <Routes>
-          <Route path="/" element={<DashboardHome />} />
+          <Route path="/" element={<DashboardHome 
+             members={props.members} 
+             activities={props.activities} 
+             memberActivities={props.memberActivities} 
+             registrations={props.registrations} 
+             memberRegistrations={props.memberRegistrations}
+          />} />
           <Route path="/activities" element={<GeneralActivityManager activities={props.activities} onAdd={props.onAddActivity} onUpdate={props.onUpdateActivity} onDelete={props.onDeleteActivity} onUploadImage={props.onUploadImage} />} />
           <Route path="/check-in" element={<GeneralCheckInManager activities={props.activities} registrations={props.registrations} onUpdateRegistration={props.onUpdateRegistration} onDeleteRegistration={props.onDeleteRegistration} />} />
           <Route path="/member-activities" element={<MemberActivityManager activities={props.memberActivities} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUploadImage={props.onUploadImage} />} />

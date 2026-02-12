@@ -90,7 +90,6 @@ const Footer: React.FC = () => {
 };
 
 const SetupGuide: React.FC = () => {
-  // (SetupGuide 代碼保持不變，省略以節省篇幅)
   return <div>Setup Guide</div>; 
 };
 
@@ -228,10 +227,15 @@ const App: React.FC = () => {
 
   // CRUD Functions (General Activities)
   const handleUpdateActivity = async (updated: Activity) => {
+    // Optimistic Update
+    setActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { status, ...updateData } = updated as any;
     const { error } = await supabase.from('activities').update(updateData).eq('id', updated.id);
-    if (!error) fetchData();
+    if (error) { 
+      console.error(error); 
+      fetchData(); // Revert on error
+    }
   };
   const handleAddActivity = async (newAct: Activity) => {
     if (!supabase) return;
@@ -239,18 +243,22 @@ const App: React.FC = () => {
     if (!error) fetchData();
   };
   const handleDeleteActivity = async (id: string | number) => {
+    // Optimistic Update
+    setActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     await supabase.from('registrations').delete().eq('activityId', id);
     const { error } = await supabase.from('activities').delete().eq('id', id);
-    if (!error) fetchData();
+    if (error) fetchData();
   };
 
   // CRUD Functions (Member Activities)
   const handleUpdateMemberActivity = async (updated: MemberActivity) => {
+    // Optimistic Update
+    setMemberActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { status, ...updateData } = updated as any;
     const { error } = await supabase.from('member_activities').update(updateData).eq('id', updated.id);
-    if (!error) fetchData();
+    if (error) fetchData();
   };
   const handleAddMemberActivity = async (newAct: MemberActivity) => {
     if (!supabase) return;
@@ -258,10 +266,12 @@ const App: React.FC = () => {
     if (!error) fetchData();
   };
   const handleDeleteMemberActivity = async (id: string | number) => {
+    // Optimistic Update
+    setMemberActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     await supabase.from('member_registrations').delete().eq('activityId', id);
     const { error } = await supabase.from('member_activities').delete().eq('id', id);
-    if (!error) fetchData();
+    if (error) fetchData();
   };
 
   // Registration Functions
@@ -281,34 +291,78 @@ const App: React.FC = () => {
     await fetchData(); return true;
   };
 
+  // --- 優化重點：樂觀更新 (Optimistic UI) ---
+  // 不等待 DB 回傳，先更新本地 State，背景執行 DB 更新。
+  // 只有發生錯誤時才重新抓取資料。
+
   const handleUpdateRegistration = async (updated: Registration) => {
+    // 1. 立即更新本地 UI (無延遲)
+    setRegistrations(prev => prev.map(r => r.id === updated.id ? updated : r));
+
     if (!supabase) return;
+    // 2. 背景發送請求
     const { error } = await supabase.from('registrations').update(updated).eq('id', updated.id);
-    if (!error) fetchData();
+    
+    // 3. 僅在錯誤時才回滾或重抓
+    if (error) {
+      console.error('Update registration failed:', error);
+      fetchData(); 
+      alert('更新失敗，請檢查網路連線');
+    }
   };
+
   const handleDeleteRegistration = async (id: string | number) => {
+    // 1. 立即從列表中移除 (無延遲)
+    setRegistrations(prev => prev.filter(r => r.id !== id));
+
     if (!supabase) return;
     const { error } = await supabase.from('registrations').delete().eq('id', id);
-    if (!error) fetchData();
+    if (error) {
+      console.error('Delete registration failed:', error);
+      fetchData();
+    }
   };
 
   const handleUpdateMemberRegistration = async (updated: MemberRegistration) => {
+    // 1. 立即更新本地 UI (無延遲)
+    setMemberRegistrations(prev => prev.map(r => r.id === updated.id ? updated : r));
+
     if (!supabase) return;
     const { error } = await supabase.from('member_registrations').update(updated).eq('id', updated.id);
-    if (!error) fetchData();
+    if (error) {
+      console.error('Update member registration failed:', error);
+      fetchData();
+      alert('更新失敗，請檢查網路連線');
+    }
   };
+
   const handleDeleteMemberRegistration = async (id: string | number) => {
+    // 1. 立即從列表中移除 (無延遲)
+    setMemberRegistrations(prev => prev.filter(r => r.id !== id));
+
     if (!supabase) return;
     const { error } = await supabase.from('member_registrations').delete().eq('id', id);
-    if (!error) fetchData();
+    if (error) {
+      console.error('Delete member registration failed:', error);
+      fetchData();
+    }
   };
 
   // User/Member Functions
   const handleAddUser = async (newUser: AdminUser) => { if (!supabase) return; await supabase.from('admins').insert([newUser]); fetchData(); };
   const handleDeleteUser = async (id: string) => { if (!supabase) return; await supabase.from('admins').delete().eq('id', id); fetchData(); };
   const handleAddMember = async (newMember: Member) => { if (!supabase) return; await supabase.from('members').insert([newMember]); fetchData(); };
-  const handleUpdateMember = async (updated: Member) => { if (!supabase) return; await supabase.from('members').update(updated).eq('id', updated.id); fetchData(); };
-  const handleDeleteMember = async (id: string | number) => { if (!supabase) return; await supabase.from('members').delete().eq('id', id); fetchData(); };
+  const handleUpdateMember = async (updated: Member) => { 
+    // Member 變更較複雜且頻率低，維持原邏輯，或也可改為樂觀更新
+    if (!supabase) return; 
+    await supabase.from('members').update(updated).eq('id', updated.id); 
+    fetchData(); 
+  };
+  const handleDeleteMember = async (id: string | number) => { 
+    if (!supabase) return; 
+    await supabase.from('members').delete().eq('id', id); 
+    fetchData(); 
+  };
   const handleAddMembers = async (newMembers: Member[]) => {
     if (!supabase) return;
     setLoading(true);
@@ -331,9 +385,8 @@ const App: React.FC = () => {
       }));
       await supabase.from('coupons').insert(coupons);
       
-      // Email sending logic omitted for brevity in admin
       if (sendEmail && EMAIL_CONFIG.SERVICE_ID !== 'YOUR_NEW_SERVICE_ID') {
-         // 這裡未來可以實作批次寄信
+         // Email sending logic
       }
 
       alert(`成功產生 ${coupons.length} 張折扣券`);

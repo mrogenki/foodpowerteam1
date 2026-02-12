@@ -85,11 +85,12 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
       <section className="bg-red-600 text-white py-20 px-4">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-6">連結產業，創造共好</h1>
-          <p className="text-xl text-red-100 max-w-2xl">食在力量致力於食品產業的交流與成長，提供產業小聚、參訪與課程，讓您的事業在這裡蓬勃發展。</p>
+          <p className="text-xl text-red-100 max-w-3xl leading-relaxed">食在力量致力於餐飲業&食品產業的交流與成長，提供產業小聚、企業參訪與專業課程，讓您的事業在這裡蓬勃發展。</p>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10">
+      {/* 移除原本的 -mt-10，改為 mt-12 增加間距，確保內容在白色區域 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
         <div className="space-y-12">
           
           {/* 會員專屬活動區塊 */}
@@ -97,7 +98,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
              <div>
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-2xl font-bold flex items-center gap-3 text-red-700">
-                    <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-red-600">
+                    <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-red-600 border border-red-50">
                       <Crown size={24} />
                     </span>
                     會員專屬活動
@@ -115,7 +116,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
           <div>
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold flex items-center gap-3 text-gray-800">
-                <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-gray-700">
+                <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-gray-700 border border-gray-50">
                   <Users size={24} />
                 </span>
                 一般公開活動
