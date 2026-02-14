@@ -2,10 +2,7 @@
 import CryptoJS from 'crypto-js';
 
 // ==========================================
-// 藍新金流設定
-// 注意：目前設定為您的專屬測試帳號
-// 若您要切換至正式環境，請將 URL 改為 https://core.newebpay.com/MPG/mpg_gateway
-// 並更新對應的正式商店代號與金鑰
+// 藍新金流設定 (正式環境 Production)
 // ==========================================
 
 const getConfig = (key: string, defaultValue: string = ''): string => {
@@ -13,19 +10,21 @@ const getConfig = (key: string, defaultValue: string = ''): string => {
 };
 
 export const NEWEB_CONFIG = {
-  // 使用者提供的測試帳號設定
-  MerchantID: 'MS158266171', 
-  HashKey: 'xzJkGEmDgneYVxCkDP000SX6CT8rXY4d',     
-  HashIV: 'CYVIAQAy9wJFlupP',       
+  // 【請填入您的正式商店資料】
+  // 建議：正式上線時，將這些金鑰移至 .env 檔案中透過 import.meta.env 讀取，避免寫死在程式碼中
+  MerchantID: 'OSS000000002208', // 例如：3123456...
+  HashKey: 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ',     // 例如：ab3...
+  HashIV: 'PUmmBRggmiKNDynC',       // 例如：123...
   
-  // 若要使用環境變數 (.env)，請改用下方寫法：
-  // MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', 'MS158266171'),
-  // HashKey: getConfig('VITE_NEWEB_HASH_KEY', 'xzJkGEmDgneYVxCkDP000SX6CT8rXY4d'),
-  // HashIV: getConfig('VITE_NEWEB_HASH_IV', 'CYVIAQAy9wJFlupP'),
+  // 若您已設定 .env，可改用以下方式：
+  // MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', ''),
+  // HashKey: getConfig('VITE_NEWEB_HASH_KEY', ''),
+  // HashIV: getConfig('VITE_NEWEB_HASH_IV', ''),
 
   Version: '2.0',
-  // 測試環境 URL (ccore 為測試環境)
-  URL: 'https://ccore.newebpay.com/MPG/mpg_gateway', 
+  
+  // 【正式環境 URL】 (注意：測試環境是 ccore，正式環境是 core)
+  URL: 'https://core.newebpay.com/MPG/mpg_gateway', 
 };
 
 // 產生 AES 加密字串
@@ -56,8 +55,8 @@ export interface NewebPayData {
 // 產生提交給藍新的表單資料
 export const generateNewebPayForm = (data: NewebPayData) => {
   // Double check
-  if (!NEWEB_CONFIG.MerchantID || !NEWEB_CONFIG.HashKey || !NEWEB_CONFIG.HashIV) {
-    alert("金流參數設定不完整，請檢查 utils/newebpay.ts");
+  if (!NEWEB_CONFIG.MerchantID || NEWEB_CONFIG.MerchantID.includes('請填入') || !NEWEB_CONFIG.HashKey || !NEWEB_CONFIG.HashIV) {
+    alert("請先至 utils/newebpay.ts 填入正式環境的 MerchantID, HashKey 與 HashIV");
     return { action: '', fields: {} };
   }
 
@@ -84,7 +83,6 @@ export const generateNewebPayForm = (data: NewebPayData) => {
   params.append('ClientBackURL', `${baseUrl}/#/payment-result`); 
   
   // [後端通知] 讓藍新在背景通知 Supabase Edge Function (POST)
-  // 這裡直接使用您專案的 Edge Function URL
   const SUPABASE_PROJECT_ID = 'kpltydyspvzozgxfiwra';
   const DEFAULT_FUNCTION_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/newebpay-notify`;
   
