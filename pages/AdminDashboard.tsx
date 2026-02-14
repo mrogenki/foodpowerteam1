@@ -603,20 +603,60 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
        {isFormOpen && (
          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-2xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white w-full max-w-3xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
                <h2 className="text-2xl font-bold mb-6">{editingId ? '編輯會員' : '新增會員'}</h2>
-               <form onSubmit={handleSave} className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-bold mb-1">會員編號</label><input required type="text" value={formData.member_no} onChange={e => setFormData({...formData, member_no: e.target.value})} className="w-full p-2 border rounded"/></div>
-                  <div><label className="block text-sm font-bold mb-1">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 border rounded"/></div>
-                  <div><label className="block text-sm font-bold mb-1">產業分類</label><select value={formData.industry_category} onChange={e => setFormData({...formData, industry_category: e.target.value})} className="w-full p-2 border rounded">{IndustryCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                  <div><label className="block text-sm font-bold mb-1">品牌/公司</label><input type="text" value={formData.brand_name || ''} onChange={e => setFormData({...formData, brand_name: e.target.value})} className="w-full p-2 border rounded"/></div>
-                  <div><label className="block text-sm font-bold mb-1">手機</label><input type="text" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2 border rounded"/></div>
-                  <div><label className="block text-sm font-bold mb-1">信箱</label><input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2 border rounded"/></div>
-                  <div><label className="block text-sm font-bold mb-1">會籍到期日</label><input type="date" value={formData.membership_expiry_date || ''} onChange={e => setFormData({...formData, membership_expiry_date: e.target.value})} className="w-full p-2 border rounded"/></div>
-                  <div><label className="block text-sm font-bold mb-1">狀態</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border rounded"><option value="active">有效</option><option value="inactive">失效</option></select></div>
-                  <div className="col-span-2 flex justify-end gap-3 mt-4">
-                     <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-gray-100 rounded text-gray-600">取消</button>
-                     <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded font-bold">儲存</button>
+               <form onSubmit={handleSave} className="space-y-6">
+                  
+                  {/* 基本資料 */}
+                  <div>
+                      <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">基本資料</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-sm font-bold mb-1">會員編號</label><input required type="text" value={formData.member_no} onChange={e => setFormData({...formData, member_no: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div><label className="block text-sm font-bold mb-1">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div><label className="block text-sm font-bold mb-1">身分證字號</label><input type="text" value={formData.id_number || ''} onChange={e => setFormData({...formData, id_number: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div><label className="block text-sm font-bold mb-1">生日</label><input type="date" value={formData.birthday || ''} onChange={e => setFormData({...formData, birthday: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div><label className="block text-sm font-bold mb-1">引薦人</label><input type="text" value={formData.referrer || ''} onChange={e => setFormData({...formData, referrer: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                      </div>
+                  </div>
+
+                  {/* 聯絡方式 */}
+                  <div>
+                      <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">聯絡方式</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-sm font-bold mb-1">手機</label><input type="text" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div><label className="block text-sm font-bold mb-1">信箱</label><input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div><label className="block text-sm font-bold mb-1">室內電話</label><input type="text" value={formData.home_phone || ''} onChange={e => setFormData({...formData, home_phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">通訊地址</label><input type="text" value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                      </div>
+                  </div>
+
+                  {/* 事業資料 */}
+                  <div>
+                      <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">事業資料</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div><label className="block text-sm font-bold mb-1">產業分類</label><select value={formData.industry_category} onChange={e => setFormData({...formData, industry_category: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500">{IndustryCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                           <div><label className="block text-sm font-bold mb-1">品牌名稱</label><input type="text" value={formData.brand_name || ''} onChange={e => setFormData({...formData, brand_name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">公司抬頭</label><input type="text" value={formData.company_title || ''} onChange={e => setFormData({...formData, company_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">統一編號</label><input type="text" value={formData.tax_id || ''} onChange={e => setFormData({...formData, tax_id: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">職稱</label><input type="text" value={formData.job_title || ''} onChange={e => setFormData({...formData, job_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">公司網站</label><input type="text" value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">主要服務/產品</label><textarea rows={3} value={formData.main_service || ''} onChange={e => setFormData({...formData, main_service: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div>
+                      </div>
+                  </div>
+
+                  {/* 會籍資料 */}
+                  <div>
+                      <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">會籍資料</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div><label className="block text-sm font-bold mb-1">會籍到期日</label><input type="date" value={formData.membership_expiry_date || ''} onChange={e => setFormData({...formData, membership_expiry_date: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">狀態</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"><option value="active">有效</option><option value="inactive">失效</option></select></div>
+                           <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">備註</label><textarea rows={2} value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div>
+                      </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white pb-2">
+                     <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-gray-100 rounded-lg text-gray-600 font-bold hover:bg-gray-200">取消</button>
+                     <button type="submit" className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg shadow-red-200">儲存資料</button>
                   </div>
                </form>
             </div>
@@ -624,7 +664,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
        )}
 
        <div className="bg-white p-6 rounded-2xl border border-gray-100">
-          <div className="mb-4 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋會員..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 p-2 border rounded-lg"/></div>
+          <div className="mb-4 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋會員 (姓名、編號、電話)..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"/></div>
           <div className="overflow-x-auto">
              <table className="w-full text-left border-collapse text-sm">
                 <thead><tr className="bg-gray-50 text-gray-500"><th className="p-3">編號</th><th className="p-3">姓名</th><th className="p-3">品牌/職稱</th><th className="p-3">效期</th><th className="p-3">操作</th></tr></thead>
@@ -633,14 +673,18 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                       <tr key={m.id} className="hover:bg-gray-50">
                          <td className="p-3 font-mono text-gray-500">{m.member_no}</td>
                          <td className="p-3 font-bold">{m.name}</td>
-                         <td className="p-3">{m.brand_name || m.company}</td>
+                         <td className="p-3">
+                            <div>{m.brand_name || m.company}</div>
+                            <div className="text-xs text-gray-400">{m.job_title}</div>
+                         </td>
                          <td className="p-3">{m.membership_expiry_date || '-'}</td>
                          <td className="p-3 flex gap-2">
                             <button onClick={() => handleEdit(m)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Edit size={16}/></button>
-                            <button onClick={() => {if(confirm('刪除?')) onDelete(m.id)}} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button>
+                            <button onClick={() => {if(confirm('確定刪除此會員？')) onDelete(m.id)}} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button>
                          </td>
                       </tr>
                    ))}
+                   {filtered.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-gray-400">無相符資料</td></tr>}
                 </tbody>
              </table>
           </div>

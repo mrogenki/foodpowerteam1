@@ -33,6 +33,44 @@ npm run dev
 3. 在 Vercel 的 Project Settings > Environment Variables 填入上述的 Supabase URL 與 Key。
 4. 部署完成！
 
+## 💳 金流自動化設定 (Supabase Edge Function)
+
+為了讓藍新金流在付款完成後能自動更新資料庫狀態，請執行以下步驟：
+
+### 1. 登入 Supabase CLI
+```bash
+supabase login
+supabase link --project-ref 您的專案ID
+```
+
+### 2. 設定金鑰 (Secrets)
+請將藍新的 HashKey 與 HashIV 設定到 Supabase 的環境變數中：
+
+```bash
+supabase secrets set NEWEB_HASH_KEY=xzJkGEmDgneYVxCkDP000SX6CT8rXY4d
+supabase secrets set NEWEB_HASH_IV=CYVIAQAy9wJFlupP
+```
+*(注意：上方為測試金鑰，正式上線請更換)*
+
+### 3. 部署 Function
+**重要：** 必須加上 `--no-verify-jwt` 參數，因為藍新的通知請求不會包含 Supabase 的驗證 Token。
+
+```bash
+supabase functions deploy newebpay-notify --no-verify-jwt
+```
+
+### 4. 取得 Function URL 並設定
+部署成功後，您會看到類似這樣的網址：
+`https://[您的專案ID].supabase.co/functions/v1/newebpay-notify`
+
+請將此網址設定到 `.env` (本地開發) 或 Vercel 環境變數 (正式環境)：
+
+```env
+VITE_SUPABASE_FUNCTION_URL=https://[您的專案ID].supabase.co/functions/v1/newebpay-notify
+```
+
+---
+
 ## ✨ 功能特色
 - **活動管理**：建立、編輯、刪除活動 (產業小聚、企業參訪等)。
 - **報名系統**：前台報名表單、後台名單管理、匯出 CSV。
@@ -47,4 +85,4 @@ npm run dev
 - `/src/types.ts`: TypeScript 型別定義
 - `/src/constants.tsx`: 預設資料 (Seed Data)
 - `supabase_schema.sql`: 資料庫結構
-
+- `supabase/functions`: 後端 Edge Functions

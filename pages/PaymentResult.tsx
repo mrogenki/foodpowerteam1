@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Home, Mail, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Home, Mail, ArrowLeft, RefreshCw } from 'lucide-react';
 
 const PaymentResult: React.FC = () => {
   const [lastActivityUrl, setLastActivityUrl] = useState<string | null>(null);
@@ -23,21 +23,22 @@ const PaymentResult: React.FC = () => {
           <CheckCircle2 size={40} />
         </div>
         
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">訂單已送出</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">付款程序完成</h1>
         
         <div className="space-y-4 text-gray-600 mb-8">
           <p>
             感謝您的報名與付款！<br/>
-            我們已收到您的訂單資訊。
+            第三方金流平台已接收您的款項。
           </p>
-          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl text-sm text-yellow-800 text-left">
-            <p className="font-bold mb-1">⚠️ 注意事項：</p>
+          <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 text-left">
+            <p className="font-bold mb-1 flex items-center gap-2"><RefreshCw size={14} className="animate-spin" /> 系統自動核銷中：</p>
             <p>
-              由於金流入帳需要時間核對，系統狀態將在確認收款後由專人更新為「已付款」。您隨後將會收到報名成功的確認信件。
+              系統正在背景接收金流通知並自動更新您的報名狀態為「已付款」。<br/>
+              這通常在 1~3 分鐘內完成，您無需進行任何操作。
             </p>
           </div>
           
-          <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 text-left mt-2">
+          <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl text-sm text-gray-600 text-left mt-2">
             <p className="font-bold mb-1 flex items-center gap-1"><Mail size={14}/> 收信提醒：</p>
             <p>
               若您未收到報名確認信，請檢查您的「垃圾郵件夾」或「促銷內容」分頁。

@@ -80,10 +80,18 @@ export const generateNewebPayForm = (data: NewebPayData) => {
   // 回傳網址設定
   const baseUrl = window.location.origin;
 
-  // [重要] 靜態網站 (Static Site) 不支援 POST 請求的回調
-  // 因此這裡不設定 ReturnURL，避免藍新嘗試 POST 回來導致 HTTP 405 錯誤
-  // 我們依賴使用者在藍新頁面點擊「返回商店」按鈕 (ClientBackURL) 以 GET 方式返回
+  // [前端返回] 讓使用者付款後點擊按鈕返回網站 (GET)
   params.append('ClientBackURL', `${baseUrl}/#/payment-result`); 
+  
+  // [後端通知] 讓藍新在背景通知 Supabase Edge Function (POST)
+  // 這裡直接使用您專案的 Edge Function URL
+  const SUPABASE_PROJECT_ID = 'kpltydyspvzozgxfiwra';
+  const DEFAULT_FUNCTION_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/newebpay-notify`;
+  
+  const notifyUrl = getConfig('VITE_SUPABASE_FUNCTION_URL', DEFAULT_FUNCTION_URL);
+  
+  console.log('Setting NotifyURL to:', notifyUrl);
+  params.append('NotifyURL', notifyUrl);
   
   // 2. 加密 TradeInfo
   const tradeInfo = encrypt(params.toString());
