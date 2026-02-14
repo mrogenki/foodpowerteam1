@@ -253,8 +253,20 @@ const App: React.FC = () => {
   };
   const handleAddActivity = async (newAct: Activity) => {
     if (!supabase) return;
-    const { error } = await supabase.from('activities').insert([newAct]);
-    if (!error) fetchData();
+    
+    // 自動產生 ID (若前端沒傳)
+    const activityToInsert = {
+      ...newAct,
+      id: newAct.id || crypto.randomUUID()
+    };
+
+    const { error } = await supabase.from('activities').insert([activityToInsert]);
+    if (!error) {
+       fetchData();
+    } else {
+       console.error('新增活動失敗:', error);
+       alert('新增活動失敗: ' + error.message);
+    }
   };
   const handleDeleteActivity = async (id: string | number) => {
     // Optimistic Update
@@ -276,8 +288,20 @@ const App: React.FC = () => {
   };
   const handleAddMemberActivity = async (newAct: MemberActivity) => {
     if (!supabase) return;
-    const { error } = await supabase.from('member_activities').insert([newAct]);
-    if (!error) fetchData();
+
+    // 自動產生 ID
+    const activityToInsert = {
+      ...newAct,
+      id: newAct.id || crypto.randomUUID()
+    };
+
+    const { error } = await supabase.from('member_activities').insert([activityToInsert]);
+    if (!error) {
+       fetchData();
+    } else {
+       console.error('新增會員活動失敗:', error);
+       alert('新增會員活動失敗: ' + error.message);
+    }
   };
   const handleDeleteMemberActivity = async (id: string | number) => {
     // Optimistic Update

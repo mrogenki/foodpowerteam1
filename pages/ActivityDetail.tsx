@@ -218,17 +218,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
         // 處理金流轉跳
         if (payNow && finalPrice > 0) {
-          // 檢測是否為測試環境，給予開發者提示
-          if (NEWEB_CONFIG.MerchantID.startsWith('MS') || NEWEB_CONFIG.MerchantID.startsWith('OSS')) {
-             alert(
-               `【測試環境付款提示】\n\n` +
-               `您目前正在使用藍新金流測試環境，請使用下列測試信用卡號：\n\n` +
-               `💳 卡號：4000-2211-1111-1111\n` +
-               `📅 效期：任意未來年月 (如 12/30)\n` +
-               `🔒 末三碼：任意 (如 000)\n\n` +
-               `※ 請勿使用真實信用卡，否則會授權失敗。`
-             );
-          }
+          // 正式環境不顯示測試提示
           
           // 紀錄當前活動 URL，以便付款後返回
           sessionStorage.setItem('last_activity_url', window.location.pathname);
