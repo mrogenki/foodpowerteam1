@@ -18,6 +18,13 @@ export enum AttendanceStatus {
   ABSENT = 'absent',
 }
 
+export enum PaymentStatus {
+  PENDING = 'pending',   // 待付款
+  PAID = 'paid',         // 已付款
+  FAILED = 'failed',     // 付款失敗
+  REFUNDED = 'refunded', // 已退款
+}
+
 // 一般公開活動
 export interface Activity {
   id: string | number;
@@ -50,6 +57,13 @@ export interface Registration {
   check_in_status?: boolean;
   paid_amount?: number;
   coupon_code?: string;
+  
+  // 金流相關
+  payment_status?: PaymentStatus;
+  merchant_order_no?: string; // 商店訂單編號 (藍新: MerchantOrderNo)
+  payment_method?: string;    // 付款方式
+  paid_at?: string;           // 付款時間
+
   created_at: string;
 }
 
@@ -63,6 +77,13 @@ export interface MemberRegistration {
   check_in_status?: boolean;
   paid_amount?: number;
   coupon_code?: string;
+
+  // 金流相關
+  payment_status?: PaymentStatus;
+  merchant_order_no?: string;
+  payment_method?: string;
+  paid_at?: string;
+
   created_at: string;
 }
 

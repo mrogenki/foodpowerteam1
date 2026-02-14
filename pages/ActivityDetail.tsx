@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle, CreditCard } from 'lucide-react';
 import emailjs from '@emailjs/browser';
-import { Activity, MemberActivity, Registration, MemberRegistration, Member } from '../types';
+import { Activity, MemberActivity, Registration, MemberRegistration, Member, PaymentStatus } from '../types';
 import { EMAIL_CONFIG } from '../constants';
+import { submitNewebPayForm } from '../utils/newebpay';
 
 interface ActivityDetailProps {
   type: 'general' | 'member';
@@ -26,6 +27,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
+  const [payNow, setPayNow] = useState(true); // 預設勾選立即付款
   
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const [showMemberResults, setShowMemberResults] = useState(false);
@@ -53,12 +55,10 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
   // 判斷會員是否有效 (優先以日期判斷)
   const isMemberActive = (m: Member): boolean => {
-    // 1. 若有到期日，以到期日為準 (大於等於今天即為有效)
     if (m.membership_expiry_date) {
       const today = new Date().toISOString().slice(0, 10);
       return m.membership_expiry_date >= today;
     }
-    // 2. 若無到期日 (例如永久會員)，則依照 status 判斷
     return m.status === 'active';
   };
 
@@ -83,7 +83,6 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     : [];
 
   const handleSelectMember = (member: Member) => {
-    // 再次確保過期會員無法被選取 (防呆)
     if (!isMemberActive(member)) {
       alert('您的會籍已到期，請聯繫管理員續約後再報名。');
       return;
@@ -138,7 +137,6 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   };
 
   const sendConfirmationEmail = async (name: string, email: string) => {
-    // 檢查是否有設定 SERVICE_ID，若為預設值則不執行
     if (!EMAIL_CONFIG.SERVICE_ID || EMAIL_CONFIG.SERVICE_ID === 'YOUR_NEW_SERVICE_ID') {
       console.warn('EmailJS 未設定或為預設值，跳過發送');
       return;
@@ -147,35 +145,20 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     setIsSendingEmail(true);
     try {
       const templateParams = {
-        // 關鍵修正：這裡必須包含 'email'，因為您的 EmailJS 後台設定收件人為 {{email}}
         email: email, 
-        
-        // 內文變數
         to_name: name,
         phone: formData.phone,
         company: formData.company,
-        job_title: formData.title, // 對應內文的職稱
-        
-        // 活動資訊
+        job_title: formData.title, 
         activity_title: activity.title,
         activity_date: activity.date,
         activity_time: activity.time,
         activity_location: activity.location,
         activity_price: finalPrice,
       };
-
-      console.log('Sending email with params:', templateParams); // Debug log
-
-      await emailjs.send(
-        EMAIL_CONFIG.SERVICE_ID, 
-        EMAIL_CONFIG.TEMPLATE_ID,
-        templateParams,
-        EMAIL_CONFIG.PUBLIC_KEY
-      );
-      console.log('Email sent successfully');
+      await emailjs.send(EMAIL_CONFIG.SERVICE_ID, EMAIL_CONFIG.TEMPLATE_ID, templateParams, EMAIL_CONFIG.PUBLIC_KEY);
     } catch (error) { 
       console.error('報名確認信發送失敗:', error); 
-      // 不阻擋 UI 顯示成功，因為報名資料已寫入資料庫
     } finally { 
       setIsSendingEmail(false); 
     }
@@ -191,43 +174,63 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
     setIsSubmitting(true);
 
+    // 產生訂單編號 (格式: 活動ID後3碼 + 時間戳)
+    const merchantOrderNo = `ACT${String(activity.id).slice(-3)}${Date.now()}`;
+
     try {
       let success = false;
+      const commonData = {
+        id: Math.random().toString(36).substr(2, 9),
+        activityId: activity.id,
+        paid_amount: finalPrice,
+        coupon_code: validCouponId ? couponCode : undefined,
+        created_at: new Date().toISOString(),
+        merchant_order_no: merchantOrderNo,
+        payment_status: PaymentStatus.PENDING // 預設為待付款
+      };
+
       if (props.type === 'general' && props.onRegister) {
         const newReg: Registration = {
-          id: Math.random().toString(36).substr(2, 9), 
-          activityId: activity.id,
+          ...commonData,
           name: formData.name,
           phone: formData.phone,
           email: formData.email,
           company: formData.company,
           title: formData.title,
           referrer: formData.referrer,
-          paid_amount: finalPrice,
-          coupon_code: validCouponId ? couponCode : undefined,
-          created_at: new Date().toISOString()
         };
         success = await props.onRegister(newReg, validCouponId);
       } else if (props.type === 'member' && props.onMemberRegister) {
         const newMemberReg: MemberRegistration = {
-          id: Math.random().toString(36).substr(2, 9),
-          activityId: activity.id,
+          ...commonData,
           memberId: formData.memberId,
           member_name: formData.name,
-          member_no: '', // Can be fetched from members list if needed
-          paid_amount: finalPrice,
-          coupon_code: validCouponId ? couponCode : undefined,
-          created_at: new Date().toISOString()
+          member_no: '', 
         };
         success = await props.onMemberRegister(newMemberReg, validCouponId);
       }
 
       if (success) {
-        // 確保在資料庫寫入成功後才發送 Email
+        // 發送確認信 (無論是否立即付款都先發送報名確認)
         if (formData.email) {
           await sendConfirmationEmail(formData.name, formData.email);
         }
-        setIsSuccess(true);
+
+        // 處理金流轉跳
+        if (payNow && finalPrice > 0) {
+          // 這裡不設定 setIsSuccess(true) 因為頁面會跳轉
+          // 可以加個小延遲讓使用者看到狀態變化
+          setTimeout(() => {
+            submitNewebPayForm({
+              MerchantOrderNo: merchantOrderNo,
+              Amt: finalPrice,
+              ItemDesc: activity.title,
+              Email: formData.email
+            });
+          }, 500);
+        } else {
+          setIsSuccess(true);
+        }
       } else {
         setIsSubmitting(false);
       }
@@ -370,8 +373,24 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
                 {couponMessage && <p className={`text-xs font-bold mt-2 ${couponStatus === 'valid' ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}
               </div>
               
+              {/* 金流選項 */}
+              {finalPrice > 0 && (
+                <div 
+                  className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${payNow ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}`} 
+                  onClick={() => setPayNow(!payNow)}
+                >
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${payNow ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
+                    {payNow && <CheckCircle2 size={14} className="text-white" />}
+                  </div>
+                  <div className="flex-grow">
+                    <p className={`font-bold flex items-center gap-1 ${payNow ? 'text-blue-900' : 'text-gray-700'}`}><CreditCard size={16}/> 立即線上付款 (藍新金流)</p>
+                    <p className={`text-xs ${payNow ? 'text-blue-600' : 'text-gray-400'}`}>支援信用卡、ATM 虛擬帳號</p>
+                  </div>
+                </div>
+              )}
+
               <button type="submit" disabled={isSubmitting || (props.type === 'member' && !formData.name)} className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 mt-4 flex items-center justify-center gap-2 shadow-lg shadow-red-200">
-                {isSubmitting ? <><Loader2 className="animate-spin" size={20} /> 處理中...</> : <><span>{props.type === 'member' ? '確認會員資料並報名' : '前往報名'}</span><span className="bg-red-800/30 px-2 py-0.5 rounded text-sm">NT$ {finalPrice.toLocaleString()}</span></>}
+                {isSubmitting ? <><Loader2 className="animate-spin" size={20} /> 處理中...</> : <><span>{payNow && finalPrice > 0 ? '送出並前往付款' : (props.type === 'member' ? '確認會員資料並報名' : '前往報名')}</span><span className="bg-red-800/30 px-2 py-0.5 rounded text-sm">NT$ {finalPrice.toLocaleString()}</span></>}
               </button>
             </form>
           </div>

@@ -9,6 +9,7 @@ import ActivityDetail from './pages/ActivityDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import MemberList from './pages/MemberList';
+import PaymentResult from './pages/PaymentResult'; // Import PaymentResult
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, AttendanceRecord, AttendanceStatus, Coupon } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_ADMINS, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 
@@ -418,6 +419,9 @@ const App: React.FC = () => {
             <Route path="/activity/:id" element={<ActivityDetail type="general" activities={activities} onRegister={handleRegister} registrations={registrations} validateCoupon={validateCoupon} />} />
             <Route path="/member-activity/:id" element={<ActivityDetail type="member" activities={memberActivities} members={members} onMemberRegister={handleMemberRegister} memberRegistrations={memberRegistrations} validateCoupon={validateCoupon} />} />
             
+            {/* Payment Result Route */}
+            <Route path="/payment-result" element={<PaymentResult />} />
+
             <Route path="/admin/login" element={currentUser ? <Navigate to="/admin" /> : <LoginPage users={users} onLogin={handleLogin} />} />
             <Route path="/admin/*" element={
               currentUser ? (

@@ -30,6 +30,13 @@ create table if not exists public.registrations (
   check_in_status boolean default false,
   paid_amount numeric default 0,
   coupon_code text,
+  
+  -- 金流欄位
+  payment_status text default 'pending',
+  merchant_order_no text,
+  payment_method text,
+  paid_at timestamp with time zone,
+
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
@@ -58,6 +65,13 @@ create table if not exists public.member_registrations (
   check_in_status boolean default false,
   paid_amount numeric default 0,
   coupon_code text,
+
+  -- 金流欄位
+  payment_status text default 'pending',
+  merchant_order_no text,
+  payment_method text,
+  paid_at timestamp with time zone,
+
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
@@ -107,7 +121,7 @@ create table if not exists public.members (
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 7. 建立出席紀錄資料表 (attendance) - 可保留用於更細緻的點名，或直接使用 member_registrations 的 check_in_status
+-- 7. 建立出席紀錄資料表 (attendance)
 create table if not exists public.attendance (
   id text primary key default uuid_generate_v4()::text,
   activity_id text not null,
