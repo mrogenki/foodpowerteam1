@@ -12,7 +12,7 @@ const getConfig = (key: string, defaultValue: string = ''): string => {
   return (import.meta as any).env?.[key] || defaultValue;
 };
 
-const NEWEB_CONFIG = {
+export const NEWEB_CONFIG = {
   // 使用者提供的測試帳號設定
   MerchantID: 'MS158266171', 
   HashKey: 'xzJkGEmDgneYVxCkDP000SX6CT8rXY4d',     
@@ -77,10 +77,15 @@ export const generateNewebPayForm = (data: NewebPayData) => {
   params.append('CREDIT', '1'); // 啟用信用卡
   params.append('VACC', '1');   // 啟用 ATM 轉帳 (即時對帳)
   
-  // 回傳網址設定 (前端 Return URL)
-  // 當使用者付款完成後，藍新會將使用者導回此網址
+  // 回傳網址設定
   const baseUrl = window.location.origin;
-  params.append('ReturnURL', `${baseUrl}/#/payment-result`); 
+
+  // [重要修改]
+  // 由於本系統部署為靜態網站 (Static Site)，伺服器無法接收藍新回傳的 POST 請求 (會導致 HTTP 405 Method Not Allowed)。
+  // 因此我們暫時註解 ReturnURL，改為讓使用者在藍新付款完成頁面手動點擊「返回商店」。
+  // params.append('ReturnURL', `${baseUrl}/#/payment-result`); 
+  
+  // 使用 ClientBackURL，讓使用者在藍新頁面點擊「返回商店」時以 GET 方式回到網站，避開 405 錯誤
   params.append('ClientBackURL', `${baseUrl}/#/payment-result`); 
   
   // 2. 加密 TradeInfo
