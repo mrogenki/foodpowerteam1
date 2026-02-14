@@ -3,8 +3,8 @@ import CryptoJS from 'crypto-js';
 
 // ==========================================
 // 藍新金流設定
-// 透過環境變數讀取，避免金鑰直接暴露在程式碼庫中
-// 請在 .env 檔案中設定 VITE_NEWEB_MERCHANT_ID, VITE_NEWEB_HASH_KEY, VITE_NEWEB_HASH_IV
+// 注意：為了確保測試環境 100% 可用，目前強制使用藍新公開測試帳號 (OSS000000002208)
+// 若您需要切換至正式環境或自訂測試帳號，請修改下方的 NEWEB_CONFIG 設定並取消註解 getConfig 部分
 // ==========================================
 
 const getConfig = (key: string, defaultValue: string = ''): string => {
@@ -12,13 +12,20 @@ const getConfig = (key: string, defaultValue: string = ''): string => {
 };
 
 const NEWEB_CONFIG = {
-  // 為了確保測試環境可用，這裡預設使用藍新公開測試帳號 (OSS000000002208)
-  // 若您有自己的商店代號，請務必在 .env 設定對應的 HashKey 與 HashIV，否則會加密失敗
-  MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', 'OSS000000002208'), 
-  HashKey: getConfig('VITE_NEWEB_HASH_KEY', 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ'),     
-  HashIV: getConfig('VITE_NEWEB_HASH_IV', 'PUmmBRggmiKNDynC'),       
+  // 強制使用已知可用的測試帳號，忽略環境變數設定，解決「查無此商店代號」問題
+  // 您的截圖顯示此商店 (OSS000000002208) 狀態為「營運中」，這是藍新的通用測試商店
+  MerchantID: 'OSS000000002208', 
+  HashKey: 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ',     
+  HashIV: 'PUmmBRggmiKNDynC',       
+  
+  // 若要使用環境變數 (.env)，請改用下方寫法：
+  // MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', 'OSS000000002208'),
+  // HashKey: getConfig('VITE_NEWEB_HASH_KEY', 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ'),
+  // HashIV: getConfig('VITE_NEWEB_HASH_IV', 'PUmmBRggmiKNDynC'),
+
   Version: '2.0',
-  URL: getConfig('VITE_NEWEB_URL', 'https://ccore.newebpay.com/MPG/mpg_gateway'), // 預設為測試環境 URL
+  // 測試環境 URL
+  URL: 'https://ccore.newebpay.com/MPG/mpg_gateway', 
 };
 
 // 產生 AES 加密字串
@@ -48,12 +55,13 @@ export interface NewebPayData {
 
 // 產生提交給藍新的表單資料
 export const generateNewebPayForm = (data: NewebPayData) => {
-  // 檢查是否已設定金鑰
-  if (!NEWEB_CONFIG.HashKey || !NEWEB_CONFIG.HashIV) {
-    console.error("藍新金流 HashKey 或 HashIV 未設定，請檢查 .env 檔案");
-    alert(`系統設定錯誤：金流參數缺失 (HashKey/HashIV)。\n目前商店代號：${NEWEB_CONFIG.MerchantID}\n請確認已設定對應的金鑰。`);
+  // Double check
+  if (!NEWEB_CONFIG.MerchantID || !NEWEB_CONFIG.HashKey || !NEWEB_CONFIG.HashIV) {
+    alert("金流參數設定不完整，請檢查 utils/newebpay.ts");
     return { action: '', fields: {} };
   }
+
+  console.log("Preparing NewebPay Form for MerchantID:", NEWEB_CONFIG.MerchantID);
 
   // 1. 準備交易參數 (URL Encoded String)
   const params = new URLSearchParams();
@@ -72,7 +80,6 @@ export const generateNewebPayForm = (data: NewebPayData) => {
   // 回傳網址設定 (前端 Return URL)
   // 當使用者付款完成後，藍新會將使用者導回此網址
   const baseUrl = window.location.origin;
-  // 更新：導向到付款結果頁
   params.append('ReturnURL', `${baseUrl}/#/payment-result`); 
   params.append('ClientBackURL', `${baseUrl}/#/payment-result`); 
   
