@@ -12,10 +12,11 @@ const getConfig = (key: string, defaultValue: string = ''): string => {
 };
 
 const NEWEB_CONFIG = {
-  // 更新為您指定的測試帳號預設值
-  MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', 'MS123456789'), 
-  HashKey: getConfig('VITE_NEWEB_HASH_KEY', ''),     
-  HashIV: getConfig('VITE_NEWEB_HASH_IV', ''),       
+  // 為了確保測試環境可用，這裡預設使用藍新公開測試帳號 (OSS000000002208)
+  // 若您有自己的商店代號，請務必在 .env 設定對應的 HashKey 與 HashIV，否則會加密失敗
+  MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', 'OSS000000002208'), 
+  HashKey: getConfig('VITE_NEWEB_HASH_KEY', 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ'),     
+  HashIV: getConfig('VITE_NEWEB_HASH_IV', 'PUmmBRggmiKNDynC'),       
   Version: '2.0',
   URL: getConfig('VITE_NEWEB_URL', 'https://ccore.newebpay.com/MPG/mpg_gateway'), // 預設為測試環境 URL
 };
@@ -50,7 +51,7 @@ export const generateNewebPayForm = (data: NewebPayData) => {
   // 檢查是否已設定金鑰
   if (!NEWEB_CONFIG.HashKey || !NEWEB_CONFIG.HashIV) {
     console.error("藍新金流 HashKey 或 HashIV 未設定，請檢查 .env 檔案");
-    alert("系統設定錯誤：金流參數缺失 (HashKey/HashIV)");
+    alert(`系統設定錯誤：金流參數缺失 (HashKey/HashIV)。\n目前商店代號：${NEWEB_CONFIG.MerchantID}\n請確認已設定對應的金鑰。`);
     return { action: '', fields: {} };
   }
 
