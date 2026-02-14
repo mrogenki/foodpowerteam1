@@ -3,8 +3,9 @@ import CryptoJS from 'crypto-js';
 
 // ==========================================
 // 藍新金流設定
-// 注意：為了確保測試環境 100% 可用，目前強制使用藍新公開測試帳號 (OSS000000002208)
-// 若您需要切換至正式環境或自訂測試帳號，請修改下方的 NEWEB_CONFIG 設定並取消註解 getConfig 部分
+// 注意：目前設定為您的專屬測試帳號
+// 若您要切換至正式環境，請將 URL 改為 https://core.newebpay.com/MPG/mpg_gateway
+// 並更新對應的正式商店代號與金鑰
 // ==========================================
 
 const getConfig = (key: string, defaultValue: string = ''): string => {
@@ -12,19 +13,18 @@ const getConfig = (key: string, defaultValue: string = ''): string => {
 };
 
 const NEWEB_CONFIG = {
-  // 強制使用已知可用的測試帳號，忽略環境變數設定，解決「查無此商店代號」問題
-  // 您的截圖顯示此商店 (OSS000000002208) 狀態為「營運中」，這是藍新的通用測試商店
-  MerchantID: 'OSS000000002208', 
-  HashKey: 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ',     
-  HashIV: 'PUmmBRggmiKNDynC',       
+  // 使用者提供的測試帳號設定
+  MerchantID: 'MS158266171', 
+  HashKey: 'xzJkGEmDgneYVxCkDP000SX6CT8rXY4d',     
+  HashIV: 'CYVIAQAy9wJFlupP',       
   
   // 若要使用環境變數 (.env)，請改用下方寫法：
-  // MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', 'OSS000000002208'),
-  // HashKey: getConfig('VITE_NEWEB_HASH_KEY', 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ'),
-  // HashIV: getConfig('VITE_NEWEB_HASH_IV', 'PUmmBRggmiKNDynC'),
+  // MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', 'MS158266171'),
+  // HashKey: getConfig('VITE_NEWEB_HASH_KEY', 'xzJkGEmDgneYVxCkDP000SX6CT8rXY4d'),
+  // HashIV: getConfig('VITE_NEWEB_HASH_IV', 'CYVIAQAy9wJFlupP'),
 
   Version: '2.0',
-  // 測試環境 URL
+  // 測試環境 URL (ccore 為測試環境)
   URL: 'https://ccore.newebpay.com/MPG/mpg_gateway', 
 };
 
