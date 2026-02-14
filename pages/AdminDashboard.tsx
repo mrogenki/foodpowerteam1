@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus } from '../types';
 
@@ -405,6 +405,155 @@ const ActivityManager: React.FC<{
   );
 };
 
+// --- Check-in Manager Component (專供工作人員/報到使用) ---
+// 此元件提供「選擇活動」->「檢視名單」的流程，無需進入活動編輯頁面
+const ActivityCheckInManager: React.FC<{
+  type: 'general' | 'member';
+  activities: (Activity | MemberActivity)[];
+  registrations: (Registration | MemberRegistration)[];
+  onUpdateReg: (reg: any) => void;
+}> = ({ type, activities, registrations, onUpdateReg }) => {
+  const [selectedActivityId, setSelectedActivityId] = useState<string | number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // 1. 活動列表檢視
+  if (!selectedActivityId) {
+    // 排序：日期越近越上面，且預設只顯示 'active' 的活動 (或全部，依需求)
+    const sortedActivities = [...activities].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">{type === 'member' ? '會員' : '一般'}活動報到</h1>
+        <p className="text-gray-500">請選擇要進行報到的活動：</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sortedActivities.map(act => {
+            const regCount = registrations.filter(r => String(r.activityId) === String(act.id)).length;
+            const checkedInCount = registrations.filter(r => String(r.activityId) === String(act.id) && r.check_in_status).length;
+            
+            return (
+              <button 
+                key={act.id} 
+                onClick={() => setSelectedActivityId(act.id)}
+                className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md hover:border-red-200 transition-all group"
+              >
+                <div className="flex justify-between items-start mb-4">
+                   <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-600 font-bold text-sm">
+                      {new Date(act.date).getDate()}
+                      <span className="text-[10px] ml-0.5">日</span>
+                   </div>
+                   <span className={`px-2 py-1 rounded text-xs font-bold ${act.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                     {act.status === 'active' ? '進行中' : '已結束'}
+                   </span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 mb-2">{act.title}</h3>
+                <p className="text-sm text-gray-500 mb-4">{act.date} {act.time}</p>
+                
+                <div className="flex items-center justify-between text-sm border-t pt-4">
+                   <span className="text-gray-500 font-medium">報名 {regCount} 人</span>
+                   <span className="text-red-600 font-bold">已到 {checkedInCount} 人</span>
+                </div>
+              </button>
+            );
+          })}
+          {sortedActivities.length === 0 && <div className="text-gray-400 p-10 text-center col-span-full">目前無活動資料</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. 報到名單檢視
+  const currentActivity = activities.find(a => a.id === selectedActivityId);
+  const currentRegistrations = registrations.filter(r => String(r.activityId) === String(selectedActivityId));
+  
+  const filteredRegs = currentRegistrations.filter((r: any) => {
+    const term = searchTerm.toLowerCase();
+    const name = r.name || r.member_name || '';
+    return name.toLowerCase().includes(term) || 
+           (r.phone && r.phone.includes(term)) ||
+           (r.merchant_order_no && r.merchant_order_no.includes(term));
+  });
+
+  return (
+    <div className="space-y-6 animate-in slide-in-from-right duration-300">
+       <div className="flex items-center gap-4">
+          <button onClick={() => setSelectedActivityId(null)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200"><ArrowLeft size={20} /></button>
+          <div>
+            <h2 className="text-2xl font-bold">{currentActivity?.title}</h2>
+            <p className="text-sm text-gray-500">報到管理列表</p>
+          </div>
+       </div>
+
+       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+             <div className="relative flex-grow max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="搜尋姓名、手機末三碼、單號..." 
+                  value={searchTerm} 
+                  onChange={e => setSearchTerm(e.target.value)} 
+                  className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-gray-50 focus:bg-white transition-all" 
+                  autoFocus
+                />
+             </div>
+             <div className="flex gap-4 text-sm font-bold text-gray-500 bg-gray-50 px-4 py-2 rounded-lg">
+                <span>總計: {currentRegistrations.length}</span>
+                <span className="text-green-600">已到: {currentRegistrations.filter(r => r.check_in_status).length}</span>
+                <span className="text-gray-400">未到: {currentRegistrations.length - currentRegistrations.filter(r => r.check_in_status).length}</span>
+             </div>
+          </div>
+
+          <div className="overflow-x-auto">
+             <table className="w-full text-left border-collapse">
+                <thead>
+                   <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                      <th className="p-4 rounded-tl-lg">參加者</th>
+                      <th className="p-4">報到操作 (點擊切換)</th>
+                      <th className="p-4">付款狀態</th>
+                      <th className="p-4 rounded-tr-lg">金額</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                   {filteredRegs.map((reg: any) => (
+                      <tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''}`}>
+                         <td className="p-4">
+                            <div className="font-bold text-gray-900 text-lg">{reg.name || reg.member_name}</div>
+                            <div className="text-sm text-gray-500">{reg.phone}</div>
+                         </td>
+                         <td className="p-4">
+                            <button 
+                              onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} 
+                              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}
+                            >
+                               {reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} 
+                               {reg.check_in_status ? '已報到' : '未報到'}
+                            </button>
+                         </td>
+                         <td className="p-4">
+                            <button 
+                              onClick={() => onUpdateReg({...reg, payment_status: reg.payment_status === PaymentStatus.PAID ? PaymentStatus.PENDING : PaymentStatus.PAID})}
+                              className={`text-xs font-bold px-3 py-1 rounded-full border ${reg.payment_status === PaymentStatus.PAID ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-yellow-50 text-yellow-600 border-yellow-200'}`}
+                            >
+                               {reg.payment_status === PaymentStatus.PAID ? '已付款' : '待付款'}
+                            </button>
+                         </td>
+                         <td className="p-4 font-mono text-gray-600">
+                            NT$ {reg.paid_amount}
+                         </td>
+                      </tr>
+                   ))}
+                   {filteredRegs.length === 0 && (
+                      <tr><td colSpan={4} className="p-8 text-center text-gray-400">查無資料，請嘗試其他關鍵字</td></tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
+       </div>
+    </div>
+  );
+};
+
 // --- 成員管理元件 ---
 const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; onUpdate: (m: Member) => void; onDelete: (id: string | number) => void; onImport: (ms: Member[]) => void }> = ({ members, onAdd, onUpdate, onDelete, onImport }) => {
   const [editingId, setEditingId] = useState<string | number | null>(null);
@@ -580,9 +729,6 @@ const CouponManager: React.FC<{ coupons: Coupon[]; activities: Activity[]; membe
    );
 };
 
-// --- Check-in Components (Simplified) ---
-const CheckInScanner: React.FC = () => <div className="text-center p-10 text-gray-500">掃碼功能開發中，請使用活動名單進行人工報到。</div>;
-
 // Main Dashboard Router
 const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
   return (
@@ -596,8 +742,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
           <Route path="/users" element={<UserManager users={props.users} onAdd={props.onAddUser} onDelete={props.onDeleteUser} />} />
           <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
-          <Route path="/check-in" element={<CheckInScanner />} />
-          <Route path="/member-check-in" element={<CheckInScanner />} />
+          
+          {/* 更新：使用 ActivityCheckInManager 取代原本的 CheckInScanner */}
+          <Route path="/check-in" element={<ActivityCheckInManager type="general" activities={props.activities} registrations={props.registrations} onUpdateReg={props.onUpdateRegistration} />} />
+          <Route path="/member-check-in" element={<ActivityCheckInManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onUpdateReg={props.onUpdateMemberRegistration} />} />
+          
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
       </div>

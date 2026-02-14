@@ -229,6 +229,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
                `※ 請勿使用真實信用卡，否則會授權失敗。`
              );
           }
+          
+          // 紀錄當前活動 URL，以便付款後返回
+          sessionStorage.setItem('last_activity_url', window.location.pathname);
 
           // 這裡不設定 setIsSuccess(true) 因為頁面會跳轉
           setTimeout(() => {

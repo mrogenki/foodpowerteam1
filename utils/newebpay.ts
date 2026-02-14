@@ -80,12 +80,9 @@ export const generateNewebPayForm = (data: NewebPayData) => {
   // 回傳網址設定
   const baseUrl = window.location.origin;
 
-  // [重要修改]
-  // 由於本系統部署為靜態網站 (Static Site)，伺服器無法接收藍新回傳的 POST 請求 (會導致 HTTP 405 Method Not Allowed)。
-  // 因此我們暫時註解 ReturnURL，改為讓使用者在藍新付款完成頁面手動點擊「返回商店」。
-  // params.append('ReturnURL', `${baseUrl}/#/payment-result`); 
-  
-  // 使用 ClientBackURL，讓使用者在藍新頁面點擊「返回商店」時以 GET 方式回到網站，避開 405 錯誤
+  // [重要] 靜態網站 (Static Site) 不支援 POST 請求的回調
+  // 因此這裡不設定 ReturnURL，避免藍新嘗試 POST 回來導致 HTTP 405 錯誤
+  // 我們依賴使用者在藍新頁面點擊「返回商店」按鈕 (ClientBackURL) 以 GET 方式返回
   params.append('ClientBackURL', `${baseUrl}/#/payment-result`); 
   
   // 2. 加密 TradeInfo

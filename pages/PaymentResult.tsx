@@ -1,9 +1,21 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Home, Mail } from 'lucide-react';
+import { CheckCircle2, Home, Mail, ArrowLeft } from 'lucide-react';
 
 const PaymentResult: React.FC = () => {
+  const [lastActivityUrl, setLastActivityUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 嘗試從 sessionStorage 讀取上一個活動頁面的網址
+    const url = sessionStorage.getItem('last_activity_url');
+    if (url) {
+      setLastActivityUrl(url);
+      // 可選擇是否要清除，暫時保留以防使用者重新整理
+      // sessionStorage.removeItem('last_activity_url');
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="bg-white p-10 rounded-3xl shadow-xl max-w-lg w-full text-center border border-gray-100 animate-in zoom-in duration-500">
@@ -37,7 +49,12 @@ const PaymentResult: React.FC = () => {
           <Link to="/" className="flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors">
             <Home size={18} /> 回首頁
           </Link>
-          {/* 未來可連結到「我的活動」頁面 */}
+          
+          {lastActivityUrl && (
+            <Link to={lastActivityUrl} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
+              <ArrowLeft size={18} /> 返回活動
+            </Link>
+          )}
         </div>
       </div>
     </div>
