@@ -762,11 +762,36 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
     reader.readAsBinaryString(file);
   };
 
+  const handleExport = () => {
+    const exportData = members.map(m => ({
+      '會員編號': m.member_no,
+      '姓名': m.name,
+      '狀態': (m.status === 'active' && (!m.membership_expiry_date || m.membership_expiry_date >= new Date().toISOString().slice(0, 10))) ? '有效' : '失效',
+      '會籍到期日': m.membership_expiry_date,
+      '手機': m.phone,
+      '信箱': m.email,
+      '產業分類': m.industry_category,
+      '品牌名稱': m.brand_name,
+      '公司抬頭': m.company_title,
+      '統一編號': m.tax_id,
+      '職稱': m.job_title,
+      '主要服務': m.main_service,
+      '公司網站': m.website,
+      '通訊地址': m.address,
+      '備註': m.notes
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "會員資料");
+    XLSX.writeFile(wb, `會員名單_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
        <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">會員資料庫</h1>
           <div className="flex gap-3">
+             <button onClick={handleExport} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-200"><FileDown size={18} /> 匯出 Excel</button>
              <label className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 cursor-pointer"><FileUp size={18} /> 匯入 CSV<input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileUpload}/></label>
              <button onClick={handleAdd} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2"><Plus size={18} /> 新增會員</button>
           </div>
