@@ -114,7 +114,17 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
       activities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length + 
       memberActivities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length;
 
-    const recentRegistrations = [...registrations, ...memberRegistrations]
+    // 將報名資料與活動標題合併
+    const recentRegistrations = [
+        ...registrations.map(r => {
+           const act = activities.find(a => String(a.id) === String(r.activityId));
+           return { ...r, activity_title: act?.title || '未知活動 (一般)' };
+        }), 
+        ...memberRegistrations.map(r => {
+           const act = memberActivities.find(a => String(a.id) === String(r.activityId));
+           return { ...r, activity_title: act?.title || '未知活動 (會員)' };
+        })
+    ]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5);
 
@@ -165,16 +175,17 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
         <div className="space-y-4">
           {stats.recentRegistrations.map((reg: any) => (
             <div key={reg.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div className="flex items-center gap-4">
-                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${reg.memberId ? 'bg-red-500' : 'bg-gray-500'}`}>
+              <div className="flex items-center gap-4 overflow-hidden">
+                 <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${reg.memberId ? 'bg-red-500' : 'bg-gray-500'}`}>
                     {reg.name?.[0] || reg.member_name?.[0]}
                  </div>
-                 <div>
-                    <p className="font-bold text-gray-900">{reg.name || reg.member_name}</p>
+                 <div className="min-w-0">
+                    <p className="font-bold text-gray-900 truncate">{reg.name || reg.member_name}</p>
+                    <p className="text-xs font-bold text-blue-600 truncate my-0.5">{reg.activity_title}</p>
                     <p className="text-xs text-gray-500">{new Date(reg.created_at).toLocaleString('zh-TW')}</p>
                  </div>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0 ml-4">
                  <p className="font-bold text-gray-900">NT$ {reg.paid_amount}</p>
                  <span className={`text-xs px-2 py-0.5 rounded ${reg.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                     {reg.payment_status === 'paid' ? '已付款' : '待付款'}

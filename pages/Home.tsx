@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users, Ban } from 'lucide-react';
 import { Activity, MemberActivity, ActivityType } from '../types';
 
 interface HomeProps {
@@ -10,6 +10,9 @@ interface HomeProps {
 }
 
 const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActivity?: boolean }> = ({ activity, isMemberActivity = false }) => {
+  // 檢查活動是否已關閉
+  const isClosed = activity.status === 'closed';
+
   // 根據不同活動類型給予不同標籤顏色
   const getTypeColor = (type: ActivityType) => {
     switch(type) {
@@ -25,7 +28,7 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
   const linkPath = isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`;
 
   return (
-    <Link to={linkPath} className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+    <Link to={linkPath} className={`group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 block ${isClosed ? 'opacity-80 grayscale-[0.5]' : ''}`}>
       <div className="relative h-48 overflow-hidden">
         <img src={activity.picture} alt={activity.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         <div className="absolute top-4 left-4 flex gap-2">
@@ -38,28 +41,37 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
              </span>
           )}
         </div>
+        {isClosed && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+             <span className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold border border-white/30 backdrop-blur-sm">報名已截止</span>
+          </div>
+        )}
       </div>
       <div className="p-6">
-        <h3 className="text-xl font-bold mb-4 line-clamp-1 group-hover:text-red-600 transition-colors">{activity.title}</h3>
+        <h3 className={`text-xl font-bold mb-4 line-clamp-1 transition-colors ${isClosed ? 'text-gray-500' : 'group-hover:text-red-600'}`}>{activity.title}</h3>
         <div className="space-y-2 text-sm text-gray-500 mb-6">
           <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-red-600" />
+            <Calendar size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
             <span>{activity.date}</span>
-            <Clock size={16} className="text-red-600 ml-2" />
+            <Clock size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} ml-2 />
             <span>{activity.time}</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin size={16} className="text-red-600" />
+            <MapPin size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
             <span className="line-clamp-1">{activity.location}</span>
           </div>
           <div className="flex items-center gap-2">
-            <DollarSign size={16} className="text-red-600" />
+            <DollarSign size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
             <span>NT$ {activity.price.toLocaleString()}</span>
           </div>
         </div>
         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-          <span className="text-red-600 font-bold text-sm">立即報名</span>
-          <ChevronRight size={18} className="text-red-600" />
+          {isClosed ? (
+             <span className="text-gray-400 font-bold text-sm flex items-center gap-1"><Ban size={16}/> 報名截止</span>
+          ) : (
+             <span className="text-red-600 font-bold text-sm">立即報名</span>
+          )}
+          <ChevronRight size={18} className={isClosed ? 'text-gray-300' : 'text-red-600'} />
         </div>
       </div>
     </Link>
@@ -69,11 +81,12 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
 const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
   const now = new Date();
 
-  // 基本篩選：時間 + 狀態
+  // 篩選邏輯修正：只要日期還沒過，即使狀態是 closed 也要顯示 (但會標示截止)
+  // 這樣使用者才能知道有這個活動，但已經不能報名了
   const filterUpcoming = (a: Activity | MemberActivity) => {
     const activityFullDate = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`);
-    const isActive = a.status === 'active' || !a.status;
-    return isActive && activityFullDate > now;
+    // 只要日期在未來就顯示，狀態由 Card 元件自行判斷
+    return activityFullDate > now;
   };
 
   const upcomingActivities = activities.filter(filterUpcoming);

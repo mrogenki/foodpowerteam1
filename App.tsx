@@ -244,8 +244,8 @@ const App: React.FC = () => {
     // Optimistic Update
     setActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
-    const { status, ...updateData } = updated as any;
-    const { error } = await supabase.from('activities').update(updateData).eq('id', updated.id);
+    // 修正：包含 status 在內的完整資料更新，確保狀態變更寫入資料庫
+    const { error } = await supabase.from('activities').update(updated).eq('id', updated.id);
     if (error) { 
       console.error(error); 
       fetchData(); // Revert on error
@@ -282,8 +282,8 @@ const App: React.FC = () => {
     // Optimistic Update
     setMemberActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
-    const { status, ...updateData } = updated as any;
-    const { error } = await supabase.from('member_activities').update(updateData).eq('id', updated.id);
+    // 修正：包含 status 在內的完整資料更新，確保狀態變更寫入資料庫
+    const { error } = await supabase.from('member_activities').update(updated).eq('id', updated.id);
     if (error) fetchData();
   };
   const handleAddMemberActivity = async (newAct: MemberActivity) => {

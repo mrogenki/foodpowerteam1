@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle, CreditCard } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle, CreditCard, Ban } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { Activity, MemberActivity, Registration, MemberRegistration, Member, PaymentStatus } from '../types';
 import { EMAIL_CONFIG } from '../constants';
@@ -52,6 +52,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   if (!activity) {
     return <div className="p-20 text-center">活動不存在</div>;
   }
+
+  // 檢查活動是否已關閉
+  const isClosed = activity.status === 'closed';
 
   // 判斷會員是否有效 (優先以日期判斷)
   const isMemberActive = (m: Member): boolean => {
@@ -167,6 +170,11 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isClosed) {
+      alert("本活動已截止報名");
+      return;
+    }
+
     if (props.type === 'member' && !formData.memberId) {
        alert('請先查詢並選擇您的會員資料');
        return;
@@ -274,23 +282,30 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-8">
           <div className="rounded-2xl overflow-hidden shadow-sm relative">
-            <img src={activity.picture} alt={activity.title} className="w-full h-[400px] object-cover" />
+            <img src={activity.picture} alt={activity.title} className={`w-full h-[400px] object-cover ${isClosed ? 'grayscale opacity-70' : ''}`} />
             {props.type === 'member' && (
                <div className="absolute top-4 left-4 bg-red-600/90 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 backdrop-blur-sm shadow-lg"><Crown size={20} /> 會員專屬活動</div>
+            )}
+            {isClosed && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                 <div className="bg-gray-800/90 text-white px-6 py-3 rounded-2xl text-xl font-bold border-2 border-white/50 backdrop-blur-md shadow-2xl">
+                    報名已截止
+                 </div>
+              </div>
             )}
           </div>
           
           <div>
             <div className="flex items-center gap-3 mb-4">
-               <span className="bg-red-100 text-red-600 px-3 py-1 rounded-md text-sm font-bold">{activity.type}</span>
+               <span className={`px-3 py-1 rounded-md text-sm font-bold ${isClosed ? 'bg-gray-200 text-gray-500' : 'bg-red-100 text-red-600'}`}>{activity.type}</span>
                <span className="text-gray-400 text-sm">已有 {alreadyRegisteredCount} 人報名</span>
             </div>
-            <h1 className="text-4xl font-bold mb-6">{activity.title}</h1>
+            <h1 className="text-4xl font-bold mb-6 text-gray-900">{activity.title}</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-6 rounded-2xl border border-gray-100 mb-8">
-              <div className="flex items-center gap-4"><div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center text-red-600"><Calendar size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">日期時間</p><p className="font-medium">{activity.date}</p><p className="text-sm text-gray-500 font-bold">{activity.time}</p></div></div>
-              <div className="flex items-center gap-4"><div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center text-red-600"><MapPin size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">地點</p><p className="font-medium">{activity.location}</p></div></div>
-              <div className="flex items-center gap-4"><div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center text-red-600"><DollarSign size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">活動費用</p><p className="font-medium">NT$ {activity.price.toLocaleString()}</p></div></div>
+              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><Calendar size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">日期時間</p><p className="font-medium">{activity.date}</p><p className="text-sm text-gray-500 font-bold">{activity.time}</p></div></div>
+              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><MapPin size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">地點</p><p className="font-medium">{activity.location}</p></div></div>
+              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><DollarSign size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">活動費用</p><p className="font-medium">NT$ {activity.price.toLocaleString()}</p></div></div>
             </div>
 
             <div className="prose prose-red max-w-none">
@@ -302,101 +317,121 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
         <div className="lg:col-span-1">
           <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-xl sticky top-24">
-            <h3 className="text-2xl font-bold mb-6 text-center">立即報名</h3>
             
-            {props.type === 'member' ? (
-               <div className="bg-red-50 p-4 rounded-xl border border-red-100 mb-6 text-center">
-                  <p className="text-red-800 font-bold flex items-center justify-center gap-2 mb-1"><Crown size={20} /> 會員專屬活動</p>
-                  <p className="text-xs text-red-600 opacity-80">請使用您的會員資料進行報名</p>
-               </div>
+            {isClosed ? (
+              // 報名截止顯示的區塊
+              <div className="text-center py-8">
+                <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <Ban size={40} />
+                </div>
+                <h3 className="text-2xl font-bold mb-2 text-gray-600">報名已截止</h3>
+                <p className="text-gray-400 text-sm mb-6">
+                  感謝您的關注。<br/>此活動已停止受理報名或已結束。
+                </p>
+                <button onClick={() => navigate('/')} className="w-full bg-gray-200 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-300 transition-colors">
+                  查看其他活動
+                </button>
+              </div>
             ) : (
-               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6 text-center">
-                  <p className="text-gray-800 font-bold flex items-center justify-center gap-2 mb-1"><Users size={20} /> 一般公開活動</p>
-                  <p className="text-xs text-gray-500">歡迎所有來賓報名參加</p>
-               </div>
-            )}
+              // 正常報名表單
+              <>
+                <h3 className="text-2xl font-bold mb-6 text-center">立即報名</h3>
+                
+                {props.type === 'member' ? (
+                   <div className="bg-red-50 p-4 rounded-xl border border-red-100 mb-6 text-center">
+                      <p className="text-red-800 font-bold flex items-center justify-center gap-2 mb-1"><Crown size={20} /> 會員專屬活動</p>
+                      <p className="text-xs text-red-600 opacity-80">請使用您的會員資料進行報名</p>
+                   </div>
+                ) : (
+                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6 text-center">
+                      <p className="text-gray-800 font-bold flex items-center justify-center gap-2 mb-1"><Users size={20} /> 一般公開活動</p>
+                      <p className="text-xs text-gray-500">歡迎所有來賓報名參加</p>
+                   </div>
+                )}
 
-            {/* 會員搜尋區塊 - 僅在會員活動顯示 */}
-            {props.type === 'member' && (
-              <div className="mb-6 relative">
-                 <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4">
-                    <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1"><UserCheck size={14} /> 請先查詢您的會員資料</p>
-                    <div className="relative">
-                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                       <input type="text" value={memberSearchTerm} onChange={(e) => { setMemberSearchTerm(e.target.value); setShowMemberResults(true); }} placeholder="輸入姓名或電話搜尋..." className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none" />
-                       {showMemberResults && filteredMembers.length > 0 && (
-                         <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 overflow-hidden">
-                           {filteredMembers.map(m => {
-                             const active = isMemberActive(m);
-                             return (
-                               <button 
-                                 key={m.id} 
-                                 type="button" 
-                                 onClick={() => handleSelectMember(m)} 
-                                 disabled={!active}
-                                 className={`w-full text-left px-4 py-3 border-b border-gray-50 last:border-0 flex justify-between items-center group transition-colors ${active ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50 opacity-60 cursor-not-allowed'}`}
-                               >
-                                 <div>
-                                    <div className="font-bold text-gray-800 group-hover:text-red-600 flex items-center gap-2">
-                                      {m.name}
-                                      {!active && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><AlertCircle size={10} /> 會籍已過期</span>}
-                                    </div>
-                                    <div className="text-xs text-gray-400">{m.member_no} | {m.brand_name || m.company}</div>
-                                 </div>
-                                 {active && <ChevronDown size={14} className="text-gray-300 -rotate-90" />}
-                               </button>
-                             );
-                           })}
-                         </div>
+                {/* 會員搜尋區塊 - 僅在會員活動顯示 */}
+                {props.type === 'member' && (
+                  <div className="mb-6 relative">
+                     <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4">
+                        <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1"><UserCheck size={14} /> 請先查詢您的會員資料</p>
+                        <div className="relative">
+                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                           <input type="text" value={memberSearchTerm} onChange={(e) => { setMemberSearchTerm(e.target.value); setShowMemberResults(true); }} placeholder="輸入姓名或電話搜尋..." className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-red-500 outline-none" />
+                           {showMemberResults && filteredMembers.length > 0 && (
+                             <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 overflow-hidden">
+                               {filteredMembers.map(m => {
+                                 const active = isMemberActive(m);
+                                 return (
+                                   <button 
+                                     key={m.id} 
+                                     type="button" 
+                                     onClick={() => handleSelectMember(m)} 
+                                     disabled={!active}
+                                     className={`w-full text-left px-4 py-3 border-b border-gray-50 last:border-0 flex justify-between items-center group transition-colors ${active ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50 opacity-60 cursor-not-allowed'}`}
+                                   >
+                                     <div>
+                                        <div className="font-bold text-gray-800 group-hover:text-red-600 flex items-center gap-2">
+                                          {m.name}
+                                          {!active && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><AlertCircle size={10} /> 會籍已過期</span>}
+                                        </div>
+                                        <div className="text-xs text-gray-400">{m.member_no} | {m.brand_name || m.company}</div>
+                                     </div>
+                                     {active && <ChevronDown size={14} className="text-gray-300 -rotate-90" />}
+                                   </button>
+                                 );
+                               })}
+                             </div>
+                           )}
+                           {showMemberResults && memberSearchTerm.length > 0 && filteredMembers.length === 0 && <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 p-3 text-center text-xs text-gray-400">無相符會員資料</div>}
+                        </div>
+                     </div>
+                  </div>
+                )}
+                
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="請輸入真實姓名" readOnly={props.type === 'member'} /></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">手機號碼</label><input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="09xx-xxx-xxx" readOnly={props.type === 'member'} /></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">電子郵件</label><input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="example@email.com" readOnly={props.type === 'member'} /></div>
+                  
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">公司/品牌名稱</label><input required type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的公司名稱" readOnly={props.type === 'member'} /></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">職務</label><input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的目前職位" readOnly={props.type === 'member'} /></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">引薦人 (選填)</label><input type="text" value={formData.referrer} onChange={e => setFormData({...formData, referrer: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="引薦您的分會成員姓名" readOnly={props.type === 'member'} /></div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1"><Ticket size={16} /> 活動折扣券</label>
+                    <div className="flex gap-2">
+                       <input type="text" value={couponCode} onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponStatus('idle'); setCouponMessage(''); }} className="flex-grow px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none uppercase font-mono placeholder:text-gray-300" placeholder="輸入代碼" disabled={couponStatus === 'valid'} />
+                       {couponStatus !== 'valid' ? (
+                         <button type="button" onClick={checkCoupon} disabled={!couponCode || couponStatus === 'validating'} className="px-4 py-2 bg-gray-800 text-white rounded-lg font-bold text-sm hover:bg-gray-900 disabled:opacity-50 transition-colors">{couponStatus === 'validating' ? '檢查中...' : '使用'}</button>
+                       ) : (
+                         <button type="button" onClick={() => { setCouponStatus('idle'); setCouponCode(''); setDiscountAmount(0); setValidCouponId(undefined); setCouponMessage(''); }} className="px-4 py-2 bg-red-100 text-red-600 rounded-lg font-bold text-sm hover:bg-red-200 transition-colors">取消</button>
                        )}
-                       {showMemberResults && memberSearchTerm.length > 0 && filteredMembers.length === 0 && <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 p-3 text-center text-xs text-gray-400">無相符會員資料</div>}
                     </div>
-                 </div>
-              </div>
+                    {couponMessage && <p className={`text-xs font-bold mt-2 ${couponStatus === 'valid' ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}
+                  </div>
+                  
+                  {/* 金流選項 */}
+                  {finalPrice > 0 && (
+                    <div 
+                      className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${payNow ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}`} 
+                      onClick={() => setPayNow(!payNow)}
+                    >
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${payNow ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
+                        {payNow && <CheckCircle2 size={14} className="text-white" />}
+                      </div>
+                      <div className="flex-grow">
+                        <p className={`font-bold flex items-center gap-1 ${payNow ? 'text-blue-900' : 'text-gray-700'}`}><CreditCard size={16}/> 立即線上付款 (藍新金流)</p>
+                        <p className={`text-xs ${payNow ? 'text-blue-600' : 'text-gray-400'}`}>支援信用卡、ATM 虛擬帳號</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <button type="submit" disabled={isSubmitting || (props.type === 'member' && !formData.name)} className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 mt-4 flex items-center justify-center gap-2 shadow-lg shadow-red-200">
+                    {isSubmitting ? <><Loader2 className="animate-spin" size={20} /> 處理中...</> : <><span>{payNow && finalPrice > 0 ? '送出並前往付款' : (props.type === 'member' ? '確認會員資料並報名' : '前往報名')}</span><span className="bg-red-800/30 px-2 py-0.5 rounded text-sm">NT$ {finalPrice.toLocaleString()}</span></>}
+                  </button>
+                </form>
+              </>
             )}
-            
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="請輸入真實姓名" readOnly={props.type === 'member'} /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">手機號碼</label><input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="09xx-xxx-xxx" readOnly={props.type === 'member'} /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">電子郵件</label><input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="example@email.com" readOnly={props.type === 'member'} /></div>
-              
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">公司/品牌名稱</label><input required type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的公司名稱" readOnly={props.type === 'member'} /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">職務</label><input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的目前職位" readOnly={props.type === 'member'} /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">引薦人 (選填)</label><input type="text" value={formData.referrer} onChange={e => setFormData({...formData, referrer: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="引薦您的分會成員姓名" readOnly={props.type === 'member'} /></div>
-
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1"><Ticket size={16} /> 活動折扣券</label>
-                <div className="flex gap-2">
-                   <input type="text" value={couponCode} onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponStatus('idle'); setCouponMessage(''); }} className="flex-grow px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none uppercase font-mono placeholder:text-gray-300" placeholder="輸入代碼" disabled={couponStatus === 'valid'} />
-                   {couponStatus !== 'valid' ? (
-                     <button type="button" onClick={checkCoupon} disabled={!couponCode || couponStatus === 'validating'} className="px-4 py-2 bg-gray-800 text-white rounded-lg font-bold text-sm hover:bg-gray-900 disabled:opacity-50 transition-colors">{couponStatus === 'validating' ? '檢查中...' : '使用'}</button>
-                   ) : (
-                     <button type="button" onClick={() => { setCouponStatus('idle'); setCouponCode(''); setDiscountAmount(0); setValidCouponId(undefined); setCouponMessage(''); }} className="px-4 py-2 bg-red-100 text-red-600 rounded-lg font-bold text-sm hover:bg-red-200 transition-colors">取消</button>
-                   )}
-                </div>
-                {couponMessage && <p className={`text-xs font-bold mt-2 ${couponStatus === 'valid' ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}
-              </div>
-              
-              {/* 金流選項 */}
-              {finalPrice > 0 && (
-                <div 
-                  className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${payNow ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}`} 
-                  onClick={() => setPayNow(!payNow)}
-                >
-                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${payNow ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
-                    {payNow && <CheckCircle2 size={14} className="text-white" />}
-                  </div>
-                  <div className="flex-grow">
-                    <p className={`font-bold flex items-center gap-1 ${payNow ? 'text-blue-900' : 'text-gray-700'}`}><CreditCard size={16}/> 立即線上付款 (藍新金流)</p>
-                    <p className={`text-xs ${payNow ? 'text-blue-600' : 'text-gray-400'}`}>支援信用卡、ATM 虛擬帳號</p>
-                  </div>
-                </div>
-              )}
-
-              <button type="submit" disabled={isSubmitting || (props.type === 'member' && !formData.name)} className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 mt-4 flex items-center justify-center gap-2 shadow-lg shadow-red-200">
-                {isSubmitting ? <><Loader2 className="animate-spin" size={20} /> 處理中...</> : <><span>{payNow && finalPrice > 0 ? '送出並前往付款' : (props.type === 'member' ? '確認會員資料並報名' : '前往報名')}</span><span className="bg-red-800/30 px-2 py-0.5 rounded text-sm">NT$ {finalPrice.toLocaleString()}</span></>}
-              </button>
-            </form>
           </div>
         </div>
       </div>
