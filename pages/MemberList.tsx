@@ -42,7 +42,7 @@ const MemberList: React.FC<MemberListProps> = ({ members }) => {
       {/* Hero Section */}
       <section className="bg-white border-b py-16 px-4 mb-10">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-3xl md:text-4xl font-extrabold mb-4 text-gray-900">分會成員介紹</h1>
+          <h1 className="text-3xl md:text-4xl font-extrabold mb-4 text-gray-900">協會成員名單</h1>
           <p className="text-gray-500 max-w-2xl mx-auto">匯聚各產業菁英，打造最強商務連結。點擊下方分類快速尋找合作夥伴。</p>
           
           <div className="flex flex-wrap justify-center gap-3 mt-8">
