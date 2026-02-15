@@ -732,6 +732,22 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
 
+  // 計算會員統計數據
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    let active = 0;
+    let inactive = 0;
+    members.forEach(m => {
+       const isExpired = m.membership_expiry_date && m.membership_expiry_date < today;
+       if (m.status === 'active' && !isExpired) {
+         active++;
+       } else {
+         inactive++;
+       }
+    });
+    return { total: members.length, active, inactive };
+  }, [members]);
+
   const filtered = members.filter(m => m.name.includes(searchTerm) || m.member_no.includes(searchTerm) || m.phone?.includes(searchTerm));
 
   const handleEdit = (m: Member) => { setEditingId(m.id); setFormData({...m}); setIsFormOpen(true); };
@@ -794,6 +810,31 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
              <button onClick={handleExport} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-200"><FileDown size={18} /> 匯出 Excel</button>
              <label className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 cursor-pointer"><FileUp size={18} /> 匯入 CSV<input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileUpload}/></label>
              <button onClick={handleAdd} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2"><Plus size={18} /> 新增會員</button>
+          </div>
+       </div>
+
+       {/* 新增：統計數據區塊 */}
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+             <div>
+               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">名單總數</p>
+               <p className="text-3xl font-bold text-gray-900">{stats.total}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p>
+             </div>
+             <div className="w-12 h-12 bg-gray-50 text-gray-600 rounded-xl flex items-center justify-center"><Users size={24}/></div>
+          </div>
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+             <div>
+               <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">有效會員</p>
+               <p className="text-3xl font-bold text-gray-900">{stats.active}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p>
+             </div>
+             <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center"><CheckCircle size={24}/></div>
+          </div>
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+             <div>
+               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">失效會員</p>
+               <p className="text-3xl font-bold text-gray-900">{stats.inactive}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p>
+             </div>
+             <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-xl flex items-center justify-center"><XCircle size={24}/></div>
           </div>
        </div>
 
