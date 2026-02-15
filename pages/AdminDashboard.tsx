@@ -838,9 +838,13 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
           <div className="mb-4 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋會員 (姓名、編號、電話)..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"/></div>
           <div className="overflow-x-auto">
              <table className="w-full text-left border-collapse text-sm">
-                <thead><tr className="bg-gray-50 text-gray-500"><th className="p-3">編號</th><th className="p-3">姓名</th><th className="p-3">品牌/職稱</th><th className="p-3">效期</th><th className="p-3">操作</th></tr></thead>
+                <thead><tr className="bg-gray-50 text-gray-500"><th className="p-3">編號</th><th className="p-3">姓名</th><th className="p-3">品牌/職稱</th><th className="p-3">效期</th><th className="p-3">狀態</th><th className="p-3">操作</th></tr></thead>
                 <tbody className="divide-y">
-                   {filtered.map(m => (
+                   {filtered.map(m => {
+                      const isExpired = m.membership_expiry_date && m.membership_expiry_date < new Date().toISOString().slice(0, 10);
+                      const displayStatus = (m.status === 'active' && !isExpired) ? 'active' : 'inactive';
+                      
+                      return (
                       <tr key={m.id} className="hover:bg-gray-50">
                          <td className="p-3 font-mono text-gray-500">{m.member_no}</td>
                          <td className="p-3 font-bold">{m.name}</td>
@@ -849,13 +853,21 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                             <div className="text-xs text-gray-400">{m.job_title}</div>
                          </td>
                          <td className="p-3">{m.membership_expiry_date || '-'}</td>
+                         <td className="p-3">
+                            {displayStatus === 'active' ? (
+                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">有效</span>
+                            ) : (
+                                <span className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-xs font-bold">失效</span>
+                            )}
+                         </td>
                          <td className="p-3 flex gap-2">
                             <button onClick={() => handleEdit(m)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Edit size={16}/></button>
                             <button onClick={() => {if(confirm('確定刪除此會員？')) onDelete(m.id)}} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button>
                          </td>
                       </tr>
-                   ))}
-                   {filtered.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-gray-400">無相符資料</td></tr>}
+                      );
+                   })}
+                   {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-400">無相符資料</td></tr>}
                 </tbody>
              </table>
           </div>
