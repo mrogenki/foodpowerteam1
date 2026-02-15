@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus } from '../types';
 
@@ -187,8 +187,8 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
               </div>
               <div className="text-right flex-shrink-0 ml-4">
                  <p className="font-bold text-gray-900">NT$ {reg.paid_amount}</p>
-                 <span className={`text-xs px-2 py-0.5 rounded ${reg.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {reg.payment_status === 'paid' ? '已付款' : '待付款'}
+                 <span className={`text-xs px-2 py-0.5 rounded ${reg.payment_status === 'paid' ? 'bg-green-100 text-green-700' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500' : 'bg-yellow-100 text-yellow-700')}`}>
+                    {reg.payment_status === 'paid' ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}
                  </span>
               </div>
             </div>
@@ -270,7 +270,7 @@ const ActivityManager: React.FC<{
       'Email': r.email,
       '單位/職稱': r.company ? `${r.company}/${r.title}` : '',
       '報到狀態': r.check_in_status ? '已報到' : '未報到',
-      '付款狀態': r.payment_status === PaymentStatus.PAID ? '已付款' : '待付款',
+      '付款狀態': r.payment_status === PaymentStatus.PAID ? '已付款' : (r.payment_status === 'refunded' ? '已退費' : '待付款'),
       '付款金額': r.paid_amount,
       '金流單號': r.merchant_order_no,
       '折扣碼': r.coupon_code
@@ -279,6 +279,37 @@ const ActivityManager: React.FC<{
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "報名名單");
     XLSX.writeFile(wb, `${currentActivity?.title}_報名名單.xlsx`);
+  };
+  
+  // 處理付款狀態變更 (加入退費邏輯)
+  const handlePaymentStatusToggle = (reg: any) => {
+     // 1. 待付款 -> 已付款
+     if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) {
+        onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID });
+        return;
+     }
+
+     // 2. 已付款 -> 選項 (退費 或 回復待付款)
+     if (reg.payment_status === PaymentStatus.PAID) {
+        if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) {
+             // User clicked OK -> Refunded
+             onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED });
+        } else {
+             // User clicked Cancel -> Check if they want to go back to Pending (Double confirmation)
+             if (confirm("是否要將此訂單回復為【待付款】？")) {
+                onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+             }
+        }
+        return;
+     }
+
+     // 3. 已退費 -> 待付款
+     if (reg.payment_status === PaymentStatus.REFUNDED) {
+        if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) {
+           onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+        }
+        return;
+     }
   };
 
   if (view === 'registrations' && currentActivity) {
@@ -296,6 +327,7 @@ const ActivityManager: React.FC<{
           <div className="flex gap-4 text-sm text-gray-500 mb-6">
              <span>總報名: {currentRegistrations.length} 人</span>
              <span>已付款: {currentRegistrations.filter(r => r.payment_status === PaymentStatus.PAID).length} 人</span>
+             <span>已退費: {currentRegistrations.filter(r => r.payment_status === 'refunded').length} 人</span>
              <span>已報到: {currentRegistrations.filter(r => r.check_in_status).length} 人</span>
           </div>
 
@@ -312,16 +344,19 @@ const ActivityManager: React.FC<{
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                   <th className="p-4 rounded-tl-lg">姓名/資訊</th>
                   <th className="p-4">報到狀態</th>
-                  <th className="p-4">付款狀態 (藍新金流)</th>
+                  <th className="p-4">付款狀態 (點擊切換)</th>
                   <th className="p-4">金額</th>
                   <th className="p-4 rounded-tr-lg text-right">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
                 {filteredRegs.map((reg: any) => (
-                  <tr key={reg.id} className="hover:bg-gray-50">
+                  <tr key={reg.id} className={`hover:bg-gray-50 ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}>
                     <td className="p-4">
-                      <div className="font-bold text-gray-900">{reg.name || reg.member_name}</div>
+                      <div className={`font-bold flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        {reg.name || reg.member_name}
+                        {reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}
+                      </div>
                       <div className="text-xs text-gray-400">{reg.phone}</div>
                       {reg.merchant_order_no && <div className="text-[10px] text-gray-400 font-mono mt-0.5">#{reg.merchant_order_no}</div>}
                     </td>
@@ -331,8 +366,17 @@ const ActivityManager: React.FC<{
                       </button>
                     </td>
                     <td className="p-4">
-                      <button onClick={() => onUpdateReg({...reg, payment_status: reg.payment_status === PaymentStatus.PAID ? PaymentStatus.PENDING : PaymentStatus.PAID})} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                         {reg.payment_status === PaymentStatus.PAID ? '已付款' : '待付款'}
+                      <button 
+                        onClick={() => handlePaymentStatusToggle(reg)} 
+                        className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : 
+                          (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')
+                        }`}
+                        title={reg.payment_status === PaymentStatus.PAID ? '點擊進行退費' : '點擊變更狀態'}
+                      >
+                         {reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}
+                         {reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}
+                         {reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}
                       </button>
                     </td>
                     <td className="p-4">
@@ -485,6 +529,35 @@ const ActivityCheckInManager: React.FC<{
            (r.merchant_order_no && r.merchant_order_no.includes(term));
   });
 
+  // 複製一份付款狀態切換邏輯到這裡
+  const handlePaymentStatusToggle = (reg: any) => {
+     // 1. 待付款 -> 已付款
+     if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) {
+        onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID });
+        return;
+     }
+
+     // 2. 已付款 -> 選項 (退費 或 回復待付款)
+     if (reg.payment_status === PaymentStatus.PAID) {
+        if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) {
+             onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED });
+        } else {
+             if (confirm("是否要將此訂單回復為【待付款】？")) {
+                onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+             }
+        }
+        return;
+     }
+
+     // 3. 已退費 -> 待付款
+     if (reg.payment_status === PaymentStatus.REFUNDED) {
+        if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) {
+           onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+        }
+        return;
+     }
+  };
+
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300">
        <div className="flex items-center gap-4">
@@ -527,9 +600,12 @@ const ActivityCheckInManager: React.FC<{
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                    {filteredRegs.map((reg: any) => (
-                      <tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''}`}>
+                      <tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}>
                          <td className="p-4">
-                            <div className="font-bold text-gray-900 text-lg">{reg.name || reg.member_name}</div>
+                            <div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                               {reg.name || reg.member_name}
+                               {reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}
+                            </div>
                             <div className="text-sm text-gray-500">{reg.phone}</div>
                          </td>
                          <td className="p-4">
@@ -543,10 +619,15 @@ const ActivityCheckInManager: React.FC<{
                          </td>
                          <td className="p-4">
                             <button 
-                              onClick={() => onUpdateReg({...reg, payment_status: reg.payment_status === PaymentStatus.PAID ? PaymentStatus.PENDING : PaymentStatus.PAID})}
-                              className={`text-xs font-bold px-3 py-1 rounded-full border ${reg.payment_status === PaymentStatus.PAID ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-yellow-50 text-yellow-600 border-yellow-200'}`}
+                              onClick={() => handlePaymentStatusToggle(reg)}
+                              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                                reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : 
+                                (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')
+                              }`}
                             >
-                               {reg.payment_status === PaymentStatus.PAID ? '已付款' : '待付款'}
+                               {reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}
+                               {reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}
+                               {reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}
                             </button>
                          </td>
                          <td className="p-4 font-mono text-gray-600">

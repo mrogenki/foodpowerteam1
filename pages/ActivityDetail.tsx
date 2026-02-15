@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle, CreditCard, Ban } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle, CreditCard, Ban, Info, ShieldAlert } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { Activity, MemberActivity, Registration, MemberRegistration, Member, PaymentStatus } from '../types';
 import { EMAIL_CONFIG } from '../constants';
@@ -65,12 +65,17 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     return m.status === 'active';
   };
 
-  // 計算已報名人數
+  // 計算已報名人數 (排除已退費/已取消 status === 'refunded' 的人)
+  // 假設 PaymentStatus.REFUNDED 為 'refunded'
   let alreadyRegisteredCount = 0;
   if (props.type === 'general' && props.registrations) {
-    alreadyRegisteredCount = props.registrations.filter(r => String(r.activityId) === String(id)).length;
+    alreadyRegisteredCount = props.registrations.filter(r => 
+      String(r.activityId) === String(id) && r.payment_status !== PaymentStatus.REFUNDED
+    ).length;
   } else if (props.type === 'member' && props.memberRegistrations) {
-    alreadyRegisteredCount = props.memberRegistrations.filter(r => String(r.activityId) === String(id)).length;
+    alreadyRegisteredCount = props.memberRegistrations.filter(r => 
+      String(r.activityId) === String(id) && r.payment_status !== PaymentStatus.REFUNDED
+    ).length;
   }
 
   const basePrice = activity.price;
@@ -308,9 +313,20 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
               <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><DollarSign size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">活動費用</p><p className="font-medium">NT$ {activity.price.toLocaleString()}</p></div></div>
             </div>
 
-            <div className="prose prose-red max-w-none">
+            <div className="prose prose-red max-w-none mb-10">
               <h3 className="text-xl font-bold mb-4">活動介紹</h3>
               <p className="text-gray-600 leading-relaxed whitespace-pre-line">{activity.description}</p>
+            </div>
+
+            <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
+               <h4 className="flex items-center gap-2 text-orange-800 font-bold mb-3"><ShieldAlert size={20}/> 報名注意事項與退費規則</h4>
+               <ul className="list-disc list-inside text-sm text-orange-700 space-y-2">
+                 <li>報名後請於 3 日內完成繳費，以保留您的名額。</li>
+                 <li>如需取消報名，請於活動前 7 天聯繫秘書處辦理退費，將扣除 10% 行政手續費。</li>
+                 <li>活動前 7 天內取消者，恕不退費，但可將名額轉讓給他人（需提前告知主辦單位）。</li>
+                 <li>若遇天災或不可抗力因素導致活動取消，主辦單位將全額退費。</li>
+                 <li>退費款項將於申請核准後 7-14 個工作天內退回原付款帳戶。</li>
+               </ul>
             </div>
           </div>
         </div>
