@@ -114,7 +114,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
       activities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length + 
       memberActivities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length;
 
-    // 將報名資料與活動標題合併
+    // 將報名資料與活動標題合併 (最新5筆)
     const recentRegistrations = [
         ...registrations.map(r => {
            const act = activities.find(a => String(a.id) === String(r.activityId));
@@ -128,7 +128,30 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5);
 
-    return { activeMembers, totalRevenue, upcomingActivitiesCount, recentRegistrations };
+    // --- 計算個別活動成效 ---
+    const calculateActivityStats = (act: Activity | MemberActivity, regs: Registration[] | MemberRegistration[]) => {
+       const actRegs = regs.filter(r => String(r.activityId) === String(act.id));
+       const regCount = actRegs.length;
+       const checkInCount = actRegs.filter(r => r.check_in_status).length;
+       const revenue = actRegs.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
+       return {
+          id: act.id,
+          title: act.title,
+          date: act.date,
+          status: act.status || 'active',
+          regCount,
+          checkInCount,
+          revenue
+       };
+    };
+
+    const generalStats = activities.map(a => ({...calculateActivityStats(a, registrations), category: '一般'}));
+    const memberStats = memberActivities.map(a => ({...calculateActivityStats(a, memberRegistrations), category: '會員'}));
+    
+    // 合併並依日期排序 (新 -> 舊)
+    const allActivityStats = [...generalStats, ...memberStats].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return { activeMembers, totalRevenue, upcomingActivitiesCount, recentRegistrations, allActivityStats };
   }, [members, activities, memberActivities, registrations, memberRegistrations]);
 
   return (
@@ -167,6 +190,62 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
           </div>
           <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">總報名人次</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{registrations.length + memberRegistrations.length}<span className="text-sm text-gray-400 font-normal ml-1">人次</span></p>
+        </div>
+      </div>
+
+      {/* 新增：各活動營運成效列表 */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-50">
+           <h3 className="text-lg font-bold text-gray-900">各活動營運成效</h3>
+        </div>
+        <div className="overflow-x-auto">
+           <table className="w-full text-left border-collapse">
+              <thead>
+                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                    <th className="p-4">活動名稱 / 日期</th>
+                    <th className="p-4">類別</th>
+                    <th className="p-4 text-center">報名人數</th>
+                    <th className="p-4 text-center">出席人數</th>
+                    <th className="p-4 text-right">累積營收</th>
+                    <th className="p-4 text-center">狀態</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                 {stats.allActivityStats.map((act: any) => (
+                    <tr key={`${act.category}-${act.id}`} className="hover:bg-gray-50">
+                       <td className="p-4">
+                          <div className="font-bold text-gray-900">{act.title}</div>
+                          <div className="text-xs text-gray-400">{act.date}</div>
+                       </td>
+                       <td className="p-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${act.category === '會員' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                             {act.category}
+                          </span>
+                       </td>
+                       <td className="p-4 text-center font-medium">
+                          {act.regCount} 人
+                       </td>
+                       <td className="p-4 text-center">
+                          <span className={`font-bold ${act.checkInCount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                             {act.checkInCount}
+                          </span> 
+                          <span className="text-gray-400 text-xs"> / {act.regCount}</span>
+                       </td>
+                       <td className="p-4 text-right font-mono font-bold text-gray-700">
+                          NT$ {act.revenue.toLocaleString()}
+                       </td>
+                       <td className="p-4 text-center">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${act.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                             {act.status === 'active' ? '進行中' : '已結束'}
+                          </span>
+                       </td>
+                    </tr>
+                 ))}
+                 {stats.allActivityStats.length === 0 && (
+                    <tr><td colSpan={6} className="p-6 text-center text-gray-400">尚無活動資料</td></tr>
+                 )}
+              </tbody>
+           </table>
         </div>
       </div>
 
