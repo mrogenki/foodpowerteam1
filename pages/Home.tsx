@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users, Ban } from 'lucide-react';
 import { Activity, MemberActivity, ActivityType } from '../types';
@@ -80,6 +80,21 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
 
 const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
   const now = new Date();
+
+  // 重設 Meta Tags 為網站預設值
+  useEffect(() => {
+    document.title = `食在力量活動&會員系統`;
+    
+    const updateMeta = (prop: string, content: string) => {
+      let el = document.querySelector(`meta[property="${prop}"]`);
+      if (el) el.setAttribute('content', content);
+    };
+    
+    updateMeta('og:title', '食在力量活動&會員系統');
+    updateMeta('og:description', '食在力量 - 連結產業，創造共好。匯聚各產業菁英，提供產業小聚、企業參訪、專業課程等活動報名與會員管理服務。');
+    updateMeta('og:image', 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1200&auto=format&fit=crop');
+    updateMeta('og:url', 'https://foodpowerteam.vercel.app/');
+  }, []);
 
   // 篩選邏輯修正：只要日期還沒過，即使狀態是 closed 也要顯示 (但會標示截止)
   // 這樣使用者才能知道有這個活動，但已經不能報名了

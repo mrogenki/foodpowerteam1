@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, DollarSign, ArrowLeft, CheckCircle2, Share2, CopyCheck, Clock, Loader2, Crown, UserCheck, Ticket, User, Users, Search, ChevronDown, Lock, AlertCircle, CreditCard, Ban, Info, ShieldAlert } from 'lucide-react';
 import emailjs from '@emailjs/browser';
@@ -48,6 +48,30 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     referrer: '',
     memberId: '' // For member registration
   });
+
+  // 動態更新 Meta Tags (標題、圖片)
+  useEffect(() => {
+    if (activity) {
+      // 1. 更新瀏覽器標題
+      document.title = `${activity.title} - 食在力量`;
+
+      // 2. 嘗試更新 Meta 標籤 (這對瀏覽器有效，但 LINE 預覽可能仍會抓到首頁預設值)
+      const updateMeta = (prop: string, content: string) => {
+        let el = document.querySelector(`meta[property="${prop}"]`);
+        if (!el) {
+           el = document.createElement('meta');
+           el.setAttribute('property', prop);
+           document.head.appendChild(el);
+        }
+        el.setAttribute('content', content);
+      };
+      
+      updateMeta('og:title', activity.title);
+      updateMeta('og:description', activity.description ? activity.description.substring(0, 100) : '點擊查看活動詳情');
+      updateMeta('og:image', activity.picture);
+      updateMeta('og:url', window.location.href);
+    }
+  }, [activity]);
 
   if (!activity) {
     return <div className="p-20 text-center">活動不存在</div>;
