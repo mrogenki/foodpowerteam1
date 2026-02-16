@@ -759,7 +759,9 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
         const num = parseInt(m.member_no);
         return !isNaN(num) && num > max ? num : max;
     }, 0);
-    const nextNo = String(maxNo + 1);
+    
+    // 修正：使用 padStart 補零至 5 碼 (例如: 271 -> 00271)
+    const nextNo = (maxNo + 1).toString().padStart(5, '0');
 
     setFormData({ 
       member_no: nextNo, 
