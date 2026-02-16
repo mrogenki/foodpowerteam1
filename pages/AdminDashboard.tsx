@@ -751,7 +751,24 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   const filtered = members.filter(m => m.name.includes(searchTerm) || m.member_no.includes(searchTerm) || m.phone?.includes(searchTerm));
 
   const handleEdit = (m: Member) => { setEditingId(m.id); setFormData({...m}); setIsFormOpen(true); };
-  const handleAdd = () => { setEditingId(null); setFormData({ member_no: '', name: '', status: 'active', industry_category: '其他' }); setIsFormOpen(true); };
+  const handleAdd = () => { 
+    setEditingId(null); 
+    
+    // 自動產生流水號：找出目前最大的數值並 +1
+    const maxNo = members.reduce((max, m) => {
+        const num = parseInt(m.member_no);
+        return !isNaN(num) && num > max ? num : max;
+    }, 0);
+    const nextNo = String(maxNo + 1);
+
+    setFormData({ 
+      member_no: nextNo, 
+      name: '', 
+      status: 'active', 
+      industry_category: '其他' 
+    }); 
+    setIsFormOpen(true); 
+  };
   const handleSave = (e: React.FormEvent) => { e.preventDefault(); if (editingId) onUpdate(formData); else onAdd(formData); setIsFormOpen(false); };
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -848,7 +865,15 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                   <div>
                       <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">基本資料</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div><label className="block text-sm font-bold mb-1">會員編號</label><input required type="text" value={formData.member_no} onChange={e => setFormData({...formData, member_no: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                          <div>
+                            <label className="block text-sm font-bold mb-1">會員編號 (自動產生)</label>
+                            <input 
+                              type="text" 
+                              value={formData.member_no} 
+                              readOnly
+                              className="w-full p-2 border rounded outline-none bg-gray-100 text-gray-500 cursor-not-allowed"
+                            />
+                          </div>
                           <div><label className="block text-sm font-bold mb-1">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
                           <div><label className="block text-sm font-bold mb-1">身分證字號</label><input type="text" value={formData.id_number || ''} onChange={e => setFormData({...formData, id_number: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
                           <div><label className="block text-sm font-bold mb-1">生日</label><input type="date" value={formData.birthday || ''} onChange={e => setFormData({...formData, birthday: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
