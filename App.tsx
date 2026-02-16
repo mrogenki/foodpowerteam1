@@ -386,18 +386,48 @@ const App: React.FC = () => {
   // User/Member Functions
   const handleAddUser = async (newUser: AdminUser) => { if (!supabase) return; await supabase.from('admins').insert([newUser]); fetchData(); };
   const handleDeleteUser = async (id: string) => { if (!supabase) return; await supabase.from('admins').delete().eq('id', id); fetchData(); };
-  const handleAddMember = async (newMember: Member) => { if (!supabase) return; await supabase.from('members').insert([newMember]); fetchData(); };
-  const handleUpdateMember = async (updated: Member) => { 
-    // Member 變更較複雜且頻率低，維持原邏輯，或也可改為樂觀更新
+  
+  const handleAddMember = async (newMember: Member) => { 
     if (!supabase) return; 
-    await supabase.from('members').update(updated).eq('id', updated.id); 
-    fetchData(); 
+    
+    // 自動產生 UUID (若前端沒傳 ID)
+    const memberToInsert = {
+      ...newMember,
+      id: newMember.id || crypto.randomUUID()
+    };
+
+    const { error } = await supabase.from('members').insert([memberToInsert]); 
+    
+    if (error) {
+      console.error('Add member error:', error);
+      alert('新增會員失敗：' + error.message);
+    } else {
+      fetchData(); 
+    }
   };
+
+  const handleUpdateMember = async (updated: Member) => { 
+    if (!supabase) return; 
+    const { error } = await supabase.from('members').update(updated).eq('id', updated.id); 
+    if (error) {
+       console.error('Update member error:', error);
+       alert('更新會員失敗：' + error.message);
+    } else {
+       fetchData(); 
+    }
+  };
+
   const handleDeleteMember = async (id: string | number) => { 
     if (!supabase) return; 
-    await supabase.from('members').delete().eq('id', id); 
-    fetchData(); 
+    const { error } = await supabase.from('members').delete().eq('id', id); 
+    if (error) {
+       console.error('Delete member error:', error);
+       alert('刪除會員失敗：' + error.message);
+    } else {
+       fetchData(); 
+    }
   };
+
   const handleAddMembers = async (newMembers: Member[]) => {
     if (!supabase) return;
     setLoading(true);
