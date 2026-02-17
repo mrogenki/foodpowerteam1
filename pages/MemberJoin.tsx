@@ -224,7 +224,7 @@ ${memberData.notes || '(無)'}
             {/* 會員權益 */}
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Gift className="text-red-600" /> 會員專屬權益
+                <Gift className="text-red-600" /> 會員權益（報名優惠、限量活動）
               </h3>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
