@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import emailjs from '@emailjs/browser';
-import { UserPlus, Save, Loader2, Building2, User, Phone, Briefcase, FileText } from 'lucide-react';
+import { UserPlus, Save, Loader2, Building2, User, Phone, Briefcase, FileText, CreditCard, Calendar, Gift, Zap, Users, Target, Globe, Award } from 'lucide-react';
 import { IndustryCategories } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
@@ -69,24 +69,38 @@ const MemberJoin: React.FC = () => {
     }
 
     try {
-      // 構建詳細的申請資料內容
+      // 構建詳細的申請資料內容 (完整欄位)
       const details = `
-        【申請資料明細】
-        身分證字號: ${memberData.id_number}
-        生日: ${memberData.birthday}
-        室內電話: ${memberData.home_phone}
-        通訊地址: ${memberData.address}
-        產業分類: ${memberData.industry_category}
-        統一編號: ${memberData.tax_id}
-        主要服務/產品: ${memberData.main_service}
-        備註: ${memberData.notes || '無'}
+【基本資料】
+姓名：${memberData.name}
+身分證字號：${memberData.id_number}
+生日：${memberData.birthday}
+引薦人：${memberData.referrer || '(未填寫)'}
+
+【聯絡方式】
+手機：${memberData.phone}
+Email：${memberData.email}
+室內電話：${memberData.home_phone}
+通訊地址：${memberData.address}
+
+【事業資料】
+產業分類：${memberData.industry_category}
+品牌名稱：${memberData.brand_name}
+公司抬頭：${memberData.company_title}
+統一編號：${memberData.tax_id}
+職稱：${memberData.job_title}
+公司網站：${memberData.website || '(未填寫)'}
+主要服務/產品：
+${memberData.main_service}
+
+【備註】
+${memberData.notes || '(無)'}
       `;
 
       // 使用 Email 模板參數進行映射
       const templateParams = {
         to_name: memberData.name,
         // 增加 to_email 與 reply_to 以確保模板能正確抓到收件人
-        // 有些模板設定預設是抓 'to_email'，有些是抓 'email'
         email: memberData.email,
         to_email: memberData.email,
         reply_to: memberData.email,
@@ -184,6 +198,99 @@ const MemberJoin: React.FC = () => {
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">加入食在力量會員</h1>
           <p className="text-gray-500">填寫以下資料，立即成為我們的一份子，共享產業資源。</p>
+        </div>
+
+        {/* 1. 會員權益與說明區塊 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+          {/* 年度費用 */}
+          <div className="bg-red-600 text-white p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 relative z-10">
+              <CreditCard className="text-red-200" /> 年度費用說明
+            </h2>
+            <div className="flex flex-col md:flex-row gap-6 md:gap-12 relative z-10">
+              <div className="bg-red-700/50 p-4 rounded-xl flex-1 backdrop-blur-sm border border-red-500/30">
+                <div className="text-red-200 text-sm font-bold mb-1 flex items-center gap-2"><Calendar size={14}/> 會期</div>
+                <div className="text-xl font-bold">4/1 ～ 隔年 3/31</div>
+              </div>
+              <div className="bg-red-700/50 p-4 rounded-xl flex-1 backdrop-blur-sm border border-red-500/30">
+                <div className="text-red-200 text-sm font-bold mb-1 flex items-center gap-2"><CreditCard size={14}/> 會員費</div>
+                <div className="text-xl font-bold">NT$ 5,000 / 年</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 md:p-8 space-y-8">
+            {/* 會員權益 */}
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Gift className="text-red-600" /> 會員專屬權益
+              </h3>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  '產業小聚：講座型交流會（台北/台中/高雄）',
+                  '美食小聚：聚餐型交流會（台北/台中/高雄）',
+                  '企業參訪：實地走訪優質企業',
+                  '線上分享會：隨時隨地學習產業新知',
+                  '專案活動：美食市集、燒肉季、火鍋季、通路節'
+                ].map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-gray-700 bg-gray-50 p-3 rounded-lg">
+                    <Zap className="text-red-500 shrink-0 mt-0.5" size={16} fill="currentColor" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="border-t border-gray-100 my-6"></div>
+
+            {/* 美食 PT 計畫 */}
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Award className="text-red-600" /> 【美食PT計畫】協會會員專屬
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 品牌協作 */}
+                <div className="bg-orange-50 rounded-xl p-6 border border-orange-100">
+                  <h4 className="font-bold text-lg text-orange-800 mb-4 flex items-center gap-2">
+                    <Target size={20}/> 品牌協作
+                  </h4>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="font-bold text-gray-800 mb-1">1. 餐飲人俱樂部</div>
+                      <p className="text-sm text-gray-600">匯集各專業夥伴一起來服務餐飲品牌。如果您的目標客戶也是餐飲店家，歡迎一起加入運作！</p>
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-800 mb-1">2. 食品人俱樂部</div>
+                      <p className="text-sm text-gray-600">匯集各專業夥伴一起來服務食品品牌。如果您的目標客戶也是食品業者，歡迎一起加入運作！</p>
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-800 mb-1">3. 品牌研究室</div>
+                      <p className="text-sm text-gray-600">品牌論壇、專業課程、品牌顧問諮詢、企業輔導資源對接。</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 通路協作 */}
+                <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
+                  <h4 className="font-bold text-lg text-blue-800 mb-4 flex items-center gap-2">
+                    <Globe size={20}/> 通路協作
+                  </h4>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="font-bold text-gray-800 mb-1">1. 企業福委PT</div>
+                      <p className="text-sm text-gray-600">成立企業服務小組，匯集各專業夥伴一起來服務企業客戶。如果您的目標客戶也是中小企業，歡迎一起加入運作！</p>
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-800 mb-1">2. 國際市場PT</div>
+                      <p className="text-sm text-gray-600">對接國外市場，協助抱團參展共同行銷。如果您也想把產品推廣到海外市場，歡迎一起加入運作！</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
