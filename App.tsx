@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Menu, X, Loader2, Database, AlertTriangle, Save, Key, Globe, UserPlus } from 'lucide-react';
+import { Menu, X, Loader2, Database, AlertTriangle, Save, Key, Globe, UserPlus, MessageCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import emailjs from '@emailjs/browser';
 import Home from './pages/Home';
@@ -82,12 +82,42 @@ const Footer: React.FC = () => {
   if (location.pathname.startsWith('/admin')) return null;
   return (
     <footer className="bg-white border-t py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div className="flex justify-center items-center gap-2 mb-4">
-          <div className="w-6 h-6 bg-red-600 rounded-md flex items-center justify-center text-white text-xs font-bold">食</div>
-          <span className="font-bold text-gray-800 tracking-wider">食在力量</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+          {/* Logo & Copyright */}
+          <div className="text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
+              <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center text-white font-bold">食</div>
+              <span className="font-bold text-gray-800 tracking-wider text-lg">食在力量</span>
+            </div>
+            <p className="text-gray-400 text-sm">&copy; 2026 食在力量活動報名系統 v2.0.<br/>All rights reserved.</p>
+          </div>
+
+          {/* LINE Join Section */}
+          <div className="flex flex-col items-center md:items-end">
+             <div className="bg-[#06C755]/5 p-6 rounded-2xl flex flex-col sm:flex-row items-center gap-6 border border-[#06C755]/20 hover:bg-[#06C755]/10 transition-colors">
+                <div className="text-center sm:text-left">
+                   <h3 className="font-bold text-gray-900 flex items-center justify-center sm:justify-start gap-2 mb-2">
+                     <MessageCircle className="text-[#06C755]" />
+                     <span className="text-[#06C755]">官方 LINE 帳號</span>
+                   </h3>
+                   <p className="text-sm text-gray-600 mb-4">加入好友，掌握最新活動資訊<br/>與產業動態！</p>
+                   <a 
+                     href="https://lin.ee/oIeFIMO" 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="inline-flex items-center gap-2 bg-[#06C755] hover:bg-[#05b64d] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-100 hover:shadow-green-200"
+                   >
+                     <MessageCircle size={18} fill="currentColor" className="text-white/20" />
+                     加入好友
+                   </a>
+                </div>
+                <div className="bg-white p-2 rounded-xl shadow-sm">
+                   <img src="https://qr-official.line.me/gs/M_736bgkpm_BW.png?oat__id=6378179&oat_content=qr" alt="LINE QR Code" className="w-24 h-24" />
+                </div>
+             </div>
+          </div>
         </div>
-        <p className="text-gray-400 text-xs">&copy; 2026 食在力量活動報名系統 v2.0. All rights reserved.</p>
       </div>
     </footer>
   );
