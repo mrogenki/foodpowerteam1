@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users, Ban } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users, Ban, UserPlus } from 'lucide-react';
 import { Activity, MemberActivity, ActivityType } from '../types';
 
 interface HomeProps {
@@ -121,6 +121,21 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
         <div className="space-y-12">
           
+          {/* 加入會員 CTA */}
+          <div className="bg-gray-900 rounded-3xl p-8 md:p-12 relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 max-w-2xl">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">還沒加入食在力量會員嗎？</h2>
+              <p className="text-gray-400 mb-0">立即註冊成為會員，享有專屬活動優惠、產業媒合機會，並與頂尖業者交流共學。</p>
+            </div>
+            <Link to="/join" className="relative z-10 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/50 transition-all flex items-center gap-2 whitespace-nowrap">
+              <UserPlus size={20} />
+              立即加入會員
+            </Link>
+            {/* 裝飾背景 */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-10 translate-y-1/2 -translate-x-1/2"></div>
+          </div>
+
           {/* 會員專屬活動區塊 */}
           {upcomingMemberActivities.length > 0 && (
              <div>

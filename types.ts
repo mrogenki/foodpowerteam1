@@ -145,6 +145,36 @@ export interface Member {
   quit_date?: string;
 }
 
+// 新增：會員申請資料
+export interface MemberApplication {
+  id: string | number;
+  
+  // 基本資料
+  name: string;
+  id_number: string;
+  birthday: string;
+  referrer: string;
+  
+  // 聯絡方式
+  phone: string;
+  email: string;
+  home_phone: string;
+  address: string;
+  
+  // 事業資料
+  industry_category: IndustryCategoryType | string;
+  brand_name: string;
+  company_title: string;
+  tax_id: string;
+  job_title: string;
+  main_service: string;
+  website: string;
+  notes: string;
+  
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
 export interface AttendanceRecord {
   id?: string | number;
   activity_id: string;

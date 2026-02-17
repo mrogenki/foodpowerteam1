@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Menu, X, Loader2, Database, AlertTriangle, Save, Key, Globe } from 'lucide-react';
+import { Menu, X, Loader2, Database, AlertTriangle, Save, Key, Globe, UserPlus } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import emailjs from '@emailjs/browser';
 import Home from './pages/Home';
@@ -9,8 +9,9 @@ import ActivityDetail from './pages/ActivityDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import MemberList from './pages/MemberList';
+import MemberJoin from './pages/MemberJoin'; // Import MemberJoin
 import PaymentResult from './pages/PaymentResult'; // Import PaymentResult
-import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, AttendanceRecord, AttendanceStatus, Coupon } from './types';
+import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, AttendanceRecord, AttendanceStatus, Coupon, MemberApplication } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_ADMINS, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 
 // Supabase 設定
@@ -54,6 +55,7 @@ const Header: React.FC = () => {
           <div className="hidden sm:flex items-center space-x-8">
             <Link to="/" className="text-gray-700 hover:text-red-600 transition-colors font-medium">活動首頁</Link>
             <Link to="/members" className="text-gray-700 hover:text-red-600 transition-colors font-medium">會員列表</Link>
+            <Link to="/join" className="flex items-center gap-1 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-red-700 shadow-md shadow-red-100 transition-all"><UserPlus size={16} /> 加入會員</Link>
             <Link to="/admin" className="text-gray-500 hover:text-gray-900 flex items-center gap-1 border border-gray-200 px-3 py-1 rounded-full text-sm font-bold">後台管理</Link>
           </div>
           <div className="sm:hidden flex items-center">
@@ -67,6 +69,7 @@ const Header: React.FC = () => {
         <div className="sm:hidden bg-white border-t px-4 py-3 space-y-3 shadow-lg">
           <Link to="/" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">活動首頁</Link>
           <Link to="/members" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">會員列表</Link>
+          <Link to="/join" onClick={() => setIsOpen(false)} className="block text-red-600 font-bold">加入會員</Link>
           <Link to="/admin" onClick={() => setIsOpen(false)} className="block text-gray-500 text-sm font-bold">後台管理</Link>
         </div>
       )}
@@ -101,7 +104,7 @@ const App: React.FC = () => {
   const [memberRegistrations, setMemberRegistrations] = useState<MemberRegistration[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]); // 保留相容性
+  const [memberApplications, setMemberApplications] = useState<MemberApplication[]>([]); // 新增：會員申請
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
@@ -129,7 +132,8 @@ const App: React.FC = () => {
         { data: memRegData },
         { data: userData },
         { data: memberData },
-        { data: couponData }
+        { data: couponData },
+        { data: applicationData } // 讀取申請資料
       ] = await Promise.all([
         supabase.from('activities').select('*').order('date', { ascending: true }),
         supabase.from('member_activities').select('*').order('date', { ascending: true }),
@@ -137,7 +141,8 @@ const App: React.FC = () => {
         supabase.from('member_registrations').select('*').order('created_at', { ascending: false }),
         supabase.from('admins').select('*'),
         supabase.from('members').select('*'),
-        supabase.from('coupons').select('*').order('created_at', { ascending: false })
+        supabase.from('coupons').select('*').order('created_at', { ascending: false }),
+        supabase.from('member_applications').select('*').order('created_at', { ascending: false })
       ]);
 
       // 1. 一般活動
@@ -187,6 +192,9 @@ const App: React.FC = () => {
 
       // 7. 折扣券
       if (couponData) setCoupons(couponData as Coupon[]);
+
+      // 8. 會員申請
+      if (applicationData) setMemberApplications(applicationData as MemberApplication[]);
 
     } catch (err: any) {
       console.error('Fetch error:', err);
@@ -459,6 +467,87 @@ const App: React.FC = () => {
     } catch (err: any) { alert(err.message); } finally { setLoading(false); }
   };
 
+  // 處理核准會員申請
+  const handleApproveMemberApplication = async (application: MemberApplication) => {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+      // 1. 產生新的會員編號
+      const { data: members, error: fetchError } = await supabase
+        .from('members')
+        .select('member_no');
+
+      if (fetchError) throw fetchError;
+
+      const maxNo = members?.reduce((max, m) => {
+        const num = parseInt(m.member_no);
+        return !isNaN(num) && num > max ? num : max;
+      }, 0) || 0;
+      const nextNo = (maxNo + 1).toString().padStart(5, '0');
+
+      // 2. 轉換為正式會員資料
+      const newMember = {
+        id: crypto.randomUUID(), // 全新 ID
+        member_no: nextNo,
+        status: 'active',
+        membership_expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10), // 預設一年
+        join_date: new Date().toISOString().slice(0, 10),
+        
+        name: application.name,
+        id_number: application.id_number,
+        birthday: application.birthday,
+        referrer: application.referrer,
+        phone: application.phone,
+        email: application.email,
+        home_phone: application.home_phone,
+        address: application.address,
+        industry_category: application.industry_category,
+        brand_name: application.brand_name,
+        company_title: application.company_title,
+        tax_id: application.tax_id,
+        job_title: application.job_title,
+        website: application.website,
+        main_service: application.main_service,
+        notes: application.notes
+      };
+
+      // 3. 寫入 Members 表
+      const { error: insertError } = await supabase.from('members').insert([newMember]);
+      if (insertError) throw insertError;
+
+      // 4. 刪除申請資料 (或可選擇更新狀態為 approved)
+      const { error: deleteError } = await supabase.from('member_applications').delete().eq('id', application.id);
+      if (deleteError) throw deleteError;
+
+      alert(`核准成功！\n已將 ${newMember.name} 加入會員資料庫。\n會員編號：${nextNo}`);
+      await fetchData();
+
+    } catch (error: any) {
+      console.error('Approve failed:', error);
+      alert('核准失敗：' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 處理刪除/拒絕會員申請
+  const handleDeleteMemberApplication = async (id: string | number) => {
+    if (!supabase) return;
+    if (!confirm('確定要拒絕並刪除此申請資料？此動作無法復原。')) return;
+
+    setLoading(true);
+    try {
+       const { error } = await supabase.from('member_applications').delete().eq('id', id);
+       if (error) throw error;
+       await fetchData();
+    } catch (error: any) {
+       console.error('Delete application failed:', error);
+       alert('刪除失敗：' + error.message);
+    } finally {
+       setLoading(false);
+    }
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-red-600" size={56} /></div>;
 
   return (
@@ -469,6 +558,8 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} />} />
             <Route path="/members" element={<MemberList members={members} />} />
+            <Route path="/join" element={<MemberJoin />} /> {/* 新增加入會員路由 */}
+            
             {/* 兩種活動詳情路由 */}
             <Route path="/activity/:id" element={<ActivityDetail type="general" activities={activities} onRegister={handleRegister} registrations={registrations} validateCoupon={validateCoupon} />} />
             <Route path="/member-activity/:id" element={<ActivityDetail type="member" activities={memberActivities} members={members} onMemberRegister={handleMemberRegister} memberRegistrations={memberRegistrations} validateCoupon={validateCoupon} />} />
@@ -488,6 +579,7 @@ const App: React.FC = () => {
                   memberRegistrations={memberRegistrations}
                   users={users}
                   members={members}
+                  memberApplications={memberApplications} // Pass applications
                   coupons={coupons}
                   onUpdateActivity={handleUpdateActivity}
                   onAddActivity={handleAddActivity}
@@ -507,6 +599,8 @@ const App: React.FC = () => {
                   onDeleteMember={handleDeleteMember}
                   onUploadImage={handleUploadImage}
                   onGenerateCoupons={handleGenerateCoupons}
+                  onApproveMemberApplication={handleApproveMemberApplication} // Pass approve fn
+                  onDeleteMemberApplication={handleDeleteMemberApplication} // Pass delete fn
                 />
               ) : (
                 <Navigate to="/admin/login" />

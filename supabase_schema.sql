@@ -142,3 +142,29 @@ create table if not exists public.coupons (
   created_at timestamp with time zone default timezone('utc'::text, now()),
   used_at timestamp with time zone
 );
+
+-- 9. 新增：會員申請資料表 (member_applications)
+create table if not exists public.member_applications (
+  id text primary key,
+  name text not null,
+  
+  id_number text,
+  birthday text,
+  phone text,
+  email text,
+  address text,
+  home_phone text,
+  referrer text,
+  
+  industry_category text,
+  brand_name text,
+  company_title text,
+  tax_id text,
+  job_title text,
+  main_service text,
+  website text,
+  notes text,
+  
+  status text default 'pending', -- pending (待審核), approved (已核准), rejected (已婉拒)
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);

@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
-import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus } from '../types';
+import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
 
 interface AdminDashboardProps {
   currentUser: AdminUser;
@@ -14,6 +14,7 @@ interface AdminDashboardProps {
   memberRegistrations: MemberRegistration[];
   users: AdminUser[];
   members: Member[];
+  memberApplications: MemberApplication[]; // 新增：會員申請列表
   coupons: Coupon[];
   onUpdateActivity: (act: Activity) => void;
   onAddActivity: (act: Activity) => void;
@@ -33,6 +34,8 @@ interface AdminDashboardProps {
   onDeleteMember: (id: string | number) => void;
   onUploadImage: (file: File) => Promise<string>;
   onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[], sendEmail: boolean) => void;
+  onApproveMemberApplication: (app: MemberApplication) => void; // 新增：核准
+  onDeleteMemberApplication: (id: string | number) => void; // 新增：拒絕
 }
 
 // 獨立的輸入元件 (保留)
@@ -48,7 +51,7 @@ const PaidAmountInput: React.FC<{ value?: number; onSave: (val: number) => void 
 };
 
 // Sidebar
-const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void }> = ({ user, onLogout }) => {
+const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: number }> = ({ user, onLogout, pendingCount }) => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const canAccessActivities = user.role === UserRole.MANAGER || user.role === UserRole.SUPER_ADMIN;
@@ -79,6 +82,14 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void }> = ({ user, on
         {canAccessActivities && (<>
             <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">系統管理</div>
             <Link to="/admin/members" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/members') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Building2 size={20} /><span>會員資料庫</span></Link>
+            {/* 新增申請管理連結 */}
+            <Link to="/admin/member-applications" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-applications') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}>
+              <UserPlus size={20} />
+              <div className="flex-grow flex justify-between items-center">
+                 <span>新會員申請管理</span>
+                 {pendingCount > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
+              </div>
+            </Link>
             <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
         </>)}
         {canAccessUsers && (<Link to="/admin/users" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/users') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Shield size={20} /><span>人員權限</span></Link>)}
@@ -94,10 +105,11 @@ interface DashboardHomeProps {
   memberActivities: MemberActivity[];
   registrations: Registration[];
   memberRegistrations: MemberRegistration[];
+  memberApplications: MemberApplication[];
 }
 
 // 儀表板首頁元件
-const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memberActivities, registrations, memberRegistrations }) => {
+const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memberActivities, registrations, memberRegistrations, memberApplications }) => {
   const stats = useMemo(() => {
     const activeMembers = members.filter(m => {
        if (m.membership_expiry_date) {
@@ -113,6 +125,9 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
     const upcomingActivitiesCount = 
       activities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length + 
       memberActivities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length;
+    
+    // 待審核會員數
+    const pendingApplications = memberApplications.length;
 
     // 將報名資料與活動標題合併 (最新5筆)
     const recentRegistrations = [
@@ -151,8 +166,8 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
     // 合併並依日期排序 (新 -> 舊)
     const allActivityStats = [...generalStats, ...memberStats].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return { activeMembers, totalRevenue, upcomingActivitiesCount, recentRegistrations, allActivityStats };
-  }, [members, activities, memberActivities, registrations, memberRegistrations]);
+    return { activeMembers, totalRevenue, upcomingActivitiesCount, recentRegistrations, allActivityStats, pendingApplications };
+  }, [members, activities, memberActivities, registrations, memberRegistrations, memberApplications]);
 
   return (
     <div className="space-y-8">
@@ -170,19 +185,23 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
           <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">會員總數</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{stats.activeMembers}<span className="text-sm text-gray-400 font-normal ml-1">人</span></p>
         </div>
+        
+        {/* 新增：待審核申請卡片 */}
+        <Link to="/admin/member-applications" className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-red-600"><UserPlus size={20} /></div>
+            {stats.pendingApplications > 0 && <span className="text-xs font-bold bg-red-600 text-white px-2 py-1 rounded animate-pulse">待審核</span>}
+          </div>
+          <p className="text-sm text-gray-500 font-bold uppercase tracking-wider group-hover:text-red-600 transition-colors">新會員申請</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">{stats.pendingApplications}<span className="text-sm text-gray-400 font-normal ml-1">筆</span></p>
+        </Link>
+        
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600"><DollarSign size={20} /></div>
           </div>
           <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">累積營收</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">NT$ {stats.totalRevenue.toLocaleString()}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600"><Calendar size={20} /></div>
-          </div>
-          <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">即將舉辦</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{stats.upcomingActivitiesCount}<span className="text-sm text-gray-400 font-normal ml-1">場活動</span></p>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex justify-between items-start mb-4">
@@ -248,38 +267,135 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
            </table>
         </div>
       </div>
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-6">最新報名紀錄</h3>
-        <div className="space-y-4">
-          {stats.recentRegistrations.map((reg: any) => (
-            <div key={reg.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div className="flex items-center gap-4 overflow-hidden">
-                 <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${reg.memberId ? 'bg-red-500' : 'bg-gray-500'}`}>
-                    {reg.name?.[0] || reg.member_name?.[0]}
-                 </div>
-                 <div className="min-w-0">
-                    <p className="font-bold text-gray-900 truncate">{reg.name || reg.member_name}</p>
-                    <p className="text-xs font-bold text-blue-600 truncate my-0.5">{reg.activity_title}</p>
-                    <p className="text-xs text-gray-500">{new Date(reg.created_at).toLocaleString('zh-TW')}</p>
-                 </div>
-              </div>
-              <div className="text-right flex-shrink-0 ml-4">
-                 <p className="font-bold text-gray-900">NT$ {reg.paid_amount}</p>
-                 <span className={`text-xs px-2 py-0.5 rounded ${reg.payment_status === 'paid' ? 'bg-green-100 text-green-700' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500' : 'bg-yellow-100 text-yellow-700')}`}>
-                    {reg.payment_status === 'paid' ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}
-                 </span>
-              </div>
-            </div>
-          ))}
-          {stats.recentRegistrations.length === 0 && <p className="text-center text-gray-400">尚無報名資料</p>}
-        </div>
-      </div>
     </div>
   );
 };
 
-// --- 活動管理元件 (整合新增/編輯/報名名單) ---
+// --- 會員申請審核管理元件 (New) ---
+const MemberApplicationManager: React.FC<{ 
+  applications: MemberApplication[]; 
+  onApprove: (app: MemberApplication) => void;
+  onDelete: (id: string | number) => void; 
+}> = ({ applications, onApprove, onDelete }) => {
+  const [selectedApp, setSelectedApp] = useState<MemberApplication | null>(null);
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">新會員申請管理</h1>
+      <p className="text-gray-500">此處顯示前台提交的會員申請表，請確認已繳費後再進行核准。</p>
+
+      {/* 列表 */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500">
+                <th className="p-4">申請日期</th>
+                <th className="p-4">姓名</th>
+                <th className="p-4">公司/職稱</th>
+                <th className="p-4">聯繫方式</th>
+                <th className="p-4 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {applications.map(app => (
+                <tr key={app.id} className="hover:bg-gray-50">
+                  <td className="p-4 text-gray-500">{new Date(app.created_at).toLocaleDateString()}</td>
+                  <td className="p-4 font-bold text-gray-900">{app.name}</td>
+                  <td className="p-4">
+                    <div className="font-bold">{app.brand_name || app.company_title}</div>
+                    <div className="text-xs text-gray-500">{app.job_title}</div>
+                  </td>
+                  <td className="p-4">
+                     <div>{app.phone}</div>
+                     <div className="text-xs text-gray-400">{app.email}</div>
+                  </td>
+                  <td className="p-4 text-right">
+                    <button 
+                      onClick={() => setSelectedApp(app)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-blue-700 transition-colors shadow-blue-200 shadow-sm"
+                    >
+                      審核 / 詳細資料
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {applications.length === 0 && (
+                <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有待審核的申請</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 詳細資料 Modal */}
+      {selectedApp && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-2xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
+             <div className="flex justify-between items-center mb-6">
+               <h2 className="text-2xl font-bold">申請內容詳情</h2>
+               <button onClick={() => setSelectedApp(null)} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} /></button>
+             </div>
+
+             <div className="space-y-6">
+               <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex items-start gap-3">
+                 <AlertCircle className="text-yellow-600 shrink-0 mt-0.5" size={20} />
+                 <div>
+                   <p className="text-yellow-800 font-bold">核准前請確認</p>
+                   <p className="text-yellow-700 text-sm">請確認申請人已完成入會費繳納，資料填寫正確。點擊「核准並加入會員」後，系統將自動產生會員編號並正式寫入資料庫。</p>
+                 </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                 <div><span className="text-gray-500 block mb-1">姓名</span><p className="font-bold text-lg">{selectedApp.name}</p></div>
+                 <div><span className="text-gray-500 block mb-1">申請日期</span><p className="font-bold">{new Date(selectedApp.created_at).toLocaleString()}</p></div>
+                 
+                 <div className="col-span-2 border-t pt-4 mt-2"><h3 className="font-bold text-gray-900 mb-2">基本資料</h3></div>
+                 <div><span className="text-gray-500 block">身分證字號</span><p>{selectedApp.id_number}</p></div>
+                 <div><span className="text-gray-500 block">生日</span><p>{selectedApp.birthday}</p></div>
+                 <div><span className="text-gray-500 block">引薦人</span><p>{selectedApp.referrer || '無'}</p></div>
+                 
+                 <div className="col-span-2 border-t pt-4 mt-2"><h3 className="font-bold text-gray-900 mb-2">聯絡方式</h3></div>
+                 <div><span className="text-gray-500 block">手機</span><p>{selectedApp.phone}</p></div>
+                 <div><span className="text-gray-500 block">Email</span><p>{selectedApp.email}</p></div>
+                 <div><span className="text-gray-500 block">室內電話</span><p>{selectedApp.home_phone}</p></div>
+                 <div className="md:col-span-2"><span className="text-gray-500 block">通訊地址</span><p>{selectedApp.address}</p></div>
+                 
+                 <div className="col-span-2 border-t pt-4 mt-2"><h3 className="font-bold text-gray-900 mb-2">事業資料</h3></div>
+                 <div><span className="text-gray-500 block">產業分類</span><p className="inline-block bg-gray-100 px-2 py-0.5 rounded text-xs font-bold">{selectedApp.industry_category}</p></div>
+                 <div><span className="text-gray-500 block">品牌名稱</span><p>{selectedApp.brand_name}</p></div>
+                 <div><span className="text-gray-500 block">公司抬頭</span><p>{selectedApp.company_title}</p></div>
+                 <div><span className="text-gray-500 block">統一編號</span><p>{selectedApp.tax_id}</p></div>
+                 <div><span className="text-gray-500 block">職稱</span><p>{selectedApp.job_title}</p></div>
+                 <div><span className="text-gray-500 block">公司網站</span><p className="text-blue-600 truncate">{selectedApp.website}</p></div>
+                 <div className="md:col-span-2"><span className="text-gray-500 block">主要服務/產品</span><p className="bg-gray-50 p-2 rounded">{selectedApp.main_service}</p></div>
+                 <div className="md:col-span-2"><span className="text-gray-500 block">備註</span><p className="bg-gray-50 p-2 rounded">{selectedApp.notes || '無'}</p></div>
+               </div>
+             </div>
+
+             <div className="flex gap-4 mt-8 pt-6 border-t">
+               <button 
+                 onClick={() => { onDelete(selectedApp.id); setSelectedApp(null); }}
+                 className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-red-50 hover:text-red-600 transition-colors"
+               >
+                 拒絕 / 刪除
+               </button>
+               <button 
+                 onClick={() => { onApprove(selectedApp); setSelectedApp(null); }}
+                 className="flex-[2] bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-200 flex items-center justify-center gap-2"
+               >
+                 <CheckCircle size={20} />
+                 確認無誤，核准並加入會員
+               </button>
+             </div>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ... (ActivityManager, ActivityCheckInManager, MemberManager, UserManager, CouponManager code remains same) ...
 // 為了簡化程式碼長度，這裡使用一個通用的管理元件
 const ActivityManager: React.FC<{
   type: 'general' | 'member';
@@ -539,8 +655,7 @@ const ActivityManager: React.FC<{
   );
 };
 
-// --- Check-in Manager Component (專供工作人員/報到使用) ---
-// 此元件提供「選擇活動」->「檢視名單」的流程，無需進入活動編輯頁面
+// ActivityCheckInManager (省略部分重複程式碼，保持原樣)
 const ActivityCheckInManager: React.FC<{
   type: 'general' | 'member';
   activities: (Activity | MemberActivity)[];
@@ -725,7 +840,7 @@ const ActivityCheckInManager: React.FC<{
   );
 };
 
-// --- 成員管理元件 ---
+// MemberManager (省略部分重複程式碼，保持原樣)
 const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; onUpdate: (m: Member) => void; onDelete: (id: string | number) => void; onImport: (ms: Member[]) => void }> = ({ members, onAdd, onUpdate, onDelete, onImport }) => {
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [formData, setFormData] = useState<any>({});
@@ -841,7 +956,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
           </div>
        </div>
 
-       {/* 新增：統計數據區塊 */}
+       {/* 統計數據區塊 */}
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
              <div>
@@ -871,7 +986,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
             <div className="bg-white w-full max-w-3xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
                <h2 className="text-2xl font-bold mb-6">{editingId ? '編輯會員' : '新增會員'}</h2>
                <form onSubmit={handleSave} className="space-y-6">
-                  
+                  {/* ... (同原 MemberManager 表單內容，省略以保持精簡) ... */}
                   {/* 基本資料 */}
                   <div>
                       <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">基本資料</h3>
@@ -979,7 +1094,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   );
 };
 
-// --- 使用者(管理員)管理 ---
+// UserManager (省略部分重複程式碼，保持原樣)
 const UserManager: React.FC<{ users: AdminUser[]; onAdd: (u: AdminUser) => void; onDelete: (id: string) => void }> = ({ users, onAdd, onDelete }) => {
    const [formData, setFormData] = useState<any>({ role: UserRole.STAFF });
    return (
@@ -1012,7 +1127,7 @@ const UserManager: React.FC<{ users: AdminUser[]; onAdd: (u: AdminUser) => void;
    );
 };
 
-// --- 折扣券管理 ---
+// CouponManager (省略部分重複程式碼，保持原樣)
 const CouponManager: React.FC<{ coupons: Coupon[]; activities: Activity[]; members: Member[]; onGenerate: any }> = ({ coupons, activities, members, onGenerate }) => {
    const [actId, setActId] = useState('');
    const [amount, setAmount] = useState(100);
@@ -1063,17 +1178,21 @@ const CouponManager: React.FC<{ coupons: Coupon[]; activities: Activity[]; membe
 const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      <Sidebar user={props.currentUser} onLogout={props.onLogout} />
+      <Sidebar user={props.currentUser} onLogout={props.onLogout} pendingCount={props.memberApplications.length} />
       <div className="flex-grow overflow-auto p-8">
         <Routes>
           <Route path="/" element={<DashboardHome {...props} />} />
           <Route path="/activities" element={<ActivityManager type="general" activities={props.activities} registrations={props.registrations} onAdd={props.onAddActivity} onUpdate={props.onUpdateActivity} onDelete={props.onDeleteActivity} onUpdateReg={props.onUpdateRegistration} onDeleteReg={props.onDeleteRegistration} onUploadImage={props.onUploadImage} />} />
           <Route path="/member-activities" element={<ActivityManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUpdateReg={props.onUpdateMemberRegistration} onDeleteReg={props.onDeleteMemberRegistration} onUploadImage={props.onUploadImage} members={props.members} />} />
           <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
+          
+          {/* 新增：會員申請管理路由 */}
+          <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
+          
           <Route path="/users" element={<UserManager users={props.users} onAdd={props.onAddUser} onDelete={props.onDeleteUser} />} />
           <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
           
-          {/* 更新：使用 ActivityCheckInManager 取代原本的 CheckInScanner */}
+          {/* ActivityCheckInManager */}
           <Route path="/check-in" element={<ActivityCheckInManager type="general" activities={props.activities} registrations={props.registrations} onUpdateReg={props.onUpdateRegistration} />} />
           <Route path="/member-check-in" element={<ActivityCheckInManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onUpdateReg={props.onUpdateMemberRegistration} />} />
           
