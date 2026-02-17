@@ -65,7 +65,7 @@ const MemberJoin: React.FC = () => {
     // 檢查 EmailJS 設定是否存在
     if (!EMAIL_CONFIG.SERVICE_ID || EMAIL_CONFIG.SERVICE_ID === 'YOUR_NEW_SERVICE_ID') {
       console.warn('EmailJS 未設定，跳過發送');
-      return;
+      return false;
     }
 
     try {
@@ -83,11 +83,14 @@ const MemberJoin: React.FC = () => {
       `;
 
       // 使用 Email 模板參數進行映射
-      // 注意：這裡使用新版 Member Application 模板的變數
-      // 為了保險起見，我們保留大部分通用變數名 (如 to_name, message)
       const templateParams = {
         to_name: memberData.name,
+        // 增加 to_email 與 reply_to 以確保模板能正確抓到收件人
+        // 有些模板設定預設是抓 'to_email'，有些是抓 'email'
         email: memberData.email,
+        to_email: memberData.email,
+        reply_to: memberData.email,
+        
         phone: memberData.phone,
         company: memberData.brand_name || memberData.company_title,
         job_title: memberData.job_title,
@@ -105,8 +108,11 @@ const MemberJoin: React.FC = () => {
 
       // 使用新的 MEMBER_JOIN_TEMPLATE_ID
       await emailjs.send(EMAIL_CONFIG.SERVICE_ID, EMAIL_CONFIG.MEMBER_JOIN_TEMPLATE_ID, templateParams, EMAIL_CONFIG.PUBLIC_KEY);
+      console.log('Confirmation email sent successfully to:', memberData.email);
+      return true;
     } catch (error) {
       console.error('入會確認信發送失敗:', error);
+      return false;
     }
   };
 
@@ -120,7 +126,6 @@ const MemberJoin: React.FC = () => {
       // 1. 準備寫入資料 (寫入 member_applications 表)
       const newApplication = {
         id: crypto.randomUUID(),
-        // member_no: nextNo, // 暫不產生編號，待核准後產生
         status: 'pending', // 狀態為待審核
         created_at: new Date().toISOString(),
         
@@ -150,10 +155,16 @@ const MemberJoin: React.FC = () => {
       if (insertError) throw insertError;
 
       // 3. 發送 Email 通知 (使用新模板)
-      await sendJoinConfirmationEmail(newApplication);
+      const emailSuccess = await sendJoinConfirmationEmail(newApplication);
 
-      // 4. 顯示成功訊息
-      alert(`入會申請表已送出！\n\n系統已發送確認信至您的信箱。\n\n您的申請目前正在審核中，後續將有專人與您聯繫，協助完成繳費與正式入會程序。`);
+      // 4. 顯示成功訊息 (根據 Email 發送結果調整訊息)
+      if (emailSuccess) {
+        alert(`入會申請表已送出！\n\n系統已發送確認信至您的信箱。\n\n您的申請目前正在審核中，後續將有專人與您聯繫，協助完成繳費與正式入會程序。`);
+      } else {
+        // 如果 Email 失敗，特別提示使用者，但不阻擋流程
+        alert(`入會申請表已送出！\n\n(注意：系統嘗試發送確認信失敗，可能是系統繁忙，但不影響您的申請。)\n\n您的申請已成功進入審核流程，後續將有專人與您聯繫。`);
+      }
+      
       navigate('/'); // 導向首頁
 
     } catch (error: any) {
