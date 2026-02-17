@@ -132,7 +132,8 @@ const MemberList: React.FC<MemberListProps> = ({ members }) => {
                       <span className={`px-3 py-1 text-xs font-bold rounded-full border ${style.bg} ${style.text} ${style.border}`}>
                         {member.industry_category}
                       </span>
-                      <span className="font-mono text-xs text-gray-400 font-bold opacity-60">#{member.member_no}</span>
+                      {/* 修正：前台卡片顯示自動補零至 5 碼 */}
+                      <span className="font-mono text-xs text-gray-400 font-bold opacity-60">#{(member.member_no || '').toString().padStart(5, '0')}</span>
                     </div>
                     <h3 className={`text-xl font-bold text-gray-900 mb-1 transition-colors ${style.hoverText}`}>
                       {member.brand_name || member.company || '未填寫品牌'}

@@ -750,7 +750,16 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
   const filtered = members.filter(m => m.name.includes(searchTerm) || m.member_no.includes(searchTerm) || m.phone?.includes(searchTerm));
 
-  const handleEdit = (m: Member) => { setEditingId(m.id); setFormData({...m}); setIsFormOpen(true); };
+  const handleEdit = (m: Member) => { 
+      setEditingId(m.id); 
+      // 編輯時自動補零，確保舊資料格式被修正
+      setFormData({
+          ...m,
+          member_no: (m.member_no || '').toString().padStart(5, '0')
+      }); 
+      setIsFormOpen(true); 
+  };
+
   const handleAdd = () => { 
     setEditingId(null); 
     
@@ -799,7 +808,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
   const handleExport = () => {
     const exportData = members.map(m => ({
-      '會員編號': m.member_no,
+      '會員編號': (m.member_no || '').toString().padStart(5, '0'),
       '姓名': m.name,
       '狀態': (m.status === 'active' && (!m.membership_expiry_date || m.membership_expiry_date >= new Date().toISOString().slice(0, 10))) ? '有效' : '失效',
       '會籍到期日': m.membership_expiry_date,
@@ -939,7 +948,8 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                       
                       return (
                       <tr key={m.id} className="hover:bg-gray-50">
-                         <td className="p-3 font-mono text-gray-500">{m.member_no}</td>
+                         {/* 修正：列表顯示時自動補零至 5 碼 */}
+                         <td className="p-3 font-mono text-gray-500">{(m.member_no || '').toString().padStart(5, '0')}</td>
                          <td className="p-3 font-bold">{m.name}</td>
                          <td className="p-3">
                             <div>{m.brand_name || m.company}</div>
