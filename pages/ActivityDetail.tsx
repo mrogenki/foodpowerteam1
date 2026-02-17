@@ -55,21 +55,28 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       // 1. 更新瀏覽器標題
       document.title = `${activity.title} - 食在力量`;
 
-      // 2. 嘗試更新 Meta 標籤 (這對瀏覽器有效，但 LINE 預覽可能仍會抓到首頁預設值)
-      const updateMeta = (prop: string, content: string) => {
-        let el = document.querySelector(`meta[property="${prop}"]`);
+      // 2. 嘗試更新 Meta 標籤 (支援 og 與 twitter card)
+      const updateMeta = (key: string, value: string, isProperty: boolean = true) => {
+        const selector = isProperty ? `meta[property="${key}"]` : `meta[name="${key}"]`;
+        let el = document.querySelector(selector);
         if (!el) {
            el = document.createElement('meta');
-           el.setAttribute('property', prop);
+           el.setAttribute(isProperty ? 'property' : 'name', key);
            document.head.appendChild(el);
         }
-        el.setAttribute('content', content);
+        el.setAttribute('content', value);
       };
       
+      // Open Graph
       updateMeta('og:title', activity.title);
       updateMeta('og:description', activity.description ? activity.description.substring(0, 100) : '點擊查看活動詳情');
       updateMeta('og:image', activity.picture);
       updateMeta('og:url', window.location.href);
+
+      // Twitter Card
+      updateMeta('twitter:title', activity.title, false);
+      updateMeta('twitter:description', activity.description ? activity.description.substring(0, 100) : '點擊查看活動詳情', false);
+      updateMeta('twitter:image', activity.picture, false);
     }
   }, [activity]);
 
@@ -135,15 +142,20 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
   const handleShare = async () => {
     const shareUrl = window.location.href;
-    const shareText = `【食在力量活動推薦】\n活動：${activity.title}\n日期：${activity.date}\n時間：${activity.time}\n地點：${activity.location}\n\n立即點擊連結報名：\n${shareUrl}`;
+    // 修正：針對手機原生分享，移除 URL 避免重複
+    const shareTextBase = `【食在力量活動推薦】\n活動：${activity.title}\n日期：${activity.date}\n時間：${activity.time}\n地點：${activity.location}\n\n立即點擊連結報名：`;
+    
+    // 電腦版/剪貼簿複製：保留 URL
+    const shareTextClipboard = `${shareTextBase}\n${shareUrl}`;
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: activity.title, text: shareText, url: shareUrl });
+        // 傳遞 title, text (不含URL), url (由系統處理)
+        await navigator.share({ title: activity.title, text: shareTextBase, url: shareUrl });
       } catch (err) { console.log('Share failed', err); }
     } else {
       try {
-        await navigator.clipboard.writeText(shareText);
+        await navigator.clipboard.writeText(shareTextClipboard);
         setShowCopyTooltip(true);
         setTimeout(() => setShowCopyTooltip(false), 2000);
       } catch (err) { alert('無法自動複製，請手動分享連結'); }
