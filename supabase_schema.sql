@@ -1,5 +1,22 @@
 
 -- =========================================================
+-- 資料修復：補上管理員的 Email
+-- =========================================================
+-- 這會將現有的 "總管理員" 記錄更新為您的 Email (mr.ogenki@gmail.com)
+-- 讓系統能正確將登入帳號與權限連結。
+
+UPDATE public.admins 
+SET email = 'mr.ogenki@gmail.com' 
+WHERE role = '總管理員' OR name = '劉盈廷Netix';
+
+-- 如果上面沒有更新到任何資料 (例如資料表是空的)，則插入一筆新的
+INSERT INTO public.admins (id, name, phone, role, email, password)
+SELECT 'super-admin-01', '總管理員', '0900000000', '總管理員', 'mr.ogenki@gmail.com', 'hashed_pw_placeholder'
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.admins WHERE email = 'mr.ogenki@gmail.com'
+);
+
+-- =========================================================
 -- 權限救援：放寬後台讀取權限
 -- =========================================================
 -- 說明：將權限從 "is_admin()" 放寬為 "authenticated" (已登入者)。

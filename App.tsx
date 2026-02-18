@@ -34,6 +34,9 @@ export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
   : null;
 
+// 定義系統擁有者 (白名單)，確保即使資料庫設定錯誤也能登入
+const SYSTEM_OWNERS = ['mr.ogenki@gmail.com'];
+
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
@@ -161,19 +164,55 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. 當 Session 存在時，轉換為 AdminUser 格式
+  // 2. 當 Session 存在時，查詢 admins 表格確認權限
   useEffect(() => {
-    if (session?.user) {
-      setCurrentUser({
-        id: session.user.id,
-        name: session.user.email?.split('@')[0] || 'Admin', // 簡單從 email 取名
-        phone: '', // Auth 不一定有 phone
-        role: UserRole.SUPER_ADMIN, // 預設所有能登入 Auth 的都是管理員
-        password: '' // 不再儲存
-      });
-    } else {
-      setCurrentUser(null);
-    }
+    const fetchAdminRole = async () => {
+      if (session?.user?.email) {
+        try {
+          const { data: adminData, error } = await supabase!
+            .from('admins')
+            .select('*')
+            .ilike('email', session.user.email) // 使用 ilike 忽略大小寫
+            .single();
+
+          if (adminData) {
+            setCurrentUser({
+              id: adminData.id,
+              name: adminData.name,
+              role: adminData.role as UserRole, // 嚴格使用資料庫中的角色
+              phone: adminData.phone,
+              password: ''
+            });
+          } else {
+            // [Rescue Logic] 救援機制：如果資料庫查不到，但 Email 在系統擁有者名單中，強制給予總管理員權限
+            const isSystemOwner = SYSTEM_OWNERS.some(email => 
+              email.toLowerCase() === session.user.email.toLowerCase()
+            );
+
+            if (isSystemOwner) {
+               console.warn('System Owner recognized via whitelist (DB record missing or mismatched)');
+               setCurrentUser({
+                 id: session.user.id,
+                 name: '總管理員 (System)',
+                 role: UserRole.SUPER_ADMIN,
+                 phone: '',
+               });
+            } else {
+               console.warn('User logged in but not found in admins table');
+               // 雖然登入 Supabase Auth，但不在 admins 名單中，視為無權限
+               setCurrentUser(null);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching admin role:', err);
+          setCurrentUser(null);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    };
+
+    fetchAdminRole();
   }, [session]);
 
   const fetchData = async (isInitialLoad = false) => {
