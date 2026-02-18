@@ -1,37 +1,42 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Lock, Smartphone } from 'lucide-react';
-import { AdminUser } from '../types';
-import { INITIAL_ADMINS } from '../constants';
+import { ShieldCheck, Lock, Mail, Loader2 } from 'lucide-react';
+import { supabase } from '../App';
 
-interface LoginPageProps {
-  users: AdminUser[];
-  onLogin: (user: AdminUser) => void;
-}
-
-const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
-  const [phone, setPhone] = useState('');
+const LoginPage: React.FC = () => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     
-    // 優先檢查資料庫中的使用者
-    let foundUser = users.find(u => u.phone === phone && u.password === password);
-    
-    // 備援：如果資料庫中找不到，檢查常數中的初始管理員 (保證絕對能登入)
-    if (!foundUser) {
-      foundUser = INITIAL_ADMINS.find(u => u.phone === phone && u.password === password);
+    if (!supabase) {
+        setError('系統錯誤：無法連接至伺服器');
+        setLoading(false);
+        return;
     }
 
-    if (foundUser) {
-      onLogin(foundUser);
-    } else {
-      setError('帳號或密碼錯誤，請重新輸入');
-      // 兩秒後清除錯誤提示
-      setTimeout(() => setError(''), 3000);
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            throw error;
+        }
+        
+        // 登入成功後，App.tsx 的 onAuthStateChange 會自動捕捉並導航
+    } catch (err: any) {
+        console.error('Login error:', err);
+        setError(err.message === 'Invalid login credentials' ? '帳號或密碼錯誤' : err.message);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -49,16 +54,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
         <div className="bg-white p-10 rounded-[40px] shadow-2xl shadow-gray-200/50 border border-gray-100 animate-in fade-in zoom-in duration-500">
           <form onSubmit={handleLoginSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 px-1 uppercase tracking-widest text-[10px]">手機號碼</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2 px-1 uppercase tracking-widest text-[10px]">Email 帳號</label>
               <div className="relative">
-                <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                 <input 
                   required
-                  type="tel" 
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
+                  type="email" 
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all outline-none text-gray-700 font-medium"
-                  placeholder="09xx-xxx-xxx"
+                  placeholder="admin@example.com"
                 />
               </div>
             </div>
@@ -86,9 +91,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
 
             <button 
               type="submit" 
-              className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-red-700 active:scale-[0.98] transition-all shadow-xl shadow-red-200"
+              disabled={loading}
+              className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-red-700 active:scale-[0.98] transition-all shadow-xl shadow-red-200 flex items-center justify-center gap-2"
             >
-              進入管理後台
+              {loading ? <Loader2 className="animate-spin" /> : '進入管理後台'}
             </button>
           </form>
         </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
 
@@ -92,7 +92,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
             </Link>
             <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
         </>)}
-        {canAccessUsers && (<Link to="/admin/users" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/users') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Shield size={20} /><span>人員權限</span></Link>)}
+        {canAccessUsers && (<Link to="/admin/users" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/users') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Shield size={20} /><span>帳號權限</span></Link>)}
       </nav>
       <div className="p-4 border-t border-gray-800"><button onClick={onLogout} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-red-600/10 hover:text-red-500 transition-colors"><LogOut size={20} /><span>登出</span></button></div>
     </div>
@@ -271,7 +271,8 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ members, activities, memb
   );
 };
 
-// --- 會員申請審核管理元件 (New) ---
+// ... (MemberApplicationManager, ActivityManager, ActivityCheckInManager, MemberManager, CouponManager - No Changes) ...
+// (Re-declaring unchanged components to ensure file completeness for XML replacement)
 const MemberApplicationManager: React.FC<{ 
   applications: MemberApplication[]; 
   onApprove: (app: MemberApplication) => void;
@@ -395,8 +396,7 @@ const MemberApplicationManager: React.FC<{
   );
 };
 
-// ... (ActivityManager, ActivityCheckInManager, MemberManager, UserManager, CouponManager code remains same) ...
-// 為了簡化程式碼長度，這裡使用一個通用的管理元件
+// ActivityManager (Code identical to previous, just need to render it)
 const ActivityManager: React.FC<{
   type: 'general' | 'member';
   activities: (Activity | MemberActivity)[];
@@ -407,7 +407,7 @@ const ActivityManager: React.FC<{
   onUpdateReg: (reg: any) => void;
   onDeleteReg: (id: string | number) => void;
   onUploadImage: (file: File) => Promise<string>;
-  members?: Member[]; // 用於會員活動顯示會員資料
+  members?: Member[];
 }> = ({ type, activities, registrations, onAdd, onUpdate, onDelete, onUpdateReg, onDeleteReg, onUploadImage, members }) => {
   const [view, setView] = useState<'list' | 'edit' | 'registrations'>('list');
   const [editingId, setEditingId] = useState<string | number | null>(null);
@@ -417,7 +417,6 @@ const ActivityManager: React.FC<{
   const currentActivity = activities.find(a => a.id === editingId);
   const currentRegistrations = registrations.filter(r => String(r.activityId) === String(editingId));
   
-  // 計算活動總覽
   const filteredRegs = currentRegistrations.filter((r: any) => {
     const term = regSearch.toLowerCase();
     const name = r.name || r.member_name || '';
@@ -476,29 +475,21 @@ const ActivityManager: React.FC<{
     XLSX.writeFile(wb, `${currentActivity?.title}_報名名單.xlsx`);
   };
   
-  // 處理付款狀態變更 (加入退費邏輯)
   const handlePaymentStatusToggle = (reg: any) => {
-     // 1. 待付款 -> 已付款
      if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) {
         onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID });
         return;
      }
-
-     // 2. 已付款 -> 選項 (退費 或 回復待付款)
      if (reg.payment_status === PaymentStatus.PAID) {
         if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) {
-             // User clicked OK -> Refunded
              onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED });
         } else {
-             // User clicked Cancel -> Check if they want to go back to Pending (Double confirmation)
              if (confirm("是否要將此訂單回復為【待付款】？")) {
                 onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
              }
         }
         return;
      }
-
-     // 3. 已退費 -> 待付款
      if (reg.payment_status === PaymentStatus.REFUNDED) {
         if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) {
            onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
@@ -655,7 +646,7 @@ const ActivityManager: React.FC<{
   );
 };
 
-// ActivityCheckInManager (省略部分重複程式碼，保持原樣)
+// ActivityCheckInManager (No changes, omitted for brevity)
 const ActivityCheckInManager: React.FC<{
   type: 'general' | 'member';
   activities: (Activity | MemberActivity)[];
@@ -667,7 +658,7 @@ const ActivityCheckInManager: React.FC<{
 
   // 1. 活動列表檢視
   if (!selectedActivityId) {
-    // 排序：日期越近越上面，且預設只顯示 'active' 的活動 (或全部，依需求)
+    // 排序：日期越近越上面
     const sortedActivities = [...activities].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
@@ -723,15 +714,11 @@ const ActivityCheckInManager: React.FC<{
            (r.merchant_order_no && r.merchant_order_no.includes(term));
   });
 
-  // 複製一份付款狀態切換邏輯到這裡
   const handlePaymentStatusToggle = (reg: any) => {
-     // 1. 待付款 -> 已付款
      if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) {
         onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID });
         return;
      }
-
-     // 2. 已付款 -> 選項 (退費 或 回復待付款)
      if (reg.payment_status === PaymentStatus.PAID) {
         if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) {
              onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED });
@@ -742,8 +729,6 @@ const ActivityCheckInManager: React.FC<{
         }
         return;
      }
-
-     // 3. 已退費 -> 待付款
      if (reg.payment_status === PaymentStatus.REFUNDED) {
         if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) {
            onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
@@ -840,7 +825,7 @@ const ActivityCheckInManager: React.FC<{
   );
 };
 
-// MemberManager (省略部分重複程式碼，保持原樣)
+// MemberManager (Same as before)
 const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; onUpdate: (m: Member) => void; onDelete: (id: string | number) => void; onImport: (ms: Member[]) => void }> = ({ members, onAdd, onUpdate, onDelete, onImport }) => {
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [formData, setFormData] = useState<any>({});
@@ -867,7 +852,6 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
   const handleEdit = (m: Member) => { 
       setEditingId(m.id); 
-      // 編輯時自動補零，確保舊資料格式被修正
       setFormData({
           ...m,
           member_no: (m.member_no || '').toString().padStart(5, '0')
@@ -877,16 +861,11 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
   const handleAdd = () => { 
     setEditingId(null); 
-    
-    // 自動產生流水號：找出目前最大的數值並 +1
     const maxNo = members.reduce((max, m) => {
         const num = parseInt(m.member_no);
         return !isNaN(num) && num > max ? num : max;
     }, 0);
-    
-    // 修正：使用 padStart 補零至 5 碼 (例如: 271 -> 00271)
     const nextNo = (maxNo + 1).toString().padStart(5, '0');
-
     setFormData({ 
       member_no: nextNo, 
       name: '', 
@@ -1094,40 +1073,60 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   );
 };
 
-// UserManager (省略部分重複程式碼，保持原樣)
+// UserManager (Updated to be Informational Only)
 const UserManager: React.FC<{ users: AdminUser[]; onAdd: (u: AdminUser) => void; onDelete: (id: string) => void }> = ({ users, onAdd, onDelete }) => {
-   const [formData, setFormData] = useState<any>({ role: UserRole.STAFF });
    return (
      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">權限管理</h1>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8">
-           <div>
-              <h3 className="font-bold mb-4 text-lg">新增人員</h3>
-              <form onSubmit={e => { e.preventDefault(); onAdd({...formData, id: Date.now().toString()} as AdminUser); setFormData({role: UserRole.STAFF, name: '', phone: '', password: ''}); }} className="space-y-4">
-                 <input required placeholder="姓名" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 border rounded"/>
-                 <input required placeholder="手機" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2 border rounded"/>
-                 <input required placeholder="密碼" value={formData.password || ''} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full p-2 border rounded"/>
-                 <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full p-2 border rounded">{Object.values(UserRole).map(r => <option key={r} value={r}>{r}</option>)}</select>
-                 <button type="submit" className="w-full bg-red-600 text-white py-2 rounded font-bold">新增</button>
-              </form>
-           </div>
-           <div>
-              <h3 className="font-bold mb-4 text-lg">人員列表</h3>
-              <div className="space-y-2">
-                 {users.map(u => (
-                    <div key={u.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                       <div><p className="font-bold">{u.name} <span className="text-xs text-gray-500 bg-white px-1 rounded border">{u.role}</span></p><p className="text-xs text-gray-400">{u.phone}</p></div>
-                       <button onClick={() => onDelete(u.id)} className="text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
-                    </div>
-                 ))}
+        <h1 className="text-2xl font-bold">帳號權限</h1>
+        
+        {/* 新增提示區塊，取代舊的表單 */}
+        <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-8">
+           <div className="flex items-start gap-3">
+              <div className="bg-blue-100 p-2 rounded-lg text-blue-600 mt-1"><Shield size={24} /></div>
+              <div>
+                 <h3 className="font-bold text-lg text-blue-800 mb-2">如何新增管理員？</h3>
+                 <p className="text-blue-700 text-sm leading-relaxed mb-4">
+                    本系統目前採用 <b>Supabase Authentication</b> 進行最高安全層級的身份驗證。<br/>
+                    若您需要新增其他可登入後台的人員，請依照以下步驟操作：
+                 </p>
+                 <ol className="list-decimal list-inside text-sm text-blue-800 font-medium space-y-2 bg-white/50 p-4 rounded-xl">
+                    <li>前往 <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline hover:text-blue-600 inline-flex items-center gap-1">Supabase Dashboard <ExternalLink size={12}/></a></li>
+                    <li>進入您的專案，點擊左側選單的 <b>Authentication</b></li>
+                    <li>點擊 <b>Add User</b> 按鈕</li>
+                    <li>輸入對方的 Email 並設定密碼 (或發送邀請信)</li>
+                    <li>勾選 <b>Auto Confirm User</b> (若您希望對方能直接登入)</li>
+                 </ol>
               </div>
+           </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-100">
+           <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">內部人員通訊錄 (僅供參考)</h3>
+              <button disabled className="text-xs bg-gray-100 text-gray-400 px-3 py-1 rounded font-bold cursor-not-allowed">如需修改請洽工程師</button>
+           </div>
+           <p className="text-sm text-gray-400 mb-4">
+              下方列表為系統建檔時的預設人員名單，與實際登入權限無直接關聯。
+           </p>
+           <div className="space-y-2">
+              {users.map(u => (
+                 <div key={u.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500"><User size={20}/></div>
+                       <div>
+                          <p className="font-bold text-gray-900">{u.name}</p>
+                          <p className="text-xs text-gray-500">{u.role} • {u.phone}</p>
+                       </div>
+                    </div>
+                 </div>
+              ))}
            </div>
         </div>
      </div>
    );
 };
 
-// CouponManager (省略部分重複程式碼，保持原樣)
+// CouponManager (Same as before)
 const CouponManager: React.FC<{ coupons: Coupon[]; activities: Activity[]; members: Member[]; onGenerate: any }> = ({ coupons, activities, members, onGenerate }) => {
    const [actId, setActId] = useState('');
    const [amount, setAmount] = useState(100);

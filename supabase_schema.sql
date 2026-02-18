@@ -1,170 +1,76 @@
 
--- 啟用 UUID 擴充功能 (可選)
-create extension if not exists "uuid-ossp";
+-- =========================================================
+-- 10. 安全性設定：啟用 RLS 與 Supabase Auth 整合
+-- =========================================================
 
--- 1. 一般活動資料表 (activities)
-create table if not exists public.activities (
-  id text primary key,
-  type text not null,
-  title text not null,
-  date text not null,
-  time text not null,
-  location text not null,
-  price numeric default 0,
-  picture text,
-  description text,
-  status text default 'active',
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+-- 1. 確保所有資料表啟用 RLS
+ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.member_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.member_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.member_applications ENABLE ROW LEVEL SECURITY;
 
--- 2. 一般報名資料表 (registrations)
-create table if not exists public.registrations (
-  id text primary key,
-  "activityId" text not null,
-  name text not null,
-  phone text not null,
-  email text,
-  company text,
-  title text,
-  referrer text,
-  check_in_status boolean default false,
-  paid_amount numeric default 0,
-  coupon_code text,
-  
-  -- 金流欄位
-  payment_status text default 'pending',
-  merchant_order_no text,
-  payment_method text,
-  paid_at timestamp with time zone,
+-- 2. 清除舊的寬鬆策略 (避免重複或衝突)
+DROP POLICY IF EXISTS "Enable access for all users" ON public.activities;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.registrations;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.member_activities;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.member_registrations;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.admins;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.members;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.attendance;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.coupons;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.member_applications;
 
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+-- 3. 建立嚴格的新策略 (Policies)
 
--- 3. 會員活動資料表 (member_activities) - NEW
-create table if not exists public.member_activities (
-  id text primary key,
-  type text not null,
-  title text not null,
-  date text not null,
-  time text not null,
-  location text not null,
-  price numeric default 0,
-  picture text,
-  description text,
-  status text default 'active',
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+-- 【Activities / Member Activities】
+-- 公開: 可讀取 (SELECT)
+-- 管理員: 可完全控制 (ALL)
+CREATE POLICY "Public Read Activities" ON public.activities FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admin Manage Activities" ON public.activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 4. 會員報名資料表 (member_registrations) - NEW
-create table if not exists public.member_registrations (
-  id text primary key,
-  "activityId" text not null, -- 對應 member_activities
-  "memberId" text not null,   -- 對應 members
-  member_name text,           -- 冗餘欄位方便查詢
-  member_no text,             -- 冗餘欄位方便查詢
-  check_in_status boolean default false,
-  paid_amount numeric default 0,
-  coupon_code text,
+CREATE POLICY "Public Read Member Activities" ON public.member_activities FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admin Manage Member Activities" ON public.member_activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-  -- 金流欄位
-  payment_status text default 'pending',
-  merchant_order_no text,
-  payment_method text,
-  paid_at timestamp with time zone,
+-- 【Members】
+-- 公開: 可讀取 (SELECT) - 用於會員列表頁面與報名搜尋
+-- 管理員: 可完全控制 (ALL)
+CREATE POLICY "Public Read Members" ON public.members FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admin Manage Members" ON public.members FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+-- 【Registrations / Member Registrations】
+-- 公開: 只能新增 (INSERT) - 用於報名
+-- 管理員: 可完全控制 (ALL)
+-- 注意：這意味著未登入的使用者將無法讀取報名列表，這保護了報名者的個資。
+-- 前端的「已有 N 人報名」功能在未登入時可能會顯示 0，這是正常的安全權衡。
+CREATE POLICY "Public Insert Registrations" ON public.registrations FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Admin Manage Registrations" ON public.registrations FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 5. 建立管理員資料表 (admins)
-create table if not exists public.admins (
-  id text primary key,
-  name text not null,
-  phone text not null unique,
-  password text not null,
-  role text not null,
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+CREATE POLICY "Public Insert Member Registrations" ON public.member_registrations FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Admin Manage Member Registrations" ON public.member_registrations FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 6. 建立會員資料表 (members)
-create table if not exists public.members (
-  id text primary key,
-  member_no text,
-  name text not null,
-  status text default 'active',
-  
-  membership_expiry_date text,
-  notes text,
-  payment_records text,
-  
-  id_number text,
-  birthday text,
-  phone text,
-  email text,
-  address text,
-  home_phone text,
-  referrer text,
-  
-  industry_category text,
-  brand_name text,
-  company_title text,
-  tax_id text,
-  job_title text,
-  main_service text,
-  website text,
-  
-  intro text,
-  company text,
-  industry_chain text,
-  join_date text,
-  quit_date text,
-  
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+-- 【Coupons】
+-- 公開: 可讀取 (驗證折扣碼)
+-- 公開: 可更新 (標記為已使用) - 為了讓前台能核銷折扣碼
+CREATE POLICY "Public Read Coupons" ON public.coupons FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Update Coupons" ON public.coupons FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin Manage Coupons" ON public.coupons FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 7. 建立出席紀錄資料表 (attendance)
-create table if not exists public.attendance (
-  id text primary key default uuid_generate_v4()::text,
-  activity_id text not null,
-  member_id text not null,
-  status text not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()),
-  unique(activity_id, member_id)
-);
+-- 【Member Applications】
+-- 公開: 只能新增 (INSERT)
+-- 管理員: 可完全控制 (ALL)
+CREATE POLICY "Public Insert Applications" ON public.member_applications FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Admin Manage Applications" ON public.member_applications FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 8. 建立折扣券資料表 (coupons)
-create table if not exists public.coupons (
-  id text primary key default uuid_generate_v4()::text,
-  code text not null unique,
-  activity_id text not null,
-  member_id text,
-  discount_amount numeric not null default 0,
-  is_used boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  used_at timestamp with time zone
-);
+-- 【Admins】
+-- 此表已不再用於驗證，僅供紀錄。
+-- 限制僅管理員可讀寫。
+CREATE POLICY "Admin Manage Admins Table" ON public.admins FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 9. 新增：會員申請資料表 (member_applications)
-create table if not exists public.member_applications (
-  id text primary key,
-  name text not null,
-  
-  id_number text,
-  birthday text,
-  phone text,
-  email text,
-  address text,
-  home_phone text,
-  referrer text,
-  
-  industry_category text,
-  brand_name text,
-  company_title text,
-  tax_id text,
-  job_title text,
-  main_service text,
-  website text,
-  notes text,
-  
-  status text default 'pending', -- pending (待審核), approved (已核准), rejected (已婉拒)
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+-- 【Attendance】
+-- 僅管理員可操作
+CREATE POLICY "Admin Manage Attendance" ON public.attendance FOR ALL TO authenticated USING (true) WITH CHECK (true);

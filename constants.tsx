@@ -38,12 +38,12 @@ export const INITIAL_ACTIVITIES: Activity[] = [
   }
 ];
 
+// 已移除密碼欄位，此列表僅供系統初始化參考，不具登入功能
 export const INITIAL_ADMINS: AdminUser[] = [
   {
     id: 'super-admin-01',
-    name: '總管理員',
-    phone: '0925981577',
-    password: '981577',
+    name: '初始管理員',
+    phone: '0900000000',
     role: UserRole.SUPER_ADMIN
   }
 ];
