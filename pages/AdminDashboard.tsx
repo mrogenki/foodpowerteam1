@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import emailjs from '@emailjs/browser';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
@@ -525,11 +525,22 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   
+  // Payment Records State
+  interface PaymentRecord {
+    id: number;
+    date: string;
+    amount: number;
+    note: string;
+  }
+  const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>([]);
+  const [newPayment, setNewPayment] = useState({ date: new Date().toISOString().slice(0, 10), amount: 5000, note: '' });
+
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [activeRenewalTab, setActiveRenewalTab] = useState<'expiring' | 'expired'>('expiring');
   
   const [sendingRenewal, setSendingRenewal] = useState<string[]>([]);
   
+  // LocalStorage logic for sent status
   const [renewalSent, setRenewalSent] = useState<string[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -579,8 +590,55 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
   const filtered = members.filter(m => m.name.includes(searchTerm) || m.member_no.includes(searchTerm) || m.phone?.includes(searchTerm));
 
-  const handleEdit = (m: Member) => { setEditingId(m.id); setFormData({ ...m, member_no: (m.member_no || '').toString().padStart(5, '0') }); setIsFormOpen(true); };
-  const handleAdd = () => { setEditingId(null); const maxNo = members.reduce((max, m) => { const num = parseInt(m.member_no); return !isNaN(num) && num > max ? num : max; }, 0); const nextNo = (maxNo + 1).toString().padStart(5, '0'); setFormData({ member_no: nextNo, name: '', status: 'active', industry_category: '其他' }); setIsFormOpen(true); };
+  const handleEdit = (m: Member) => { 
+      setEditingId(m.id); 
+      setFormData({ ...m, member_no: (m.member_no || '').toString().padStart(5, '0') });
+      
+      // Parse Payment Records
+      try {
+          const records = m.payment_records ? JSON.parse(m.payment_records) : [];
+          setPaymentRecords(records);
+      } catch (e) {
+          setPaymentRecords([]);
+      }
+      
+      setIsFormOpen(true); 
+  };
+
+  const handleAdd = () => { 
+      setEditingId(null); 
+      const maxNo = members.reduce((max, m) => { const num = parseInt(m.member_no); return !isNaN(num) && num > max ? num : max; }, 0); 
+      const nextNo = (maxNo + 1).toString().padStart(5, '0'); 
+      setFormData({ member_no: nextNo, name: '', status: 'active', industry_category: '其他' }); 
+      setPaymentRecords([]);
+      setIsFormOpen(true); 
+  };
+
+  const handleAddPaymentRecord = () => {
+      const record: PaymentRecord = {
+          id: Date.now(),
+          date: newPayment.date,
+          amount: Number(newPayment.amount),
+          note: newPayment.note
+      };
+      const updatedRecords = [...paymentRecords, record];
+      setPaymentRecords(updatedRecords);
+      // Automatically update formData
+      setFormData({ ...formData, payment_records: JSON.stringify(updatedRecords) });
+      // Reset input
+      setNewPayment({ date: new Date().toISOString().slice(0, 10), amount: 5000, note: '' });
+  };
+
+  const handleDeletePaymentRecord = (id: number) => {
+      const updatedRecords = paymentRecords.filter(r => r.id !== id);
+      setPaymentRecords(updatedRecords);
+      setFormData({ ...formData, payment_records: JSON.stringify(updatedRecords) });
+  };
+
+  const totalPaymentAmount = useMemo(() => {
+      return paymentRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
+  }, [paymentRecords]);
+
   const handleSave = (e: React.FormEvent) => { e.preventDefault(); if (editingId) onUpdate(formData); else onAdd(formData); setIsFormOpen(false); };
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target?.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws) as any[]; const newMembers = data.map((row: any) => ({ id: crypto.randomUUID(), member_no: String(row['會員編號'] || ''), name: row['姓名'], industry_category: row['產業分類'] || '其他', brand_name: row['品牌名稱'] || row['公司名稱'], phone: String(row['手機'] || ''), status: 'active' as const })); onImport(newMembers); }; reader.readAsBinaryString(file); };
   const handleExport = () => { const exportData = members.map(m => ({ '會員編號': (m.member_no || '').toString().padStart(5, '0'), '姓名': m.name, '狀態': (m.status === 'active' && (!m.membership_expiry_date || m.membership_expiry_date >= new Date().toISOString().slice(0, 10))) ? '有效' : '失效', '會籍到期日': m.membership_expiry_date, '手機': m.phone, '信箱': m.email, '產業分類': m.industry_category, '品牌名稱': m.brand_name, '公司抬頭': m.company_title, '統一編號': m.tax_id, '職稱': m.job_title, '主要服務': m.main_service, '公司網站': m.website, '通訊地址': m.address, '備註': m.notes })); const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "會員資料"); XLSX.writeFile(wb, `會員名單_${new Date().toISOString().split('T')[0]}.xlsx`); };
@@ -802,7 +860,119 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
          </div>
        )}
 
-       {isFormOpen && (<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-3xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto"><h2 className="text-2xl font-bold mb-6">{editingId ? '編輯會員' : '新增會員'}</h2><form onSubmit={handleSave} className="space-y-6"><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">基本資料</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">會員編號 (自動產生)</label><input type="text" value={formData.member_no} readOnly className="w-full p-2 border rounded outline-none bg-gray-100 text-gray-500 cursor-not-allowed"/></div><div><label className="block text-sm font-bold mb-1">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">身分證字號</label><input type="text" value={formData.id_number || ''} onChange={e => setFormData({...formData, id_number: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">生日</label><input type="date" value={formData.birthday || ''} onChange={e => setFormData({...formData, birthday: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">引薦人</label><input type="text" value={formData.referrer || ''} onChange={e => setFormData({...formData, referrer: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div></div></div><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">聯絡方式</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">手機</label><input type="text" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">信箱</label><input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">室內電話</label><input type="text" value={formData.home_phone || ''} onChange={e => setFormData({...formData, home_phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div className="md:col-span-2"><label className="block text-sm font-bold mb-1">通訊地址</label><input type="text" value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div></div></div><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">事業資料</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">產業分類</label><select value={formData.industry_category} onChange={e => setFormData({...formData, industry_category: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500">{IndustryCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="block text-sm font-bold mb-1">品牌名稱</label><input type="text" value={formData.brand_name || ''} onChange={e => setFormData({...formData, brand_name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">公司抬頭</label><input type="text" value={formData.company_title || ''} onChange={e => setFormData({...formData, company_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">統一編號</label><input type="text" value={formData.tax_id || ''} onChange={e => setFormData({...formData, tax_id: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">職稱</label><input type="text" value={formData.job_title || ''} onChange={e => setFormData({...formData, job_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">公司網站</label><input type="text" value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div className="md:col-span-2"><label className="block text-sm font-bold mb-1">主要服務/產品</label><textarea rows={3} value={formData.main_service || ''} onChange={e => setFormData({...formData, main_service: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div></div></div><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">會籍資料</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">會籍到期日</label><input type="date" value={formData.membership_expiry_date || ''} onChange={e => setFormData({...formData, membership_expiry_date: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">狀態</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"><option value="active">有效</option><option value="inactive">失效</option></select></div><div className="md:col-span-2"><label className="block text-sm font-bold mb-1">備註</label><textarea rows={2} value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div></div></div><div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white pb-2"><button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-gray-100 rounded-lg text-gray-600 font-bold hover:bg-gray-200">取消</button><button type="submit" className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg shadow-red-200">儲存資料</button></div></form></div></div>)}
+       {isFormOpen && (
+       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-3xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
+               <h2 className="text-2xl font-bold mb-6">{editingId ? '編輯會員' : '新增會員'}</h2>
+               <form onSubmit={handleSave} className="space-y-6">
+                   <div>
+                       <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">基本資料</h3>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div><label className="block text-sm font-bold mb-1">會員編號 (自動產生)</label><input type="text" value={formData.member_no} readOnly className="w-full p-2 border rounded outline-none bg-gray-100 text-gray-500 cursor-not-allowed"/></div>
+                           <div><label className="block text-sm font-bold mb-1">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">身分證字號</label><input type="text" value={formData.id_number || ''} onChange={e => setFormData({...formData, id_number: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">生日</label><input type="date" value={formData.birthday || ''} onChange={e => setFormData({...formData, birthday: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">引薦人</label><input type="text" value={formData.referrer || ''} onChange={e => setFormData({...formData, referrer: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                       </div>
+                   </div>
+                   
+                   <div>
+                       <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">聯絡方式</h3>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div><label className="block text-sm font-bold mb-1">手機</label><input type="text" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">信箱</label><input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">室內電話</label><input type="text" value={formData.home_phone || ''} onChange={e => setFormData({...formData, home_phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">通訊地址</label><input type="text" value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                       </div>
+                   </div>
+                   
+                   <div>
+                       <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">事業資料</h3>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div><label className="block text-sm font-bold mb-1">產業分類</label><select value={formData.industry_category} onChange={e => setFormData({...formData, industry_category: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500">{IndustryCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                           <div><label className="block text-sm font-bold mb-1">品牌名稱</label><input type="text" value={formData.brand_name || ''} onChange={e => setFormData({...formData, brand_name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">公司抬頭</label><input type="text" value={formData.company_title || ''} onChange={e => setFormData({...formData, company_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">統一編號</label><input type="text" value={formData.tax_id || ''} onChange={e => setFormData({...formData, tax_id: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">職稱</label><input type="text" value={formData.job_title || ''} onChange={e => setFormData({...formData, job_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">公司網站</label><input type="text" value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">主要服務/產品</label><textarea rows={3} value={formData.main_service || ''} onChange={e => setFormData({...formData, main_service: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div>
+                       </div>
+                   </div>
+                   
+                   <div>
+                       <h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">會籍資料</h3>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div><label className="block text-sm font-bold mb-1">會籍到期日</label><input type="date" value={formData.membership_expiry_date || ''} onChange={e => setFormData({...formData, membership_expiry_date: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div>
+                           <div><label className="block text-sm font-bold mb-1">狀態</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"><option value="active">有效</option><option value="inactive">失效</option></select></div>
+                           <div className="md:col-span-2"><label className="block text-sm font-bold mb-1">備註</label><textarea rows={2} value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div>
+                       </div>
+                   </div>
+
+                   {/* 會籍繳費紀錄區塊 */}
+                   <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                       <div className="flex items-center justify-between mb-3 border-b border-blue-100 pb-2">
+                           <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2"><History size={16} /> 會籍繳費紀錄</h3>
+                           <span className="text-xs font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded">總金額: NT$ {totalPaymentAmount.toLocaleString()}</span>
+                       </div>
+                       
+                       {/* 列表 */}
+                       <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
+                           {paymentRecords.length > 0 ? (
+                               <table className="w-full text-xs text-left">
+                                   <thead className="text-gray-500 bg-blue-50/50 sticky top-0">
+                                       <tr>
+                                           <th className="p-2">繳費日期</th>
+                                           <th className="p-2">金額</th>
+                                           <th className="p-2">備註</th>
+                                           <th className="p-2 text-right">操作</th>
+                                       </tr>
+                                   </thead>
+                                   <tbody>
+                                       {paymentRecords.map((record) => (
+                                           <tr key={record.id} className="border-b border-blue-50 last:border-0 hover:bg-blue-50/80">
+                                               <td className="p-2">{record.date}</td>
+                                               <td className="p-2 font-mono">NT$ {record.amount}</td>
+                                               <td className="p-2 text-gray-500">{record.note || '-'}</td>
+                                               <td className="p-2 text-right">
+                                                   <button type="button" onClick={() => handleDeletePaymentRecord(record.id)} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                                               </td>
+                                           </tr>
+                                       ))}
+                                   </tbody>
+                               </table>
+                           ) : (
+                               <p className="text-center text-gray-400 text-xs py-4">目前尚無繳費紀錄</p>
+                           )}
+                       </div>
+
+                       {/* 新增表單 */}
+                       <div className="bg-white p-3 rounded-lg border border-blue-100 flex flex-wrap gap-2 items-end">
+                           <div className="flex-1 min-w-[120px]">
+                               <label className="block text-[10px] font-bold text-gray-500 mb-1">日期</label>
+                               <input type="date" value={newPayment.date} onChange={e => setNewPayment({...newPayment, date: e.target.value})} className="w-full p-1.5 border rounded text-xs"/>
+                           </div>
+                           <div className="w-24">
+                               <label className="block text-[10px] font-bold text-gray-500 mb-1">金額</label>
+                               <input type="number" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: Number(e.target.value)})} className="w-full p-1.5 border rounded text-xs"/>
+                           </div>
+                           <div className="flex-[2] min-w-[150px]">
+                               <label className="block text-[10px] font-bold text-gray-500 mb-1">備註 (選填)</label>
+                               <input type="text" value={newPayment.note} onChange={e => setNewPayment({...newPayment, note: e.target.value})} className="w-full p-1.5 border rounded text-xs" placeholder="例：現金/匯款"/>
+                           </div>
+                           <button type="button" onClick={handleAddPaymentRecord} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 flex items-center gap-1 h-[30px] mb-[1px]">
+                               <Plus size={14} /> 新增
+                           </button>
+                       </div>
+                   </div>
+
+                   <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white pb-2">
+                       <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-gray-100 rounded-lg text-gray-600 font-bold hover:bg-gray-200">取消</button>
+                       <button type="submit" className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg shadow-red-200">儲存資料</button>
+                   </div>
+               </form>
+           </div>
+       </div>
+       )}
        <div className="bg-white p-6 rounded-2xl border border-gray-100"><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋會員 (姓名、編號、電話)..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"/></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse text-sm"><thead><tr className="bg-gray-50 text-gray-500"><th className="p-3">編號</th><th className="p-3">姓名</th><th className="p-3">品牌/職稱</th><th className="p-3">效期</th><th className="p-3">狀態</th><th className="p-3">操作</th></tr></thead><tbody className="divide-y">{filtered.map(m => { const isExpired = m.membership_expiry_date && m.membership_expiry_date < new Date().toISOString().slice(0, 10); const displayStatus = (m.status === 'active' && !isExpired) ? 'active' : 'inactive'; return (<tr key={m.id} className="hover:bg-gray-50"><td className="p-3 font-mono text-gray-500">{(m.member_no || '').toString().padStart(5, '0')}</td><td className="p-3 font-bold">{m.name}</td><td className="p-3"><div>{m.brand_name || m.company}</div><div className="text-xs text-gray-400">{m.job_title}</div></td><td className="p-3">{m.membership_expiry_date || '-'}</td><td className="p-3">{displayStatus === 'active' ? (<span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">有效</span>) : (<span className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-xs font-bold">失效</span>)}</td><td className="p-3 flex gap-2"><button onClick={() => handleEdit(m)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Edit size={16}/></button><button onClick={() => {if(confirm('確定刪除此會員？')) onDelete(m.id)}} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></td></tr>); })} {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-400">無相符資料</td></tr>}</tbody></table></div></div>
     </div>
   );
