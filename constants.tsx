@@ -8,6 +8,7 @@ export const EMAIL_CONFIG = {
   SERVICE_ID: 'service_z0iyas9',
   TEMPLATE_ID: 'template_ih0plai', // 一般活動報名用的模板
   MEMBER_JOIN_TEMPLATE_ID: 'template_gu7mwvm', // 新增：會員申請專用的模板
+  RENEWAL_TEMPLATE_ID: 'template_3bgk8ts', // 新增：會員續約通知模板 (45天前)
   PUBLIC_KEY: 'ajJknYqtnk3p1_WmI'
 };
 

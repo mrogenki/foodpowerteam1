@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
+import emailjs from '@emailjs/browser';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
+import { EMAIL_CONFIG } from '../constants';
 
 interface AdminDashboardProps {
   currentUser: AdminUser;
@@ -284,12 +286,8 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
   );
 };
 
-// ... (MemberApplicationManager, ActivityManager, ActivityCheckInManager, MemberManager, CouponManager, UserManager code remains identical, omitted for brevity but assumed present) ...
-// 為了簡化 XML，這裡只展示 AdminDashboard 主入口的修改。
-// 實際專案中，上面那些 Component 應該要保持原樣或從外部引入。
-// 但為了確保 XML 替換完整性，我必須將它們包含進來。
+// ... (MemberApplicationManager, ActivityManager, ActivityCheckInManager code remains identical) ...
 
-// (這裡將原本的各個 Manager 元件全部貼回，以確保檔案完整性)
 const MemberApplicationManager: React.FC<{ 
   applications: MemberApplication[]; 
   onApprove: (app: MemberApplication) => void;
@@ -553,6 +551,38 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   const [formData, setFormData] = useState<any>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  // Update state for modal
+  const [showRenewalModal, setShowRenewalModal] = useState(false);
+  const [activeRenewalTab, setActiveRenewalTab] = useState<'expiring' | 'expired'>('expiring');
+  
+  const [sendingRenewal, setSendingRenewal] = useState<string[]>([]);
+  const [renewalSent, setRenewalSent] = useState<string[]>([]); 
+
+  // expiringMembers memo
+  const expiringMembers = useMemo(() => {
+     return members.filter(m => {
+        if (!m.membership_expiry_date) return false;
+        if (m.status !== 'active') return false; // Expiring must be active currently
+        
+        const today = new Date();
+        const expiry = new Date(m.membership_expiry_date);
+        const diffTime = expiry.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        return diffDays >= 40 && diffDays <= 50;
+     }).sort((a, b) => (a.membership_expiry_date || '').localeCompare(b.membership_expiry_date || ''));
+  }, [members]);
+
+  // expiredMembers memo
+  const expiredMembers = useMemo(() => {
+     const today = new Date().toISOString().slice(0, 10);
+     return members.filter(m => {
+        if (!m.membership_expiry_date) return false;
+        // Expired means date is strictly less than today
+        return m.membership_expiry_date < today;
+     }).sort((a, b) => (b.membership_expiry_date || '').localeCompare(a.membership_expiry_date || '')); // Most recent expiry first
+  }, [members]);
 
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -573,10 +603,211 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target?.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws) as any[]; const newMembers = data.map((row: any) => ({ id: crypto.randomUUID(), member_no: String(row['會員編號'] || ''), name: row['姓名'], industry_category: row['產業分類'] || '其他', brand_name: row['品牌名稱'] || row['公司名稱'], phone: String(row['手機'] || ''), status: 'active' as const })); onImport(newMembers); }; reader.readAsBinaryString(file); };
   const handleExport = () => { const exportData = members.map(m => ({ '會員編號': (m.member_no || '').toString().padStart(5, '0'), '姓名': m.name, '狀態': (m.status === 'active' && (!m.membership_expiry_date || m.membership_expiry_date >= new Date().toISOString().slice(0, 10))) ? '有效' : '失效', '會籍到期日': m.membership_expiry_date, '手機': m.phone, '信箱': m.email, '產業分類': m.industry_category, '品牌名稱': m.brand_name, '公司抬頭': m.company_title, '統一編號': m.tax_id, '職稱': m.job_title, '主要服務': m.main_service, '公司網站': m.website, '通訊地址': m.address, '備註': m.notes })); const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "會員資料"); XLSX.writeFile(wb, `會員名單_${new Date().toISOString().split('T')[0]}.xlsx`); };
 
+  const handleSendRenewalNotice = async (member: Member, type: 'renewal' | 'wakeup') => {
+    if (!member.email) {
+      alert(`會員 ${member.name} 未填寫 Email，無法發送`);
+      return;
+    }
+    if (!EMAIL_CONFIG.RENEWAL_TEMPLATE_ID) {
+        alert('尚未設定通知信 Template ID');
+        return;
+    }
+    
+    setSendingRenewal(prev => [...prev, String(member.id)]);
+    
+    try {
+        await emailjs.send(
+            EMAIL_CONFIG.SERVICE_ID,
+            EMAIL_CONFIG.RENEWAL_TEMPLATE_ID,
+            {
+                to_name: member.name,
+                to_email: member.email,
+                expiry_date: member.membership_expiry_date,
+                phone: member.phone,
+                notice_type: type === 'renewal' ? '續約通知' : '喚醒通知',
+            },
+            EMAIL_CONFIG.PUBLIC_KEY
+        );
+        setRenewalSent(prev => [...prev, String(member.id)]);
+    } catch (error) {
+        console.error('Email Error:', error);
+        alert(`發送給 ${member.name} 失敗，請稍後再試。`);
+    } finally {
+        setSendingRenewal(prev => prev.filter(id => id !== String(member.id)));
+    }
+  };
+
   return (
     <div className="space-y-6">
-       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">會員資料庫</h1><div className="flex gap-3"><button onClick={handleExport} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-200"><FileDown size={18} /> 匯出 Excel</button><label className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 cursor-pointer"><FileUp size={18} /> 匯入 CSV<input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileUpload}/></label><button onClick={handleAdd} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2"><Plus size={18} /> 新增會員</button></div></div>
+       <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">會員資料庫</h1>
+          <div className="flex gap-3">
+             <button 
+               onClick={() => setShowRenewalModal(true)}
+               className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg font-bold hover:bg-yellow-200 flex items-center gap-2 relative"
+             >
+                <BellRing size={18} /> 會員狀態通知
+                {expiringMembers.length > 0 && <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full absolute -top-2 -right-2 border-2 border-white">{expiringMembers.length}</span>}
+             </button>
+             <button onClick={handleExport} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-200"><FileDown size={18} /> 匯出 Excel</button>
+             <label className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 cursor-pointer"><FileUp size={18} /> 匯入 CSV<input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileUpload}/></label>
+             <button onClick={handleAdd} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2"><Plus size={18} /> 新增會員</button>
+          </div>
+       </div>
+
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">名單總數</p><p className="text-3xl font-bold text-gray-900">{stats.total}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-gray-50 text-gray-600 rounded-xl flex items-center justify-center"><Users size={24}/></div></div><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">有效會員</p><p className="text-3xl font-bold text-gray-900">{stats.active}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center"><CheckCircle size={24}/></div></div><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">失效會員</p><p className="text-3xl font-bold text-gray-900">{stats.inactive}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-xl flex items-center justify-center"><XCircle size={24}/></div></div></div>
+       
+       {/* 續約通知 Modal */}
+       {showRenewalModal && (
+         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-3xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto flex flex-col">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 className="text-2xl font-bold flex items-center gap-2"><BellRing className="text-yellow-500" /> 會員會籍狀態通知</h2>
+                        <p className="text-sm text-gray-500 mt-1">請選擇要執行的通知類型</p>
+                    </div>
+                    <button onClick={() => setShowRenewalModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} /></button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-6 border-b border-gray-100 mb-6">
+                    <button 
+                        onClick={() => setActiveRenewalTab('expiring')}
+                        className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeRenewalTab === 'expiring' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        即將到期 (45天)
+                        <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[10px]">{expiringMembers.length}</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveRenewalTab('expired')}
+                        className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeRenewalTab === 'expired' ? 'border-gray-800 text-gray-800' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        已過期 (喚醒)
+                        <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full text-[10px]">{expiredMembers.length}</span>
+                    </button>
+                </div>
+                
+                {/* Content based on Tab */}
+                {activeRenewalTab === 'expiring' ? (
+                    <>
+                        <div className="bg-yellow-50 rounded-xl p-4 mb-6 text-sm text-yellow-800 border border-yellow-100">
+                            <p className="font-bold mb-1 flex items-center gap-2"><AlertCircle size={14}/> 說明：</p>
+                            <p>列表顯示即將在 40~50 天內到期的有效會員。請發送續約通知提醒繳費。</p>
+                        </div>
+                        <div className="overflow-hidden border border-gray-200 rounded-xl">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600 font-bold">
+                                <tr>
+                                    <th className="p-3">會員姓名</th>
+                                    <th className="p-3">到期日</th>
+                                    <th className="p-3">剩餘天數</th>
+                                    <th className="p-3">Email</th>
+                                    <th className="p-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {expiringMembers.map(m => {
+                                    const daysLeft = Math.ceil((new Date(m.membership_expiry_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                    const isTarget = daysLeft === 45;
+                                    const isSent = renewalSent.includes(String(m.id));
+                                    const isSending = sendingRenewal.includes(String(m.id));
+
+                                    return (
+                                        <tr key={m.id} className={`hover:bg-gray-50 ${isTarget ? 'bg-yellow-50/50' : ''}`}>
+                                            <td className="p-3 font-bold">{m.name}</td>
+                                            <td className="p-3 font-mono">{m.membership_expiry_date}</td>
+                                            <td className="p-3">
+                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${isTarget ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-600'}`}>
+                                                    {daysLeft} 天
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-gray-500 text-xs">{m.email || <span className="text-red-400">未填寫</span>}</td>
+                                            <td className="p-3 text-right">
+                                                {isSent ? (
+                                                    <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => handleSendRenewalNotice(m, 'renewal')} 
+                                                        disabled={isSending || !m.email}
+                                                        className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 disabled:opacity-50 flex items-center gap-1 ml-auto"
+                                                    >
+                                                        {isSending ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />} 
+                                                        發送通知
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {expiringMembers.length === 0 && (
+                                    <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有符合 40~50 天內到期的會員</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm text-gray-600 border border-gray-200">
+                            <p className="font-bold mb-1 flex items-center gap-2"><RefreshCcw size={14}/> 說明：</p>
+                            <p>列表顯示會籍已過期的會員。您可以發送喚醒通知，邀請他們重新加入。</p>
+                        </div>
+                        <div className="overflow-hidden border border-gray-200 rounded-xl">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600 font-bold">
+                                <tr>
+                                    <th className="p-3">會員姓名</th>
+                                    <th className="p-3">到期日</th>
+                                    <th className="p-3">過期天數</th>
+                                    <th className="p-3">Email</th>
+                                    <th className="p-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {expiredMembers.map(m => {
+                                    const daysOverdue = Math.abs(Math.ceil((new Date(m.membership_expiry_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
+                                    const isSent = renewalSent.includes(String(m.id));
+                                    const isSending = sendingRenewal.includes(String(m.id));
+
+                                    return (
+                                        <tr key={m.id} className="hover:bg-gray-50">
+                                            <td className="p-3 font-bold">{m.name}</td>
+                                            <td className="p-3 font-mono text-red-500">{m.membership_expiry_date}</td>
+                                            <td className="p-3">
+                                                <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs font-bold">
+                                                    已過期 {daysOverdue} 天
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-gray-500 text-xs">{m.email || <span className="text-red-400">未填寫</span>}</td>
+                                            <td className="p-3 text-right">
+                                                {isSent ? (
+                                                    <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => handleSendRenewalNotice(m, 'wakeup')} 
+                                                        disabled={isSending || !m.email}
+                                                        className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-900 disabled:opacity-50 flex items-center gap-1 ml-auto"
+                                                    >
+                                                        {isSending ? <Loader2 className="animate-spin" size={14} /> : <BellRing size={14} />} 
+                                                        發送喚醒通知
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {expiredMembers.length === 0 && (
+                                    <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有已過期的會員</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                        </div>
+                    </>
+                )}
+            </div>
+         </div>
+       )}
+
        {isFormOpen && (<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-3xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto"><h2 className="text-2xl font-bold mb-6">{editingId ? '編輯會員' : '新增會員'}</h2><form onSubmit={handleSave} className="space-y-6"><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">基本資料</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">會員編號 (自動產生)</label><input type="text" value={formData.member_no} readOnly className="w-full p-2 border rounded outline-none bg-gray-100 text-gray-500 cursor-not-allowed"/></div><div><label className="block text-sm font-bold mb-1">姓名</label><input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">身分證字號</label><input type="text" value={formData.id_number || ''} onChange={e => setFormData({...formData, id_number: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">生日</label><input type="date" value={formData.birthday || ''} onChange={e => setFormData({...formData, birthday: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">引薦人</label><input type="text" value={formData.referrer || ''} onChange={e => setFormData({...formData, referrer: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div></div></div><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">聯絡方式</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">手機</label><input type="text" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">信箱</label><input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">室內電話</label><input type="text" value={formData.home_phone || ''} onChange={e => setFormData({...formData, home_phone: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div className="md:col-span-2"><label className="block text-sm font-bold mb-1">通訊地址</label><input type="text" value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div></div></div><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">事業資料</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">產業分類</label><select value={formData.industry_category} onChange={e => setFormData({...formData, industry_category: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500">{IndustryCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="block text-sm font-bold mb-1">品牌名稱</label><input type="text" value={formData.brand_name || ''} onChange={e => setFormData({...formData, brand_name: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">公司抬頭</label><input type="text" value={formData.company_title || ''} onChange={e => setFormData({...formData, company_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">統一編號</label><input type="text" value={formData.tax_id || ''} onChange={e => setFormData({...formData, tax_id: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">職稱</label><input type="text" value={formData.job_title || ''} onChange={e => setFormData({...formData, job_title: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">公司網站</label><input type="text" value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div className="md:col-span-2"><label className="block text-sm font-bold mb-1">主要服務/產品</label><textarea rows={3} value={formData.main_service || ''} onChange={e => setFormData({...formData, main_service: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div></div></div><div><h3 className="text-sm font-bold text-gray-500 mb-3 border-b pb-1">會籍資料</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">會籍到期日</label><input type="date" value={formData.membership_expiry_date || ''} onChange={e => setFormData({...formData, membership_expiry_date: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"/></div><div><label className="block text-sm font-bold mb-1">狀態</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"><option value="active">有效</option><option value="inactive">失效</option></select></div><div className="md:col-span-2"><label className="block text-sm font-bold mb-1">備註</label><textarea rows={2} value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></textarea></div></div></div><div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white pb-2"><button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-gray-100 rounded-lg text-gray-600 font-bold hover:bg-gray-200">取消</button><button type="submit" className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg shadow-red-200">儲存資料</button></div></form></div></div>)}
        <div className="bg-white p-6 rounded-2xl border border-gray-100"><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋會員 (姓名、編號、電話)..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"/></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse text-sm"><thead><tr className="bg-gray-50 text-gray-500"><th className="p-3">編號</th><th className="p-3">姓名</th><th className="p-3">品牌/職稱</th><th className="p-3">效期</th><th className="p-3">狀態</th><th className="p-3">操作</th></tr></thead><tbody className="divide-y">{filtered.map(m => { const isExpired = m.membership_expiry_date && m.membership_expiry_date < new Date().toISOString().slice(0, 10); const displayStatus = (m.status === 'active' && !isExpired) ? 'active' : 'inactive'; return (<tr key={m.id} className="hover:bg-gray-50"><td className="p-3 font-mono text-gray-500">{(m.member_no || '').toString().padStart(5, '0')}</td><td className="p-3 font-bold">{m.name}</td><td className="p-3"><div>{m.brand_name || m.company}</div><div className="text-xs text-gray-400">{m.job_title}</div></td><td className="p-3">{m.membership_expiry_date || '-'}</td><td className="p-3">{displayStatus === 'active' ? (<span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">有效</span>) : (<span className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-xs font-bold">失效</span>)}</td><td className="p-3 flex gap-2"><button onClick={() => handleEdit(m)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Edit size={16}/></button><button onClick={() => {if(confirm('確定刪除此會員？')) onDelete(m.id)}} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></td></tr>); })} {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-400">無相符資料</td></tr>}</tbody></table></div></div>
     </div>
