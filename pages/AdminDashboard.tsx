@@ -657,153 +657,158 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">名單總數</p><p className="text-3xl font-bold text-gray-900">{stats.total}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-gray-50 text-gray-600 rounded-xl flex items-center justify-center"><Users size={24}/></div></div><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">有效會員</p><p className="text-3xl font-bold text-gray-900">{stats.active}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center"><CheckCircle size={24}/></div></div><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">失效會員</p><p className="text-3xl font-bold text-gray-900">{stats.inactive}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-xl flex items-center justify-center"><XCircle size={24}/></div></div></div>
        
-       {/* 續約通知 Modal */}
+       {/* 續約通知 Modal (Refactored for Fixed Header & Scrolling List) */}
        {showRenewalModal && (
          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-3xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto flex flex-col">
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h2 className="text-2xl font-bold flex items-center gap-2"><BellRing className="text-yellow-500" /> 會員會籍狀態通知</h2>
-                        <p className="text-sm text-gray-500 mt-1">請選擇要執行的通知類型</p>
+            <div className="bg-white w-full max-w-3xl rounded-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in duration-200">
+                {/* Fixed Header Section */}
+                <div className="p-6 border-b border-gray-100 flex-shrink-0 bg-white z-10">
+                    <div className="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 className="text-2xl font-bold flex items-center gap-2"><BellRing className="text-yellow-500" /> 會員會籍狀態通知</h2>
+                            <p className="text-sm text-gray-500 mt-1">請選擇要執行的通知類型</p>
+                        </div>
+                        <button onClick={() => setShowRenewalModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X size={24} /></button>
                     </div>
-                    <button onClick={() => setShowRenewalModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} /></button>
-                </div>
 
-                {/* Tabs */}
-                <div className="flex gap-6 border-b border-gray-100 mb-6">
-                    <button 
-                        onClick={() => setActiveRenewalTab('expiring')}
-                        className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeRenewalTab === 'expiring' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                    >
-                        即將到期 (45天)
-                        <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[10px]">{expiringMembers.length}</span>
-                    </button>
-                    <button 
-                        onClick={() => setActiveRenewalTab('expired')}
-                        className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeRenewalTab === 'expired' ? 'border-gray-800 text-gray-800' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                    >
-                        已過期 (喚醒)
-                        <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full text-[10px]">{expiredMembers.length}</span>
-                    </button>
+                    {/* Tabs */}
+                    <div className="flex gap-6">
+                        <button 
+                            onClick={() => setActiveRenewalTab('expiring')}
+                            className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeRenewalTab === 'expiring' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                        >
+                            即將到期 (45天)
+                            <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[10px]">{expiringMembers.length}</span>
+                        </button>
+                        <button 
+                            onClick={() => setActiveRenewalTab('expired')}
+                            className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeRenewalTab === 'expired' ? 'border-gray-800 text-gray-800' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                        >
+                            已過期 (喚醒)
+                            <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full text-[10px]">{expiredMembers.length}</span>
+                        </button>
+                    </div>
                 </div>
                 
-                {/* Content based on Tab */}
-                {activeRenewalTab === 'expiring' ? (
-                    <>
-                        <div className="bg-yellow-50 rounded-xl p-4 mb-6 text-sm text-yellow-800 border border-yellow-100">
-                            <p className="font-bold mb-1 flex items-center gap-2"><AlertCircle size={14}/> 說明：</p>
-                            <p>列表顯示即將在 40~50 天內到期的有效會員。請發送續約通知提醒繳費。</p>
-                        </div>
-                        <div className="overflow-hidden border border-gray-200 rounded-xl">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100 text-gray-600 font-bold">
-                                <tr>
-                                    <th className="p-3">會員姓名</th>
-                                    <th className="p-3">到期日</th>
-                                    <th className="p-3">剩餘天數</th>
-                                    <th className="p-3">Email</th>
-                                    <th className="p-3 text-right">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {expiringMembers.map(m => {
-                                    const daysLeft = Math.ceil((new Date(m.membership_expiry_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                                    const isTarget = daysLeft === 45;
-                                    const isSent = renewalSent.includes(String(m.id));
-                                    const isSending = sendingRenewal.includes(String(m.id));
-
-                                    return (
-                                        <tr key={m.id} className={`hover:bg-gray-50 ${isTarget ? 'bg-yellow-50/50' : ''}`}>
-                                            <td className="p-3 font-bold">{m.name}</td>
-                                            <td className="p-3 font-mono">{m.membership_expiry_date}</td>
-                                            <td className="p-3">
-                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${isTarget ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-600'}`}>
-                                                    {daysLeft} 天
-                                                </span>
-                                            </td>
-                                            <td className="p-3 text-gray-500 text-xs">{m.email || <span className="text-red-400">未填寫</span>}</td>
-                                            <td className="p-3 text-right">
-                                                {isSent ? (
-                                                    <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
-                                                ) : (
-                                                    <button 
-                                                        onClick={() => handleSendRenewalNotice(m, 'renewal')} 
-                                                        disabled={isSending || !m.email}
-                                                        className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 disabled:opacity-50 flex items-center gap-1 ml-auto"
-                                                    >
-                                                        {isSending ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />} 
-                                                        發送通知
-                                                    </button>
-                                                )}
-                                            </td>
+                {/* Scrollable Content Section */}
+                <div className="flex-grow overflow-y-auto p-6 bg-gray-50/50">
+                    {activeRenewalTab === 'expiring' ? (
+                        <>
+                            <div className="bg-yellow-50 rounded-xl p-4 mb-6 text-sm text-yellow-800 border border-yellow-100 shadow-sm">
+                                <p className="font-bold mb-1 flex items-center gap-2"><AlertCircle size={14}/> 說明：</p>
+                                <p>列表顯示即將在 40~50 天內到期的有效會員。請發送續約通知提醒繳費。</p>
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th className="p-4 bg-gray-50">會員姓名</th>
+                                            <th className="p-4 bg-gray-50">到期日</th>
+                                            <th className="p-4 bg-gray-50">剩餘天數</th>
+                                            <th className="p-4 bg-gray-50">Email</th>
+                                            <th className="p-4 bg-gray-50 text-right">操作</th>
                                         </tr>
-                                    );
-                                })}
-                                {expiringMembers.length === 0 && (
-                                    <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有符合 40~50 天內到期的會員</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm text-gray-600 border border-gray-200">
-                            <p className="font-bold mb-1 flex items-center gap-2"><RefreshCcw size={14}/> 說明：</p>
-                            <p>列表顯示會籍已過期的會員。您可以發送喚醒通知，邀請他們重新加入。</p>
-                        </div>
-                        <div className="overflow-hidden border border-gray-200 rounded-xl">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100 text-gray-600 font-bold">
-                                <tr>
-                                    <th className="p-3">會員姓名</th>
-                                    <th className="p-3">到期日</th>
-                                    <th className="p-3">過期天數</th>
-                                    <th className="p-3">Email</th>
-                                    <th className="p-3 text-right">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {expiredMembers.map(m => {
-                                    const daysOverdue = Math.abs(Math.ceil((new Date(m.membership_expiry_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
-                                    const isSent = renewalSent.includes(String(m.id));
-                                    const isSending = sendingRenewal.includes(String(m.id));
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 bg-white">
+                                        {expiringMembers.map(m => {
+                                            const daysLeft = Math.ceil((new Date(m.membership_expiry_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                            const isTarget = daysLeft === 45;
+                                            const isSent = renewalSent.includes(String(m.id));
+                                            const isSending = sendingRenewal.includes(String(m.id));
 
-                                    return (
-                                        <tr key={m.id} className="hover:bg-gray-50">
-                                            <td className="p-3 font-bold">{m.name}</td>
-                                            <td className="p-3 font-mono text-red-500">{m.membership_expiry_date}</td>
-                                            <td className="p-3">
-                                                <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs font-bold">
-                                                    已過期 {daysOverdue} 天
-                                                </span>
-                                            </td>
-                                            <td className="p-3 text-gray-500 text-xs">{m.email || <span className="text-red-400">未填寫</span>}</td>
-                                            <td className="p-3 text-right">
-                                                {isSent ? (
-                                                    <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
-                                                ) : (
-                                                    <button 
-                                                        onClick={() => handleSendRenewalNotice(m, 'wakeup')} 
-                                                        disabled={isSending || !m.email}
-                                                        className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-900 disabled:opacity-50 flex items-center gap-1 ml-auto"
-                                                    >
-                                                        {isSending ? <Loader2 className="animate-spin" size={14} /> : <BellRing size={14} />} 
-                                                        發送喚醒通知
-                                                    </button>
-                                                )}
-                                            </td>
+                                            return (
+                                                <tr key={m.id} className={`hover:bg-gray-50 ${isTarget ? 'bg-yellow-50/50' : ''}`}>
+                                                    <td className="p-4 font-bold">{m.name}</td>
+                                                    <td className="p-4 font-mono">{m.membership_expiry_date}</td>
+                                                    <td className="p-4">
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold ${isTarget ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-600'}`}>
+                                                            {daysLeft} 天
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-gray-500 text-xs">{m.email || <span className="text-red-400">未填寫</span>}</td>
+                                                    <td className="p-4 text-right">
+                                                        {isSent ? (
+                                                            <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => handleSendRenewalNotice(m, 'renewal')} 
+                                                                disabled={isSending || !m.email}
+                                                                className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 disabled:opacity-50 flex items-center gap-1 ml-auto shadow-sm"
+                                                            >
+                                                                {isSending ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />} 
+                                                                發送通知
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {expiringMembers.length === 0 && (
+                                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有符合 40~50 天內到期的會員</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm text-gray-600 border border-gray-200 shadow-sm">
+                                <p className="font-bold mb-1 flex items-center gap-2"><RefreshCcw size={14}/> 說明：</p>
+                                <p>列表顯示會籍已過期的會員。您可以發送喚醒通知，邀請他們重新加入。</p>
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th className="p-4 bg-gray-50">會員姓名</th>
+                                            <th className="p-4 bg-gray-50">到期日</th>
+                                            <th className="p-4 bg-gray-50">過期天數</th>
+                                            <th className="p-4 bg-gray-50">Email</th>
+                                            <th className="p-4 bg-gray-50 text-right">操作</th>
                                         </tr>
-                                    );
-                                })}
-                                {expiredMembers.length === 0 && (
-                                    <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有已過期的會員</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                        </div>
-                    </>
-                )}
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 bg-white">
+                                        {expiredMembers.map(m => {
+                                            const daysOverdue = Math.abs(Math.ceil((new Date(m.membership_expiry_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
+                                            const isSent = renewalSent.includes(String(m.id));
+                                            const isSending = sendingRenewal.includes(String(m.id));
+
+                                            return (
+                                                <tr key={m.id} className="hover:bg-gray-50">
+                                                    <td className="p-4 font-bold">{m.name}</td>
+                                                    <td className="p-4 font-mono text-red-500">{m.membership_expiry_date}</td>
+                                                    <td className="p-4">
+                                                        <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs font-bold">
+                                                            已過期 {daysOverdue} 天
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-gray-500 text-xs">{m.email || <span className="text-red-400">未填寫</span>}</td>
+                                                    <td className="p-4 text-right">
+                                                        {isSent ? (
+                                                            <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => handleSendRenewalNotice(m, 'wakeup')} 
+                                                                disabled={isSending || !m.email}
+                                                                className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-900 disabled:opacity-50 flex items-center gap-1 ml-auto shadow-sm"
+                                                            >
+                                                                {isSending ? <Loader2 className="animate-spin" size={14} /> : <BellRing size={14} />} 
+                                                                發送喚醒通知
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {expiredMembers.length === 0 && (
+                                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有已過期的會員</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
          </div>
        )}
