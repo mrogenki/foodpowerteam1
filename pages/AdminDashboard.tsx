@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send } from 'lucide-react';
@@ -40,7 +39,7 @@ interface AdminDashboardProps {
   onDeleteMemberApplication: (id: string | number) => void; // 新增：拒絕
 }
 
-// 獨立的輸入元件 (保留)
+// 獨立的輸入元件
 const PaidAmountInput: React.FC<{ value?: number; onSave: (val: number) => void }> = ({ value, onSave }) => {
   const [localValue, setLocalValue] = useState(value?.toString() || '0');
   useEffect(() => { setLocalValue(value?.toString() || '0'); }, [value]);
@@ -57,10 +56,9 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   
-  // 權限判斷
   const isSuperAdmin = user.role === UserRole.SUPER_ADMIN;
   const isManager = user.role === UserRole.MANAGER || isSuperAdmin;
-  const isStaff = user.role === UserRole.STAFF; // 僅工作人員
+  const isStaff = user.role === UserRole.STAFF;
 
   return (
     <div className="w-64 bg-gray-900 text-gray-400 flex flex-col min-h-screen shrink-0">
@@ -81,7 +79,6 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
         <Link to="/admin/check-in" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><CheckSquare size={20} /><span>一般活動報到</span></Link>
         <Link to="/admin/member-check-in" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>會員活動報到</span></Link>
         
-        {/* 管理員與總管功能 */}
         {isManager && (<>
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">活動管理</div>
           <Link to="/admin/activities" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/activities') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Calendar size={20} /><span>一般活動管理</span></Link>
@@ -99,7 +96,6 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
           <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
         </>)}
 
-        {/* 總管理員功能 */}
         {isSuperAdmin && (<>
             <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">系統管理</div>
             <Link to="/admin/users" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/users') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Shield size={20} /><span>帳號權限</span></Link>
@@ -122,7 +118,6 @@ interface DashboardHomeProps {
 
 // 儀表板首頁元件
 const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, activities, memberActivities, registrations, memberRegistrations, memberApplications }) => {
-  
   const isStaff = currentUser.role === UserRole.STAFF;
 
   const stats = useMemo(() => {
@@ -141,30 +136,19 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
       activities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length + 
       memberActivities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length;
     
-    // 待審核會員數
     const pendingApplications = memberApplications.length;
 
-    // --- 計算個別活動成效 ---
     const calculateActivityStats = (act: Activity | MemberActivity, regs: Registration[] | MemberRegistration[]) => {
        const actRegs = regs.filter(r => String(r.activityId) === String(act.id));
        const regCount = actRegs.length;
        const checkInCount = actRegs.filter(r => r.check_in_status).length;
        const revenue = actRegs.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
-       return {
-          id: act.id,
-          title: act.title,
-          date: act.date,
-          status: act.status || 'active',
-          regCount,
-          checkInCount,
-          revenue
-       };
+       return { id: act.id, title: act.title, date: act.date, status: act.status || 'active', regCount, checkInCount, revenue };
     };
 
     const generalStats = activities.map(a => ({...calculateActivityStats(a, registrations), category: '一般'}));
     const memberStats = memberActivities.map(a => ({...calculateActivityStats(a, memberRegistrations), category: '會員'}));
     
-    // 合併並依日期排序 (新 -> 舊)
     const allActivityStats = [...generalStats, ...memberStats].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return { activeMembers, totalRevenue, upcomingActivitiesCount, allActivityStats, pendingApplications };
@@ -174,13 +158,10 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">系統概況</h1>
-        <p className="text-gray-500">
-           {isStaff ? '您好，請使用左側選單進行活動報到。' : '歡迎回到管理後台，以下是目前的營運數據。'}
-        </p>
+        <p className="text-gray-500">{isStaff ? '您好，請使用左側選單進行活動報到。' : '歡迎回到管理後台，以下是目前的營運數據。'}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* 會員總數 - Staff 隱藏 */}
         {!isStaff && (
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex justify-between items-start mb-4">
@@ -192,7 +173,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
           </div>
         )}
         
-        {/* 待審核申請 - Staff 隱藏 */}
         {!isStaff && (
           <Link to="/admin/member-applications" className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
             <div className="flex justify-between items-start mb-4">
@@ -204,7 +184,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
           </Link>
         )}
         
-        {/* 累積營收 - Staff 隱藏 */}
         {!isStaff && (
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex justify-between items-start mb-4">
@@ -215,7 +194,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
           </div>
         )}
 
-        {/* 進行中活動 - Staff 可見 */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600"><Calendar size={20} /></div>
@@ -225,7 +203,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
         </div>
       </div>
 
-      {/* 各活動營運成效列表 - Staff 只能看報到狀況，不看營收 */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-50">
            <h3 className="text-lg font-bold text-gray-900">各活動營運狀態</h3>
@@ -286,8 +263,6 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
   );
 };
 
-// ... (MemberApplicationManager, ActivityManager, ActivityCheckInManager code remains identical) ...
-
 const MemberApplicationManager: React.FC<{ 
   applications: MemberApplication[]; 
   onApprove: (app: MemberApplication) => void;
@@ -299,7 +274,6 @@ const MemberApplicationManager: React.FC<{
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">新會員申請管理</h1>
       <p className="text-gray-500">此處顯示前台提交的會員申請表，請確認已繳費後再進行核准。</p>
-      {/* 列表 */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
@@ -342,7 +316,6 @@ const MemberApplicationManager: React.FC<{
           </table>
         </div>
       </div>
-      {/* 詳細資料 Modal */}
       {selectedApp && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
            <div className="bg-white w-full max-w-2xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
@@ -552,18 +525,29 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   
-  // Update state for modal
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [activeRenewalTab, setActiveRenewalTab] = useState<'expiring' | 'expired'>('expiring');
   
   const [sendingRenewal, setSendingRenewal] = useState<string[]>([]);
-  const [renewalSent, setRenewalSent] = useState<string[]>([]); 
+  
+  const [renewalSent, setRenewalSent] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('sent_renewals');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.date === new Date().toISOString().slice(0, 10)) {
+          return parsed.ids || [];
+        }
+      }
+    } catch (e) { console.error(e); }
+    return [];
+  });
 
-  // expiringMembers memo
   const expiringMembers = useMemo(() => {
      return members.filter(m => {
         if (!m.membership_expiry_date) return false;
-        if (m.status !== 'active') return false; // Expiring must be active currently
+        if (m.status !== 'active') return false; 
         
         const today = new Date();
         const expiry = new Date(m.membership_expiry_date);
@@ -574,14 +558,12 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
      }).sort((a, b) => (a.membership_expiry_date || '').localeCompare(b.membership_expiry_date || ''));
   }, [members]);
 
-  // expiredMembers memo
   const expiredMembers = useMemo(() => {
      const today = new Date().toISOString().slice(0, 10);
      return members.filter(m => {
         if (!m.membership_expiry_date) return false;
-        // Expired means date is strictly less than today
         return m.membership_expiry_date < today;
-     }).sort((a, b) => (b.membership_expiry_date || '').localeCompare(a.membership_expiry_date || '')); // Most recent expiry first
+     }).sort((a, b) => (b.membership_expiry_date || '').localeCompare(a.membership_expiry_date || '')); 
   }, [members]);
 
   const stats = useMemo(() => {
@@ -628,7 +610,16 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
             },
             EMAIL_CONFIG.PUBLIC_KEY
         );
-        setRenewalSent(prev => [...prev, String(member.id)]);
+        
+        setRenewalSent(prev => {
+           const updated = [...prev, String(member.id)];
+           localStorage.setItem('sent_renewals', JSON.stringify({
+              date: new Date().toISOString().slice(0, 10),
+              ids: updated
+           }));
+           return updated;
+        });
+
     } catch (error) {
         console.error('Email Error:', error);
         alert(`發送給 ${member.name} 失敗，請稍後再試。`);
@@ -657,11 +648,9 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
 
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">名單總數</p><p className="text-3xl font-bold text-gray-900">{stats.total}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-gray-50 text-gray-600 rounded-xl flex items-center justify-center"><Users size={24}/></div></div><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">有效會員</p><p className="text-3xl font-bold text-gray-900">{stats.active}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center"><CheckCircle size={24}/></div></div><div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">失效會員</p><p className="text-3xl font-bold text-gray-900">{stats.inactive}<span className="text-sm font-normal text-gray-400 ml-1">人</span></p></div><div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-xl flex items-center justify-center"><XCircle size={24}/></div></div></div>
        
-       {/* 續約通知 Modal (Refactored for Fixed Header & Scrolling List) */}
        {showRenewalModal && (
          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-3xl rounded-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in duration-200">
-                {/* Fixed Header Section */}
                 <div className="p-6 border-b border-gray-100 flex-shrink-0 bg-white z-10">
                     <div className="flex justify-between items-center mb-4">
                         <div>
@@ -671,7 +660,6 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                         <button onClick={() => setShowRenewalModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X size={24} /></button>
                     </div>
 
-                    {/* Tabs */}
                     <div className="flex gap-6">
                         <button 
                             onClick={() => setActiveRenewalTab('expiring')}
@@ -690,7 +678,6 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                     </div>
                 </div>
                 
-                {/* Scrollable Content Section */}
                 <div className="flex-grow overflow-y-auto p-6 bg-gray-50/50">
                     {activeRenewalTab === 'expiring' ? (
                         <>
@@ -731,6 +718,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                                                             <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
                                                         ) : (
                                                             <button 
+                                                                type="button"
                                                                 onClick={() => handleSendRenewalNotice(m, 'renewal')} 
                                                                 disabled={isSending || !m.email}
                                                                 className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 disabled:opacity-50 flex items-center gap-1 ml-auto shadow-sm"
@@ -788,6 +776,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                                                             <span className="text-green-600 font-bold flex items-center justify-end gap-1"><CheckCircle size={16} /> 已發送</span>
                                                         ) : (
                                                             <button 
+                                                                type="button"
                                                                 onClick={() => handleSendRenewalNotice(m, 'wakeup')} 
                                                                 disabled={isSending || !m.email}
                                                                 className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-900 disabled:opacity-50 flex items-center gap-1 ml-auto shadow-sm"
@@ -819,62 +808,134 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   );
 };
 
-const UserManager: React.FC<{ users: AdminUser[]; onAdd: (u: AdminUser) => void; onDelete: (id: string) => void }> = ({ users, onAdd, onDelete }) => {
-   return (
-     <div className="space-y-6">
-        <h1 className="text-2xl font-bold">帳號權限</h1>
-        <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-8"><div className="flex items-start gap-3"><div className="bg-blue-100 p-2 rounded-lg text-blue-600 mt-1"><Shield size={24} /></div><div><h3 className="font-bold text-lg text-blue-800 mb-2">如何新增管理員？</h3><p className="text-blue-700 text-sm leading-relaxed mb-4">本系統目前採用 <b>Supabase Authentication</b> 進行最高安全層級的身份驗證。<br/>若您需要新增其他可登入後台的人員，請依照以下步驟操作：</p><ol className="list-decimal list-inside text-sm text-blue-800 font-medium space-y-2 bg-white/50 p-4 rounded-xl"><li>前往 <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline hover:text-blue-600 inline-flex items-center gap-1">Supabase Dashboard <ExternalLink size={12}/></a></li><li>進入您的專案，點擊左側選單的 <b>Authentication</b></li><li>點擊 <b>Add User</b> 按鈕</li><li>輸入對方的 Email 並設定密碼 (或發送邀請信)</li><li>勾選 <b>Auto Confirm User</b> (若您希望對方能直接登入)</li></ol></div></div></div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100"><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">內部人員通訊錄 (僅供參考)</h3><button disabled className="text-xs bg-gray-100 text-gray-400 px-3 py-1 rounded font-bold cursor-not-allowed">如需修改請洽工程師</button></div><p className="text-sm text-gray-400 mb-4">下方列表為系統建檔時的預設人員名單，與實際登入權限無直接關聯。</p><div className="space-y-2">{users.map(u => (<div key={u.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500"><User size={20}/></div><div><p className="font-bold text-gray-900">{u.name}</p><p className="text-xs text-gray-500">{u.role} • {u.phone}</p></div></div></div>))}</div></div>
-     </div>
-   );
-};
-
-const CouponManager: React.FC<{ coupons: Coupon[]; activities: Activity[]; members: Member[]; onGenerate: any }> = ({ coupons, activities, members, onGenerate }) => {
-   const [actId, setActId] = useState(''); const [amount, setAmount] = useState(100); const [target, setTarget] = useState('all');
-   const handleGen = () => { if (!actId) return alert('請選擇活動'); const targetMembers = members.filter(m => target === 'all' ? true : m.status === 'active'); if (confirm(`確定產生 ${targetMembers.length} 張折扣券？`)) { onGenerate(actId, amount, targetMembers.map(m => String(m.id)), false); } };
-   return (
-      <div className="space-y-6">
-         <h1 className="text-2xl font-bold">折扣券管理</h1>
-         <div className="bg-white p-6 rounded-2xl border border-gray-100"><h3 className="font-bold mb-4">批次產生折扣券</h3><div className="flex gap-4 items-end flex-wrap"><div><label className="block text-xs font-bold mb-1">選擇活動</label><select value={actId} onChange={e => setActId(e.target.value)} className="p-2 border rounded w-48"><option value="">請選擇...</option>{activities.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}</select></div><div><label className="block text-xs font-bold mb-1">金額</label><input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="p-2 border rounded w-24"/></div><div><label className="block text-xs font-bold mb-1">對象</label><select value={target} onChange={e => setTarget(e.target.value)} className="p-2 border rounded w-32"><option value="all">所有會員</option><option value="active">僅有效會員</option></select></div><button onClick={handleGen} className="bg-red-600 text-white px-4 py-2 rounded font-bold">產生並發送</button></div></div>
-         <div className="bg-white p-6 rounded-2xl border border-gray-100"><h3 className="font-bold mb-4">發行紀錄</h3><div className="h-64 overflow-y-auto"><table className="w-full text-sm text-left"><thead><tr className="sticky top-0 bg-white"><th className="pb-2">代碼</th><th className="pb-2">金額</th><th className="pb-2">狀態</th></tr></thead><tbody>{coupons.slice(0, 50).map(c => (<tr key={c.id} className="border-t"><td className="py-2 font-mono">{c.code}</td><td className="py-2">{c.discount_amount}</td><td className="py-2">{c.is_used ? <span className="text-red-500">已使用</span> : <span className="text-green-500">未使用</span>}</td></tr>))}</tbody></table></div></div>
-      </div>
-   );
-};
-
-// Main Dashboard Router
-const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
-  const isSuperAdmin = props.currentUser.role === UserRole.SUPER_ADMIN;
-  const isManager = props.currentUser.role === UserRole.MANAGER || isSuperAdmin;
+const CouponManager: React.FC<{
+  coupons: Coupon[];
+  activities: Activity[];
+  memberActivities: MemberActivity[];
+  members: Member[];
+  onGenerate?: (activityId: string, amount: number, memberIds: string[], sendEmail: boolean) => void;
+}> = ({ coupons, activities, memberActivities, members, onGenerate }) => {
+  const [amount, setAmount] = useState(100);
+  const [actId, setActId] = useState('');
+  const [target, setTarget] = useState('all');
+  const [isGenerating, setIsGenerating] = useState(false);
   
+  const allActs = [...activities, ...memberActivities].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const handleGenerate = () => {
+     if(!onGenerate) return;
+     if(!actId) { alert('請選擇活動'); return; }
+     setIsGenerating(true);
+     const memberIds = target === 'all' ? members.filter(m => m.status === 'active').map(m => String(m.id)) : [target];
+     onGenerate(actId, amount, memberIds, false);
+     setIsGenerating(false);
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      <Sidebar user={props.currentUser} onLogout={props.onLogout} pendingCount={props.memberApplications.length} />
-      <div className="flex-grow overflow-auto p-8">
+    <div className="space-y-6">
+       <h1 className="text-2xl font-bold">折扣券管理</h1>
+       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <h3 className="font-bold text-lg">產生折扣券</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+             <div><label className="block text-sm font-bold mb-1">選擇活動</label><select className="w-full p-2 border rounded" value={actId} onChange={e=>setActId(e.target.value)}><option value="">請選擇...</option>{allActs.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></div>
+             <div><label className="block text-sm font-bold mb-1">折扣金額</label><input type="number" className="w-full p-2 border rounded" value={amount} onChange={e=>setAmount(Number(e.target.value))} /></div>
+             <div><label className="block text-sm font-bold mb-1">發送對象</label><select className="w-full p-2 border rounded" value={target} onChange={e=>setTarget(e.target.value)}><option value="all">全體有效會員</option>{members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
+             <div className="flex items-end"><button onClick={handleGenerate} disabled={isGenerating} className="w-full bg-red-600 text-white p-2 rounded font-bold hover:bg-red-700">{isGenerating ? '處理中' : '產生折扣券'}</button></div>
+          </div>
+       </div>
+       <div className="bg-white p-6 rounded-2xl border border-gray-100">
+         <h3 className="font-bold text-lg mb-4">折扣券列表 ({coupons.length})</h3>
+         <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+               <thead><tr className="bg-gray-50"><th className="p-3">代碼</th><th className="p-3">活動</th><th className="p-3">金額</th><th className="p-3">狀態</th></tr></thead>
+               <tbody>
+                  {coupons.slice(0, 50).map(c => {
+                    const act = allActs.find(a => String(a.id) === String(c.activity_id));
+                    return (
+                      <tr key={c.id} className="border-b">
+                         <td className="p-3 font-mono">{c.code}</td>
+                         <td className="p-3">{act?.title || c.activity_id}</td>
+                         <td className="p-3">{c.discount_amount}</td>
+                         <td className="p-3">{c.is_used ? '已使用' : '未使用'}</td>
+                      </tr>
+                    )
+                  })}
+               </tbody>
+            </table>
+         </div>
+       </div>
+    </div>
+  );
+};
+
+const UserManager: React.FC<{
+  users: AdminUser[];
+  onAdd: (u: AdminUser) => void;
+  onDelete: (id: string) => void;
+}> = ({ users, onAdd, onDelete }) => {
+  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: UserRole.STAFF });
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onAdd({ ...newUser, id: crypto.randomUUID() } as any);
+    setNewUser({ name: '', email: '', phone: '', role: UserRole.STAFF });
+  };
+
+  return (
+    <div className="space-y-6">
+       <h1 className="text-2xl font-bold">帳號權限管理</h1>
+       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl border border-gray-100 flex gap-4 items-end">
+          <div><label className="block text-xs font-bold mb-1">姓名</label><input required className="border rounded p-2 text-sm" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} /></div>
+          <div><label className="block text-xs font-bold mb-1">Email (登入用)</label><input required type="email" className="border rounded p-2 text-sm" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} /></div>
+          <div><label className="block text-xs font-bold mb-1">權限</label><select className="border rounded p-2 text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value as UserRole})}>{Object.values(UserRole).map(r=><option key={r} value={r}>{r}</option>)}</select></div>
+          <button className="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700">新增管理員</button>
+       </form>
+       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <table className="w-full text-left text-sm">
+             <thead><tr className="bg-gray-50"><th className="p-4">姓名</th><th className="p-4">權限</th><th className="p-4">操作</th></tr></thead>
+             <tbody>
+                {users.map(u => (
+                   <tr key={u.id} className="border-t">
+                      <td className="p-4">{u.name}</td>
+                      <td className="p-4">{u.role}</td>
+                      <td className="p-4"><button onClick={()=>onDelete(u.id)} className="text-red-600 hover:underline">刪除</button></td>
+                   </tr>
+                ))}
+             </tbody>
+          </table>
+       </div>
+    </div>
+  );
+};
+
+const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
+  const { currentUser, onLogout, memberApplications } = props;
+  const pendingCount = memberApplications.filter(m => m.status === 'pending').length;
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar user={currentUser} onLogout={onLogout} pendingCount={pendingCount} />
+      <main className="flex-1 h-screen overflow-y-auto p-8">
         <Routes>
           <Route path="/" element={<DashboardHome {...props} />} />
           
           <Route path="/check-in" element={<ActivityCheckInManager type="general" activities={props.activities} registrations={props.registrations} onUpdateReg={props.onUpdateRegistration} />} />
           <Route path="/member-check-in" element={<ActivityCheckInManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onUpdateReg={props.onUpdateMemberRegistration} />} />
           
-          {/* 權限保護路由 */}
-          {isManager && (
-            <>
-              <Route path="/activities" element={<ActivityManager type="general" activities={props.activities} registrations={props.registrations} onAdd={props.onAddActivity} onUpdate={props.onUpdateActivity} onDelete={props.onDeleteActivity} onUpdateReg={props.onUpdateRegistration} onDeleteReg={props.onDeleteRegistration} onUploadImage={props.onUploadImage} />} />
-              <Route path="/member-activities" element={<ActivityManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUpdateReg={props.onUpdateMemberRegistration} onDeleteReg={props.onDeleteMemberRegistration} onUploadImage={props.onUploadImage} members={props.members} />} />
-              <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
-              <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
-              <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
-            </>
-          )}
-
-          {isSuperAdmin && (
-             <Route path="/users" element={<UserManager users={props.users} onAdd={props.onAddUser} onDelete={props.onDeleteUser} />} />
-          )}
+          <Route path="/activities" element={<ActivityManager type="general" activities={props.activities} registrations={props.registrations} onAdd={props.onAddActivity} onUpdate={props.onUpdateActivity} onDelete={props.onDeleteActivity} onUpdateReg={props.onUpdateRegistration} onDeleteReg={props.onDeleteRegistration} onUploadImage={props.onUploadImage} />} />
+          <Route path="/member-activities" element={<ActivityManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUpdateReg={props.onUpdateMemberRegistration} onDeleteReg={props.onDeleteMemberRegistration} onUploadImage={props.onUploadImage} members={props.members} />} />
           
-          {/* 若工作人員嘗試訪問未授權頁面，導回 Dashboard */}
+          <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
+          
+          <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
+          
+          <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} memberActivities={props.memberActivities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
+          
+          <Route path="/users" element={<UserManager users={props.users} onAdd={props.onAddUser} onDelete={props.onDeleteUser} />} />
+          
           <Route path="*" element={<Navigate to="/admin" />} />
         </Routes>
-      </div>
+      </main>
     </div>
   );
 };
