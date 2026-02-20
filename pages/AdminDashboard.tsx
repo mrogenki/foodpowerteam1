@@ -565,7 +565,8 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
         const diffTime = expiry.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        return diffDays >= 40 && diffDays <= 50;
+        // 放寬範圍：顯示 60 天內到期的會員 (原本是 40~50 天)
+        return diffDays > 0 && diffDays <= 60;
      }).sort((a, b) => (a.membership_expiry_date || '').localeCompare(b.membership_expiry_date || ''));
   }, [members]);
 
@@ -640,7 +641,29 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
   }, [paymentRecords]);
 
   const handleSave = (e: React.FormEvent) => { e.preventDefault(); if (editingId) onUpdate(formData); else onAdd(formData); setIsFormOpen(false); };
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target?.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws) as any[]; const newMembers = data.map((row: any) => ({ id: crypto.randomUUID(), member_no: String(row['會員編號'] || ''), name: row['姓名'], industry_category: row['產業分類'] || '其他', brand_name: row['品牌名稱'] || row['公司名稱'], phone: String(row['手機'] || ''), status: 'active' as const })); onImport(newMembers); }; reader.readAsBinaryString(file); };
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
+    const file = e.target.files?.[0]; 
+    if (!file) return; 
+    const reader = new FileReader(); 
+    reader.onload = (evt) => { 
+      const arrayBuffer = evt.target?.result; 
+      const wb = XLSX.read(arrayBuffer, { type: 'array' }); 
+      const wsname = wb.SheetNames[0]; 
+      const ws = wb.Sheets[wsname]; 
+      const data = XLSX.utils.sheet_to_json(ws) as any[]; 
+      const newMembers = data.map((row: any) => ({ 
+        id: crypto.randomUUID(), 
+        member_no: String(row['會員編號'] || ''), 
+        name: row['姓名'], 
+        industry_category: row['產業分類'] || '其他', 
+        brand_name: row['品牌名稱'] || row['公司名稱'], 
+        phone: String(row['手機'] || ''), 
+        status: 'active' as const 
+      })); 
+      onImport(newMembers); 
+    }; 
+    reader.readAsArrayBuffer(file); 
+  };
   const handleExport = () => { const exportData = members.map(m => ({ '會員編號': (m.member_no || '').toString().padStart(5, '0'), '姓名': m.name, '狀態': (m.status === 'active' && (!m.membership_expiry_date || m.membership_expiry_date >= new Date().toISOString().slice(0, 10))) ? '有效' : '失效', '會籍到期日': m.membership_expiry_date, '手機': m.phone, '信箱': m.email, '產業分類': m.industry_category, '品牌名稱': m.brand_name, '公司抬頭': m.company_title, '統一編號': m.tax_id, '職稱': m.job_title, '主要服務': m.main_service, '公司網站': m.website, '通訊地址': m.address, '備註': m.notes })); const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "會員資料"); XLSX.writeFile(wb, `會員名單_${new Date().toISOString().split('T')[0]}.xlsx`); };
 
   const handleSendRenewalNotice = async (member: Member, type: 'renewal' | 'wakeup') => {
@@ -699,7 +722,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                 {expiringMembers.length > 0 && <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full absolute -top-2 -right-2 border-2 border-white">{expiringMembers.length}</span>}
              </button>
              <button onClick={handleExport} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-200"><FileDown size={18} /> 匯出 Excel</button>
-             <label className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 cursor-pointer"><FileUp size={18} /> 匯入 CSV<input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileUpload}/></label>
+             <label className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 cursor-pointer"><FileUp size={18} /> 匯入 Excel<input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileUpload}/></label>
              <button onClick={handleAdd} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2"><Plus size={18} /> 新增會員</button>
           </div>
        </div>
@@ -723,7 +746,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                             onClick={() => setActiveRenewalTab('expiring')}
                             className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeRenewalTab === 'expiring' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                         >
-                            即將到期 (45天)
+                            即將到期 (60天內)
                             <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[10px]">{expiringMembers.length}</span>
                         </button>
                         <button 
@@ -741,7 +764,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                         <>
                             <div className="bg-yellow-50 rounded-xl p-4 mb-6 text-sm text-yellow-800 border border-yellow-100 shadow-sm">
                                 <p className="font-bold mb-1 flex items-center gap-2"><AlertCircle size={14}/> 說明：</p>
-                                <p>列表顯示即將在 40~50 天內到期的有效會員。請發送續約通知提醒繳費。</p>
+                                <p>列表顯示即將在 60 天內到期的有效會員。請發送續約通知提醒繳費。</p>
                             </div>
                             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                                 <table className="w-full text-left text-sm">
@@ -757,7 +780,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                                     <tbody className="divide-y divide-gray-100 bg-white">
                                         {expiringMembers.map(m => {
                                             const daysLeft = Math.ceil((new Date(m.membership_expiry_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                                            const isTarget = daysLeft === 45;
+                                            const isTarget = daysLeft <= 45;
                                             const isSent = renewalSent.includes(String(m.id));
                                             const isSending = sendingRenewal.includes(String(m.id));
 
@@ -790,7 +813,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
                                             );
                                         })}
                                         {expiringMembers.length === 0 && (
-                                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有符合 40~50 天內到期的會員</td></tr>
+                                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有 60 天內到期的會員</td></tr>
                                         )}
                                     </tbody>
                                 </table>
