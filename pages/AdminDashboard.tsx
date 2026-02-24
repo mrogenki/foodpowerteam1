@@ -269,6 +269,37 @@ const MemberApplicationManager: React.FC<{
   onDelete: (id: string | number) => void; 
 }> = ({ applications, onApprove, onDelete }) => {
   const [selectedApp, setSelectedApp] = useState<MemberApplication | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | number | null>(null);
+
+  const handleResendPaymentLink = async (app: MemberApplication, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`確定要重新發送繳費連結給 ${app.name} (${app.email})？`)) return;
+    
+    setSendingEmailId(app.id);
+    const paymentLink = `${window.location.origin}/#/pay-application/${app.id}`;
+    
+    try {
+      // 使用既有的入會通知模板，將繳費連結放入 message
+      const templateParams = {
+        to_name: app.name,
+        email: app.email,
+        activity_title: '【食在力量】會員入會繳費通知',
+        activity_date: new Date().toISOString().slice(0, 10),
+        activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+        activity_location: '線上繳費',
+        activity_price: `NT$ ${(app.paid_amount || 5000).toLocaleString()}`,
+        message: `親愛的 ${app.name} 您好，\n\n您的入會申請已收到，請點擊以下連結完成繳費程序以正式加入會員：\n\n${paymentLink}\n\n若您已完成繳費，請忽略此信件。`
+      };
+
+      await emailjs.send(EMAIL_CONFIG.SERVICE_ID, EMAIL_CONFIG.MEMBER_JOIN_TEMPLATE_ID, templateParams, EMAIL_CONFIG.PUBLIC_KEY);
+      alert('繳費連結已發送！');
+    } catch (error) {
+      console.error(error);
+      alert('發送失敗，請稍後再試');
+    } finally {
+      setSendingEmailId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -283,34 +314,55 @@ const MemberApplicationManager: React.FC<{
                 <th className="p-4">姓名</th>
                 <th className="p-4">公司/職稱</th>
                 <th className="p-4">聯繫方式</th>
+                <th className="p-4">繳費狀態</th>
                 <th className="p-4 text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {applications.map(app => (
-                <tr key={app.id} className="hover:bg-gray-50">
-                  <td className="p-4 text-gray-500">{new Date(app.created_at).toLocaleDateString()}</td>
-                  <td className="p-4 font-bold text-gray-900">{app.name}</td>
-                  <td className="p-4">
-                    <div className="font-bold">{app.brand_name || app.company_title}</div>
-                    <div className="text-xs text-gray-500">{app.job_title}</div>
-                  </td>
-                  <td className="p-4">
-                     <div>{app.phone}</div>
-                     <div className="text-xs text-gray-400">{app.email}</div>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button 
-                      onClick={() => setSelectedApp(app)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-blue-700 transition-colors shadow-blue-200 shadow-sm"
-                    >
-                      審核 / 詳細資料
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {applications.map(app => {
+                const isPaid = app.payment_status === PaymentStatus.PAID;
+                return (
+                  <tr key={app.id} className="hover:bg-gray-50">
+                    <td className="p-4 text-gray-500">{new Date(app.created_at).toLocaleDateString()}</td>
+                    <td className="p-4 font-bold text-gray-900">{app.name}</td>
+                    <td className="p-4">
+                      <div className="font-bold">{app.brand_name || app.company_title}</div>
+                      <div className="text-xs text-gray-500">{app.job_title}</div>
+                    </td>
+                    <td className="p-4">
+                       <div>{app.phone}</div>
+                       <div className="text-xs text-gray-400">{app.email}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {isPaid ? '已付款' : '待付款'}
+                        </span>
+                        {!isPaid && (
+                          <button 
+                            onClick={(e) => handleResendPaymentLink(app, e)}
+                            disabled={sendingEmailId === app.id}
+                            className="text-blue-600 hover:text-blue-800 text-xs underline disabled:opacity-50"
+                          >
+                            {sendingEmailId === app.id ? '發送中...' : '補寄連結'}
+                          </button>
+                        )}
+                      </div>
+                      {app.paid_amount && <div className="text-xs text-gray-400 mt-1">NT$ {app.paid_amount.toLocaleString()}</div>}
+                    </td>
+                    <td className="p-4 text-right">
+                      <button 
+                        onClick={() => setSelectedApp(app)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-blue-700 transition-colors shadow-blue-200 shadow-sm"
+                      >
+                        審核 / 詳細資料
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {applications.length === 0 && (
-                <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前沒有待審核的申請</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-gray-400">目前沒有待審核的申請</td></tr>
               )}
             </tbody>
           </table>
@@ -324,11 +376,26 @@ const MemberApplicationManager: React.FC<{
                <button onClick={() => setSelectedApp(null)} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} /></button>
              </div>
              <div className="space-y-6">
-               <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex items-start gap-3">
-                 <AlertCircle className="text-yellow-600 shrink-0 mt-0.5" size={20} />
+               <div className={`p-4 rounded-xl border flex items-start gap-3 ${selectedApp.payment_status === PaymentStatus.PAID ? 'bg-green-50 border-green-100' : 'bg-yellow-50 border-yellow-100'}`}>
+                 {selectedApp.payment_status === PaymentStatus.PAID ? <CheckCircle className="text-green-600 shrink-0 mt-0.5" size={20} /> : <AlertCircle className="text-yellow-600 shrink-0 mt-0.5" size={20} />}
                  <div>
-                   <p className="text-yellow-800 font-bold">核准前請確認</p>
-                   <p className="text-yellow-700 text-sm">請確認申請人已完成入會費繳納，資料填寫正確。點擊「核准並加入會員」後，系統將自動產生會員編號並正式寫入資料庫。</p>
+                   <p className={`font-bold ${selectedApp.payment_status === PaymentStatus.PAID ? 'text-green-800' : 'text-yellow-800'}`}>
+                     {selectedApp.payment_status === PaymentStatus.PAID ? '已完成繳費' : '尚未完成繳費'}
+                   </p>
+                   <p className={`text-sm ${selectedApp.payment_status === PaymentStatus.PAID ? 'text-green-700' : 'text-yellow-700'}`}>
+                     {selectedApp.payment_status === PaymentStatus.PAID 
+                       ? '確認款項無誤後，即可核准加入會員。' 
+                       : '請確認申請人是否已繳費。若尚未繳費，請勿核准。您可以補寄繳費連結給申請人。'}
+                   </p>
+                   {selectedApp.payment_status !== PaymentStatus.PAID && (
+                      <button 
+                        onClick={(e) => handleResendPaymentLink(selectedApp, e)}
+                        disabled={sendingEmailId === selectedApp.id}
+                        className="mt-2 text-sm bg-white border border-yellow-200 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-100 transition-colors"
+                      >
+                        {sendingEmailId === selectedApp.id ? '發送中...' : '補寄繳費連結'}
+                      </button>
+                   )}
                  </div>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -359,7 +426,18 @@ const MemberApplicationManager: React.FC<{
              </div>
              <div className="flex gap-4 mt-8 pt-6 border-t">
                <button onClick={() => { onDelete(selectedApp.id); setSelectedApp(null); }} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-red-50 hover:text-red-600 transition-colors">拒絕 / 刪除</button>
-               <button onClick={() => { onApprove(selectedApp); setSelectedApp(null); }} className="flex-[2] bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-200 flex items-center justify-center gap-2"><CheckCircle size={20} /> 確認無誤，核准並加入會員</button>
+               <button 
+                 onClick={() => { 
+                    if (selectedApp.payment_status !== PaymentStatus.PAID) {
+                        if (!confirm('警告：此申請尚未完成繳費。確定要強制核准嗎？')) return;
+                    }
+                    onApprove(selectedApp); 
+                    setSelectedApp(null); 
+                 }} 
+                 className={`flex-[2] text-white py-3 rounded-xl font-bold transition-colors shadow-lg flex items-center justify-center gap-2 ${selectedApp.payment_status === PaymentStatus.PAID ? 'bg-green-600 hover:bg-green-700 shadow-green-200' : 'bg-gray-400 hover:bg-gray-500 shadow-gray-200'}`}
+               >
+                 <CheckCircle size={20} /> {selectedApp.payment_status === PaymentStatus.PAID ? '確認無誤，核准並加入會員' : '強制核准 (未繳費)'}
+               </button>
              </div>
            </div>
         </div>

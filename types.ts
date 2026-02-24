@@ -173,6 +173,13 @@ export interface MemberApplication {
   
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+
+  // 金流相關
+  payment_status?: PaymentStatus;
+  merchant_order_no?: string;
+  paid_amount?: number;
+  payment_method?: string;
+  paid_at?: string;
 }
 
 export interface AttendanceRecord {

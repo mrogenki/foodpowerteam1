@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import MemberList from './pages/MemberList';
 import MemberJoin from './pages/MemberJoin';
 import PaymentResult from './pages/PaymentResult';
+import ApplicationPayment from './pages/ApplicationPayment';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { supabase } from './utils/supabaseClient';
@@ -512,6 +513,7 @@ const App: React.FC = () => {
             <Route path="/join" element={<MemberJoin />} />
             <Route path="/activity/:id" element={<ActivityDetail type="general" activities={activities} onRegister={handleRegister} registrations={registrations} validateCoupon={validateCoupon} />} />
             <Route path="/member-activity/:id" element={<ActivityDetail type="member" activities={memberActivities} members={members} onMemberRegister={handleMemberRegister} memberRegistrations={memberRegistrations} validateCoupon={validateCoupon} />} />
+            <Route path="/pay-application/:id" element={<ApplicationPayment />} />
             <Route path="/payment-result" element={<PaymentResult />} />
 
             <Route path="/admin/login" element={currentUser ? <Navigate to="/admin" /> : <LoginPage />} />

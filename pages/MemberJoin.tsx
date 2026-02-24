@@ -4,29 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import emailjs from '@emailjs/browser';
 import { UserPlus, Save, Loader2, Building2, User, Phone, Briefcase, FileText, CreditCard, Calendar, Gift, Zap, Users, Target, Globe, Award } from 'lucide-react';
-import { IndustryCategories } from '../types';
+import { IndustryCategories, PaymentStatus } from '../types';
 import { EMAIL_CONFIG } from '../constants';
+import { submitNewebPayForm } from '../utils/newebpay';
+import { supabase } from '../utils/supabaseClient';
 
-// Supabase 設定 (與 App.tsx 保持一致)
-const DEFAULT_URL = 'https://kpltydyspvzozgxfiwra.supabase.co';
-const DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwbHR5ZHlzcHZ6b3pneGZpd3JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjI0MTUsImV4cCI6MjA4NjEzODQxNX0.1jraR6m6sKWSUJxek2noJi0YqyO3Ak4kPZ-X2qdwtGA';
-
-const getConfig = (envKey: string, storageKey: string, defaultValue: string): string => {
-  try {
-    const envVal = (import.meta as any)?.env?.[envKey];
-    if (envVal) return envVal;
-  } catch (e) {}
-  const storageVal = localStorage.getItem(storageKey);
-  if (storageVal) return storageVal;
-  return defaultValue;
-};
-
-const SUPABASE_URL = getConfig('VITE_SUPABASE_URL', 'supabase_url', DEFAULT_URL);
-const SUPABASE_ANON_KEY = getConfig('VITE_SUPABASE_ANON_KEY', 'supabase_key', DEFAULT_KEY);
-
-const supabase = SUPABASE_URL && SUPABASE_ANON_KEY 
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
-  : null;
+const ANNUAL_FEE = 5000;
 
 const MemberJoin: React.FC = () => {
   const navigate = useNavigate();
@@ -110,11 +93,11 @@ ${memberData.notes || '(無)'}
         job_title: memberData.job_title,
         
         // 專為會員申請設定的標題與資訊
-        activity_title: '【食在力量】會員入會申請（審核中）',
+        activity_title: '【食在力量】會員入會申請',
         activity_date: new Date().toISOString().slice(0, 10), // 申請日期
         activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-        activity_location: '線上申請 (專人將聯繫協助繳費)', 
-        activity_price: '待確認 (入會費/年費)',
+        activity_location: '線上申請 (前往繳費)', 
+        activity_price: `NT$ ${ANNUAL_FEE.toLocaleString()} (入會費/年費)`,
         
         // 詳細資料區塊
         message: details 
@@ -138,6 +121,7 @@ ${memberData.notes || '(無)'}
 
     try {
       // 1. 準備寫入資料 (寫入 member_applications 表)
+      const merchantOrderNo = `JOIN_${Date.now()}`;
       const newApplication = {
         id: crypto.randomUUID(),
         status: 'pending', // 狀態為待審核
@@ -160,7 +144,12 @@ ${memberData.notes || '(無)'}
         job_title: formData.job_title,
         website: formData.website,
         main_service: formData.main_service,
-        notes: formData.notes
+        notes: formData.notes,
+
+        // 金流資訊
+        payment_status: PaymentStatus.PENDING,
+        merchant_order_no: merchantOrderNo,
+        paid_amount: ANNUAL_FEE,
       };
 
       // 2. 寫入資料庫 (member_applications)
@@ -169,24 +158,26 @@ ${memberData.notes || '(無)'}
       if (insertError) throw insertError;
 
       // 3. 發送 Email 通知 (使用新模板)
-      const emailSuccess = await sendJoinConfirmationEmail(newApplication);
+      // 注意：這裡先發送 "申請已收到" 的信，付款成功後通常會有另一封 (由後端或藍新觸發，或前端無法控制)
+      // 我們可以在信中說明 "請完成繳費程序"
+      await sendJoinConfirmationEmail(newApplication);
 
-      // 4. 顯示成功訊息 (根據 Email 發送結果調整訊息)
-      if (emailSuccess) {
-        alert(`入會申請表已送出！\n\n系統已發送確認信至您的信箱。\n\n您的申請目前正在審核中，後續將有專人與您聯繫，協助完成繳費與正式入會程序。`);
-      } else {
-        // 如果 Email 失敗，特別提示使用者，但不阻擋流程
-        alert(`入會申請表已送出！\n\n(注意：系統嘗試發送確認信失敗，可能是系統繁忙，但不影響您的申請。)\n\n您的申請已成功進入審核流程，後續將有專人與您聯繫。`);
-      }
+      // 4. 轉導至藍新金流付款
+      alert(`申請資料已送出！\n\n即將轉導至付款頁面，請完成繳費以完成入會程序。`);
       
-      navigate('/'); // 導向首頁
+      submitNewebPayForm({
+        MerchantOrderNo: merchantOrderNo,
+        Amt: ANNUAL_FEE,
+        ItemDesc: `食在力量會員年費 (${newApplication.name})`,
+        Email: newApplication.email
+      });
 
     } catch (error: any) {
       console.error('Registration failed:', error);
       alert('報名失敗：' + error.message);
-    } finally {
       setIsSubmitting(false);
-    }
+    } 
+    // finally 不要在這裡設為 false，因為要轉導頁面
   };
 
   return (
@@ -398,7 +389,7 @@ ${memberData.notes || '(無)'}
             disabled={isSubmitting}
             className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-red-200"
           >
-            {isSubmitting ? <><Loader2 className="animate-spin" /> 處理中...</> : <><Save /> 送出申請，加入會員</>}
+            {isSubmitting ? <><Loader2 className="animate-spin" /> 處理中...</> : <><Save /> 送出申請，並前往付款 $5000</>}
           </button>
         </form>
       </div>
