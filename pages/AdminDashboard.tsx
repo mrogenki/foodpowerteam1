@@ -278,11 +278,22 @@ const MemberApplicationManager: React.FC<{
     setSendingEmailId(app.id);
     const paymentLink = `${window.location.origin}/#/pay-application/${app.id}`;
     
+    if (!EMAIL_CONFIG.SERVICE_ID || EMAIL_CONFIG.SERVICE_ID === 'YOUR_NEW_SERVICE_ID') {
+      alert('EmailJS 尚未設定，無法發送郵件');
+      setSendingEmailId(null);
+      return;
+    }
+
     try {
       // 使用既有的入會通知模板，將繳費連結放入 message
       const templateParams = {
         to_name: app.name,
         email: app.email,
+        to_email: app.email,
+        reply_to: app.email,
+        phone: app.phone,
+        company: app.brand_name || app.company_title,
+        job_title: app.job_title,
         activity_title: '【食在力量】會員入會繳費通知',
         activity_date: new Date().toISOString().slice(0, 10),
         activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
