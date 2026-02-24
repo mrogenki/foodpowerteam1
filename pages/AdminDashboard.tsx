@@ -3,6 +3,7 @@ import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-r
 import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import emailjs from '@emailjs/browser';
+import { supabase } from '../utils/supabaseClient';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
