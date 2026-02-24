@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Menu, X, Loader2, UserPlus, MessageCircle } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 import Home from './pages/Home';
 import ActivityDetail from './pages/ActivityDetail';
 import AdminDashboard from './pages/AdminDashboard';
@@ -12,27 +11,7 @@ import MemberJoin from './pages/MemberJoin';
 import PaymentResult from './pages/PaymentResult';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
-
-// Supabase 設定
-const DEFAULT_URL = 'https://kpltydyspvzozgxfiwra.supabase.co';
-const DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwbHR5ZHlzcHZ6b3pneGZpd3JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjI0MTUsImV4cCI6MjA4NjEzODQxNX0.1jraR6m6sKWSUJxek2noJi0YqyO3Ak4kPZ-X2qdwtGA';
-
-const getConfig = (envKey: string, storageKey: string, defaultValue: string): string => {
-  try {
-    const envVal = (import.meta as any)?.env?.[envKey];
-    if (envVal) return envVal;
-  } catch (e) {}
-  const storageVal = localStorage.getItem(storageKey);
-  if (storageVal) return storageVal;
-  return defaultValue;
-};
-
-const SUPABASE_URL = getConfig('VITE_SUPABASE_URL', 'supabase_url', DEFAULT_URL);
-const SUPABASE_ANON_KEY = getConfig('VITE_SUPABASE_ANON_KEY', 'supabase_key', DEFAULT_KEY);
-
-export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY 
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
-  : null;
+import { supabase } from './utils/supabaseClient';
 
 // 定義系統擁有者 (白名單)，確保即使資料庫設定錯誤也能登入
 const SYSTEM_OWNERS = ['mr.ogenki@gmail.com'];

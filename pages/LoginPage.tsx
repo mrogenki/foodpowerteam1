@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Lock, Mail, Loader2 } from 'lucide-react';
-import { supabase } from '../App';
+import { supabase } from '../utils/supabaseClient';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');

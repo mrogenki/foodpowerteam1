@@ -53,7 +53,7 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
           <div className="flex items-center gap-2">
             <Calendar size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
             <span>{activity.date}</span>
-            <Clock size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} ml-2 />
+            <Clock size={16} className={`${isClosed ? 'text-gray-400' : 'text-red-600'} ml-2`} />
             <span>{activity.time}</span>
           </div>
           <div className="flex items-center gap-2">

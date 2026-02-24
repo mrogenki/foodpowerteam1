@@ -664,7 +664,36 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
     }; 
     reader.readAsArrayBuffer(file); 
   };
-  const handleExport = () => { const exportData = members.map(m => ({ '會員編號': (m.member_no || '').toString().padStart(5, '0'), '姓名': m.name, '狀態': (m.status === 'active' && (!m.membership_expiry_date || m.membership_expiry_date >= new Date().toISOString().slice(0, 10))) ? '有效' : '失效', '會籍到期日': m.membership_expiry_date, '手機': m.phone, '信箱': m.email, '產業分類': m.industry_category, '品牌名稱': m.brand_name, '公司抬頭': m.company_title, '統一編號': m.tax_id, '職稱': m.job_title, '主要服務': m.main_service, '公司網站': m.website, '通訊地址': m.address, '備註': m.notes })); const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "會員資料"); XLSX.writeFile(wb, `會員名單_${new Date().toISOString().split('T')[0]}.xlsx`); };
+  const handleExport = () => { 
+    const exportData = members.map(m => ({ 
+      '會員編號': (m.member_no || '').toString().padStart(5, '0'), 
+      '姓名': m.name, 
+      '狀態': (m.status === 'active' && (!m.membership_expiry_date || m.membership_expiry_date >= new Date().toISOString().slice(0, 10))) ? '有效' : '失效', 
+      '會籍到期日': m.membership_expiry_date, 
+      '手機': m.phone, 
+      '信箱': m.email, 
+      '身分證字號': m.id_number,
+      '生日': m.birthday,
+      '室內電話': m.home_phone,
+      '通訊地址': m.address,
+      '產業分類': m.industry_category, 
+      '品牌名稱': m.brand_name, 
+      '公司抬頭': m.company_title, 
+      '統一編號': m.tax_id, 
+      '職稱': m.job_title, 
+      '主要服務': m.main_service, 
+      '公司網站': m.website, 
+      '引薦人': m.referrer,
+      '加入日期': m.join_date,
+      '退出日期': m.quit_date,
+      '備註': m.notes,
+      '繳費紀錄': m.payment_records
+    })); 
+    const ws = XLSX.utils.json_to_sheet(exportData); 
+    const wb = XLSX.utils.book_new(); 
+    XLSX.utils.book_append_sheet(wb, ws, "會員資料"); 
+    XLSX.writeFile(wb, `會員名單_${new Date().toISOString().split('T')[0]}.xlsx`); 
+  };
 
   const handleSendRenewalNotice = async (member: Member, type: 'renewal' | 'wakeup') => {
     if (!member.email) {
