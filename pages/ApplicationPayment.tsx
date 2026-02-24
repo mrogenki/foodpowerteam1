@@ -17,17 +17,27 @@ const ApplicationPayment: React.FC = () => {
       if (!id) return;
       
       try {
-        // 使用 RPC 函數來安全地獲取付款資訊，避免 RLS 權限問題
-        const { data, error } = await supabase.rpc('get_payment_info', { application_id: id });
+        // 1. 優先嘗試使用 RPC 函數 (適用於未登入/手機端)
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_payment_info', { application_id: id });
 
-        if (error) throw error;
-        
-        // RPC 返回的是陣列，取第一筆
-        if (data && data.length > 0) {
-          setApplication(data[0]);
-        } else {
-          throw new Error('找不到此申請資料');
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          setApplication(rpcData[0]);
+          return;
         }
+
+        // 2. 如果 RPC 失敗 (例如函數未建立)，嘗試直接讀取 (適用於管理員/電腦端)
+        // 注意：這在未登入狀態下會因為 RLS 而失敗，但作為備援方案是必要的
+        console.warn('RPC fetch failed or empty, trying direct select...', rpcError);
+        
+        const { data: directData, error: directError } = await supabase
+          .from('member_applications')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (directError) throw directError;
+        setApplication(directData);
+
       } catch (err: any) {
         console.error('Error fetching application:', err);
         setError('找不到此申請資料或連結已失效');
