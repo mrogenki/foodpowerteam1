@@ -289,9 +289,9 @@ const MemberApplicationManager: React.FC<{
       alert('已更新為已付款狀態');
       // 重新整理頁面或通知父組件更新列表 (這裡簡單做 reload，理想上應該有 callback)
       window.location.reload();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('更新失敗');
+      alert('更新失敗: ' + (err.message || '未知錯誤'));
     }
   };
 
