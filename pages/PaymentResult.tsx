@@ -1,24 +1,120 @@
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CheckCircle2, Home, Mail, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { CheckCircle2, Home, Mail, ArrowLeft, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { supabase } from '../utils/supabaseClient';
 
 const PaymentResult: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const orderNo = searchParams.get('order_no');
   const [lastActivityUrl, setLastActivityUrl] = useState<string | null>(null);
+  const [status, setStatus] = useState<'loading' | 'paid' | 'pending' | 'failed' | 'not_found'>('loading');
+  const [checkCount, setCheckCount] = useState(0);
 
   useEffect(() => {
-    // 嘗試從 sessionStorage 讀取上一個活動頁面的網址
     const url = sessionStorage.getItem('last_activity_url');
-    if (url) {
-      setLastActivityUrl(url);
-      // 可選擇是否要清除，暫時保留以防使用者重新整理
-      // sessionStorage.removeItem('last_activity_url');
-    }
+    if (url) setLastActivityUrl(url);
   }, []);
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-10 rounded-3xl shadow-xl max-w-lg w-full text-center border border-gray-100 animate-in zoom-in duration-500">
+  useEffect(() => {
+    if (!orderNo) {
+      setStatus('paid'); // 向下相容：如果沒有 order_no，假設是舊版連結或直接訪問，顯示預設成功畫面 (或可改為 not_found)
+      return;
+    }
+
+    const checkStatus = async () => {
+      try {
+        const { data, error } = await supabase.rpc('check_payment_status', { order_no: orderNo });
+        
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const paymentStatus = data[0].status;
+          if (paymentStatus === 'paid') {
+            setStatus('paid');
+          } else {
+            setStatus('pending');
+          }
+        } else {
+          setStatus('not_found');
+        }
+      } catch (err) {
+        console.error('Check status error:', err);
+        setStatus('not_found');
+      }
+    };
+
+    checkStatus();
+
+    // 輪詢機制：如果是 pending，每 3 秒檢查一次，最多檢查 10 次 (30秒)
+    let interval: any;
+    if (status === 'pending' || status === 'loading') {
+       interval = setInterval(() => {
+         setCheckCount(prev => {
+           if (prev >= 10) {
+             clearInterval(interval);
+             return prev;
+           }
+           checkStatus();
+           return prev + 1;
+         });
+       }, 3000);
+    }
+
+    return () => clearInterval(interval);
+  }, [orderNo, status]);
+
+  const renderContent = () => {
+    if (status === 'loading') {
+      return (
+        <div className="text-center py-12">
+          <Loader2 className="animate-spin text-red-600 mx-auto mb-4" size={48} />
+          <h2 className="text-xl font-bold text-gray-900">正在確認付款結果...</h2>
+          <p className="text-gray-500 mt-2">請稍候，系統正在與金流平台同步資訊</p>
+        </div>
+      );
+    }
+
+    if (status === 'not_found') {
+      return (
+        <div className="text-center">
+          <div className="w-20 h-20 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={40} />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">找不到交易紀錄</h1>
+          <p className="text-gray-600 mb-8">
+            無法查詢到此訂單編號 ({orderNo}) 的付款資訊。<br/>
+            請確認您是否已完成付款，或聯繫客服人員協助。
+          </p>
+        </div>
+      );
+    }
+
+    if (status === 'pending') {
+      return (
+        <div className="text-center">
+          <div className="w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <RefreshCw size={40} className="animate-spin" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">付款確認中 / 未完成</h1>
+          <p className="text-gray-600 mb-8">
+            系統尚未收到您的付款成功通知。<br/>
+            若您剛剛已完成付款，請稍候片刻並點擊下方按鈕重新整理。<br/>
+            若您尚未付款或付款失敗，請返回重新操作。
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-yellow-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-yellow-600 transition-colors mb-6"
+          >
+            重新整理狀態
+          </button>
+        </div>
+      );
+    }
+
+    // status === 'paid'
+    return (
+      <>
         <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle2 size={40} />
         </div>
@@ -31,10 +127,10 @@ const PaymentResult: React.FC = () => {
             第三方金流平台已接收您的款項。
           </p>
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 text-left">
-            <p className="font-bold mb-1 flex items-center gap-2"><RefreshCw size={14} className="animate-spin" /> 系統自動核銷中：</p>
+            <p className="font-bold mb-1 flex items-center gap-2"><CheckCircle2 size={14} /> 系統已核銷：</p>
             <p>
-              系統正在背景接收金流通知並自動更新您的報名狀態為「已付款」。<br/>
-              這通常在 1~3 分鐘內完成，您無需進行任何操作。
+              您的報名狀態已更新為「已付款」。<br/>
+              您可以隨時在會員專區查看您的報名紀錄。
             </p>
           </div>
           
@@ -45,6 +141,14 @@ const PaymentResult: React.FC = () => {
             </p>
           </div>
         </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="bg-white p-10 rounded-3xl shadow-xl max-w-lg w-full text-center border border-gray-100 animate-in zoom-in duration-500">
+        {renderContent()}
 
         <div className="flex gap-4 justify-center">
           <Link to="/" className="flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors">

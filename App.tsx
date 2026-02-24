@@ -131,13 +131,26 @@ const App: React.FC = () => {
 
   // 1. 監聽 Supabase Auth 狀態
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn("Session check failed:", error.message);
+        if (error.message.includes("Refresh Token")) {
+          // Token 失效，強制登出清除狀態
+          supabase.auth.signOut();
+          setSession(null);
+        }
+      } else {
+        setSession(session);
+      }
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // 處理 Token 重新整理失敗的情況
+      if (event === 'TOKEN_REFRESHED' && !session) {
+         console.warn('Token refresh failed');
+      }
       setSession(session);
     });
 
