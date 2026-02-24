@@ -132,11 +132,24 @@ serve(async (req) => {
               .select()
 
             if (memError) {
-                console.error('[Notify] Update Member Registrations Error:', memError)
+              console.error('[Notify] Update Member Registrations Error:', memError)
             } else if (memData && memData.length > 0) {
-                console.log(`[Notify] Success! Updated Member Registration: ${merchantOrderNo}`)
+              console.log(`[Notify] Success! Updated Member Registration: ${merchantOrderNo}`)
             } else {
+              // 6.3 If not found, Update 'member_applications' (新會員入會)
+              const { data: appData, error: appError } = await supabase
+                .from('member_applications')
+                .update(updatePayload)
+                .eq('merchant_order_no', merchantOrderNo)
+                .select()
+
+              if (appError) {
+                console.error('[Notify] Update Member Applications Error:', appError)
+              } else if (appData && appData.length > 0) {
+                console.log(`[Notify] Success! Updated Member Application: ${merchantOrderNo}`)
+              } else {
                 console.warn(`[Notify] Warning: Order not found in any table: ${merchantOrderNo}`)
+              }
             }
           }
         } else {

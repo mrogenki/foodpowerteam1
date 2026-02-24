@@ -271,6 +271,30 @@ const MemberApplicationManager: React.FC<{
   const [selectedApp, setSelectedApp] = useState<MemberApplication | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | number | null>(null);
 
+  const handleMarkAsPaid = async (app: MemberApplication) => {
+    if (!confirm(`確定要將 ${app.name} 的申請狀態手動標記為「已付款」嗎？`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('member_applications')
+        .update({ 
+          payment_status: PaymentStatus.PAID,
+          paid_at: new Date().toISOString(),
+          payment_method: 'manual_admin'
+        })
+        .eq('id', app.id);
+
+      if (error) throw error;
+      
+      alert('已更新為已付款狀態');
+      // 重新整理頁面或通知父組件更新列表 (這裡簡單做 reload，理想上應該有 callback)
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('更新失敗');
+    }
+  };
+
   const handleResendPaymentLink = async (app: MemberApplication, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`確定要重新發送繳費連結給 ${app.name} (${app.email})？`)) return;
@@ -350,13 +374,21 @@ const MemberApplicationManager: React.FC<{
                           {isPaid ? '已付款' : '待付款'}
                         </span>
                         {!isPaid && (
-                          <button 
-                            onClick={(e) => handleResendPaymentLink(app, e)}
-                            disabled={sendingEmailId === app.id}
-                            className="text-blue-600 hover:text-blue-800 text-xs underline disabled:opacity-50"
-                          >
-                            {sendingEmailId === app.id ? '發送中...' : '補寄連結'}
-                          </button>
+                          <>
+                            <button 
+                              onClick={(e) => handleResendPaymentLink(app, e)}
+                              disabled={sendingEmailId === app.id}
+                              className="text-blue-600 hover:text-blue-800 text-xs underline disabled:opacity-50 mr-2"
+                            >
+                              {sendingEmailId === app.id ? '發送中...' : '補寄連結'}
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(app); }}
+                              className="text-green-600 hover:text-green-800 text-xs underline"
+                            >
+                              標記已付
+                            </button>
+                          </>
                         )}
                       </div>
                       {app.paid_amount && <div className="text-xs text-gray-400 mt-1">NT$ {app.paid_amount.toLocaleString()}</div>}
@@ -399,13 +431,21 @@ const MemberApplicationManager: React.FC<{
                        : '請確認申請人是否已繳費。若尚未繳費，請勿核准。您可以補寄繳費連結給申請人。'}
                    </p>
                    {selectedApp.payment_status !== PaymentStatus.PAID && (
-                      <button 
-                        onClick={(e) => handleResendPaymentLink(selectedApp, e)}
-                        disabled={sendingEmailId === selectedApp.id}
-                        className="mt-2 text-sm bg-white border border-yellow-200 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-100 transition-colors"
-                      >
-                        {sendingEmailId === selectedApp.id ? '發送中...' : '補寄繳費連結'}
-                      </button>
+                      <div className="flex gap-2 mt-2">
+                        <button 
+                          onClick={(e) => handleResendPaymentLink(selectedApp, e)}
+                          disabled={sendingEmailId === selectedApp.id}
+                          className="text-sm bg-white border border-yellow-200 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-100 transition-colors"
+                        >
+                          {sendingEmailId === selectedApp.id ? '發送中...' : '補寄繳費連結'}
+                        </button>
+                        <button 
+                          onClick={() => handleMarkAsPaid(selectedApp)}
+                          className="text-sm bg-green-50 border border-green-200 text-green-700 px-3 py-1 rounded hover:bg-green-100 transition-colors"
+                        >
+                          手動標記為已付款
+                        </button>
+                      </div>
                    )}
                  </div>
                </div>

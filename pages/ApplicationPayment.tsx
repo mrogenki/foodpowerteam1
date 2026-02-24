@@ -17,14 +17,17 @@ const ApplicationPayment: React.FC = () => {
       if (!id) return;
       
       try {
-        const { data, error } = await supabase
-          .from('member_applications')
-          .select('*')
-          .eq('id', id)
-          .single();
+        // 使用 RPC 函數來安全地獲取付款資訊，避免 RLS 權限問題
+        const { data, error } = await supabase.rpc('get_payment_info', { application_id: id });
 
         if (error) throw error;
-        setApplication(data);
+        
+        // RPC 返回的是陣列，取第一筆
+        if (data && data.length > 0) {
+          setApplication(data[0]);
+        } else {
+          throw new Error('找不到此申請資料');
+        }
       } catch (err: any) {
         console.error('Error fetching application:', err);
         setError('找不到此申請資料或連結已失效');
