@@ -621,9 +621,65 @@ const ActivityCheckInManager: React.FC<{
   activities: (Activity | MemberActivity)[];
   registrations: (Registration | MemberRegistration)[];
   onUpdateReg: (reg: any) => void;
-}> = ({ type, activities, registrations, onUpdateReg }) => {
+  members?: Member[];
+}> = ({ type, activities, registrations, onUpdateReg, members }) => {
   const [selectedActivityId, setSelectedActivityId] = useState<string | number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sendingEmail, setSendingEmail] = useState<string[]>([]);
+
+  const handleResendPaymentLink = async (reg: any) => {
+    if (!confirm(`確定要重新發送付款連結給 ${reg.name || reg.member_name}？`)) return;
+    
+    let email = reg.email;
+    // 如果是會員活動報名，嘗試從 members 列表查找 email
+    if (type === 'member' && !email && members) {
+       const member = members.find(m => String(m.id) === String(reg.memberId));
+       if (member) email = member.email;
+    }
+
+    if (!email) {
+      alert('找不到此報名者的 Email，無法發送');
+      return;
+    }
+
+    const activity = activities.find(a => String(a.id) === String(reg.activityId));
+    if (!activity) {
+        alert('找不到活動資料');
+        return;
+    }
+
+    const paymentLink = `${window.location.origin}/#/pay-activity/${reg.id}`;
+    
+    setSendingEmail(prev => [...prev, String(reg.id)]);
+
+    try {
+      // 使用一般活動報名模板，但將地點欄位加上付款連結 (權宜之計)
+      // 理想狀況是建立專用的 "補繳費通知" 模板
+      await emailjs.send(
+        EMAIL_CONFIG.SERVICE_ID,
+        EMAIL_CONFIG.TEMPLATE_ID,
+        {
+            to_name: reg.name || reg.member_name,
+            email: email,
+            phone: reg.phone || '', // Member registration might not have phone in reg object
+            activity_title: activity.title,
+            activity_date: activity.date,
+            activity_time: activity.time,
+            activity_location: `${activity.location} (請點擊此連結完成繳費: ${paymentLink})`,
+            activity_price: reg.paid_amount || activity.price,
+            payment_link: paymentLink // 嘗試傳遞獨立參數，若模板有支援則會顯示
+        },
+        EMAIL_CONFIG.PUBLIC_KEY
+      );
+      
+      alert(`已發送付款連結至 ${email}`);
+    } catch (e: any) {
+      console.error('Email Error:', e);
+      alert('發送失敗: ' + (e.text || e.message));
+    } finally {
+      setSendingEmail(prev => prev.filter(id => id !== String(reg.id)));
+    }
+  };
 
   if (!selectedActivityId) {
     const sortedActivities = [...activities].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -644,7 +700,7 @@ const ActivityCheckInManager: React.FC<{
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300">
        <div className="flex items-center gap-4"><button onClick={() => setSelectedActivityId(null)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200"><ArrowLeft size={20} /></button><div><h2 className="text-2xl font-bold">{currentActivity?.title}</h2><p className="text-sm text-gray-500">報到管理列表</p></div></div>
-       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"><div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div className="relative flex-grow max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋姓名、手機末三碼、單號..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-gray-50 focus:bg-white transition-all" autoFocus/></div><div className="flex gap-4 text-sm font-bold text-gray-500 bg-gray-50 px-4 py-2 rounded-lg"><span>總計: {currentRegistrations.length}</span><span className="text-green-600">已到: {currentRegistrations.filter(r => r.check_in_status).length}</span><span className="text-gray-400">未到: {currentRegistrations.length - currentRegistrations.filter(r => r.check_in_status).length}</span></div></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse"><thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">參加者</th><th className="p-4">報到操作 (點擊切換)</th><th className="p-4">付款狀態</th><th className="p-4 rounded-tr-lg">金額</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredRegs.map((reg: any) => (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{reg.name || reg.member_name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{reg.phone}</div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td></tr>))} {filteredRegs.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-gray-400">查無資料，請嘗試其他關鍵字</td></tr>}</tbody></table></div></div>
+       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"><div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div className="relative flex-grow max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋姓名、手機末三碼、單號..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-gray-50 focus:bg-white transition-all" autoFocus/></div><div className="flex gap-4 text-sm font-bold text-gray-500 bg-gray-50 px-4 py-2 rounded-lg"><span>總計: {currentRegistrations.length}</span><span className="text-green-600">已到: {currentRegistrations.filter(r => r.check_in_status).length}</span><span className="text-gray-400">未到: {currentRegistrations.length - currentRegistrations.filter(r => r.check_in_status).length}</span></div></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse"><thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">參加者</th><th className="p-4">報到操作 (點擊切換)</th><th className="p-4">付款狀態</th><th className="p-4 rounded-tr-lg">金額</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredRegs.map((reg: any) => (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{reg.name || reg.member_name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{reg.phone}</div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><div className="flex flex-col gap-2 items-start"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button>{(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (<button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">{sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結</button>)}</div></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td></tr>))}{filteredRegs.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-gray-400">查無資料，請嘗試其他關鍵字</td></tr>}</tbody></table></div></div>
     </div>
   );
 };
@@ -1271,8 +1327,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
         <Routes>
           <Route path="/" element={<DashboardHome {...props} />} />
           
-          <Route path="/check-in" element={<ActivityCheckInManager type="general" activities={props.activities} registrations={props.registrations} onUpdateReg={props.onUpdateRegistration} />} />
-          <Route path="/member-check-in" element={<ActivityCheckInManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onUpdateReg={props.onUpdateMemberRegistration} />} />
+          <Route path="/check-in" element={<ActivityCheckInManager type="general" activities={props.activities} registrations={props.registrations} onUpdateReg={props.onUpdateRegistration} members={props.members} />} />
+          <Route path="/member-check-in" element={<ActivityCheckInManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onUpdateReg={props.onUpdateMemberRegistration} members={props.members} />} />
           
           <Route path="/activities" element={<ActivityManager type="general" activities={props.activities} registrations={props.registrations} onAdd={props.onAddActivity} onUpdate={props.onUpdateActivity} onDelete={props.onDeleteActivity} onUpdateReg={props.onUpdateRegistration} onDeleteReg={props.onDeleteRegistration} onUploadImage={props.onUploadImage} />} />
           <Route path="/member-activities" element={<ActivityManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUpdateReg={props.onUpdateMemberRegistration} onDeleteReg={props.onDeleteMemberRegistration} onUploadImage={props.onUploadImage} members={props.members} />} />
