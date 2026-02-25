@@ -127,10 +127,16 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
               <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">還沒加入食在力量會員嗎？</h2>
               <p className="text-gray-400 mb-0">立即註冊成為會員，享有專屬活動優惠、產業媒合機會，並與頂尖業者交流共學。</p>
             </div>
-            <Link to="/join" className="relative z-10 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/50 transition-all flex items-center gap-2 whitespace-nowrap">
-              <UserPlus size={20} />
-              立即加入會員
-            </Link>
+            <div className="relative z-10 flex flex-col sm:flex-row gap-4">
+              <Link to="/join" className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/50 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                <UserPlus size={20} />
+                立即加入會員
+              </Link>
+              <Link to="/renew" className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-4 rounded-xl font-bold text-lg border border-gray-700 hover:border-gray-600 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                <Crown size={20} />
+                會員續約
+              </Link>
+            </div>
             {/* 裝飾背景 */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-10 translate-y-1/2 -translate-x-1/2"></div>
