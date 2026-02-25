@@ -12,9 +12,9 @@ const getConfig = (key: string, defaultValue: string = ''): string => {
 export const NEWEB_CONFIG = {
   // 【請填入您的正式商店資料】
   // 建議：正式上線時，將這些金鑰移至 .env 檔案中透過 import.meta.env 讀取，避免寫死在程式碼中
-  MerchantID: 'OSS000000002208', // 例如：3123456...
-  HashKey: 'ZOf3JWSAzQrqVyywI91mXSi1SwB3HgVQ',     // 例如：ab3...
-  HashIV: 'PUmmBRggmiKNDynC',       // 例如：123...
+  MerchantID: 'BVS00509918', 
+  HashKey: 'emPRlQwL0sksVZ29P7RQUD9FGm5Yp9bP',
+  HashIV: 'PLLHXbZoddtQvJqC',
   
   // 若您已設定 .env，可改用以下方式：
   // MerchantID: getConfig('VITE_NEWEB_MERCHANT_ID', ''),
