@@ -15,7 +15,24 @@ interface MemberRenewal {
   payment_status: string;
   merchant_order_no: string;
   created_at: string;
+  payment_method?: string;
 }
+
+const translatePaymentMethod = (method?: string) => {
+  if (!method) return '-';
+  const map: Record<string, string> = {
+    'CREDIT': '信用卡',
+    'VACC': 'ATM轉帳',
+    'WEBATM': 'WebATM',
+    'CVS': '超商代碼',
+    'BARCODE': '超商條碼',
+    'LINEPAY': 'Line Pay',
+    'manual_admin': '手動標記',
+    'ALIPAY': '支付寶',
+    'WECHATPAY': '微信支付'
+  };
+  return map[method] || method;
+};
 
 const MemberRenewalManager: React.FC = () => {
   const [renewals, setRenewals] = useState<MemberRenewal[]>([]);
@@ -67,7 +84,8 @@ const MemberRenewalManager: React.FC = () => {
         .from('member_renewals')
         .update({ 
           payment_status: 'paid',
-          paid_at: new Date().toISOString()
+          paid_at: new Date().toISOString(),
+          payment_method: 'manual_admin'
         })
         .eq('id', renewal.id);
 
@@ -122,13 +140,6 @@ const MemberRenewalManager: React.FC = () => {
     if (!confirm(`確定重寄付款連結給 ${renewal.member_name}?`)) return;
 
     setSendingEmail(prev => [...prev, renewal.id]);
-    const paymentLink = `${window.location.origin}/#/pay-application/${renewal.id}`; // Reuse application payment page logic or create new one if needed. 
-    // Actually, we created get_renewal_payment_info, so we should probably use a dedicated page or update ApplicationPayment to handle renewals too.
-    // For now, let's assume we use a specific route or query param. 
-    // Let's use /pay-application/:id but we need to make sure ApplicationPayment can handle it.
-    // Wait, ApplicationPayment uses get_payment_info which queries member_applications.
-    // We need a page that queries member_renewals.
-    // Let's use /pay-renewal/:id (we need to create this route).
     
     const renewalPaymentLink = `${window.location.origin}/#/pay-renewal/${renewal.id}`;
 
@@ -172,6 +183,7 @@ const MemberRenewalManager: React.FC = () => {
               <th className="p-4">會員</th>
               <th className="p-4">金額</th>
               <th className="p-4">狀態</th>
+              <th className="p-4">付款方式</th>
               <th className="p-4">操作</th>
             </tr>
           </thead>
@@ -191,6 +203,11 @@ const MemberRenewalManager: React.FC = () => {
                   }`}>
                     {renewal.payment_status === 'paid' ? '已付款' : 
                      renewal.payment_status === 'failed' ? '失敗' : '待付款'}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    {translatePaymentMethod(renewal.payment_method)}
                   </span>
                 </td>
                 <td className="p-4 flex gap-2">

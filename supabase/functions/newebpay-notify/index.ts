@@ -148,7 +148,24 @@ serve(async (req) => {
               } else if (appData && appData.length > 0) {
                 console.log(`[Notify] Success! Updated Member Application: ${merchantOrderNo}`)
               } else {
-                console.warn(`[Notify] Warning: Order not found in any table: ${merchantOrderNo}`)
+                // 6.4 If not found, Update 'member_renewals' (會員續約)
+                const { data: renewData, error: renewError } = await supabase
+                  .from('member_renewals')
+                  .update({
+                    payment_status: 'paid',
+                    paid_at: paidAtISO,
+                    payment_method: paymentMethod
+                  })
+                  .eq('merchant_order_no', merchantOrderNo)
+                  .select()
+
+                if (renewError) {
+                  console.error('[Notify] Update Member Renewals Error:', renewError)
+                } else if (renewData && renewData.length > 0) {
+                  console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
+                } else {
+                  console.warn(`[Notify] Warning: Order not found in any table: ${merchantOrderNo}`)
+                }
               }
             }
           }
