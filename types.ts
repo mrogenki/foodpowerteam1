@@ -54,6 +54,7 @@ export interface Registration {
   company?: string;
   title?: string;
   referrer?: string;
+  notes?: string;
   check_in_status?: boolean;
   paid_amount?: number;
   coupon_code?: string;
@@ -74,6 +75,7 @@ export interface MemberRegistration {
   memberId: string | number;   // 對應 members 的 ID
   member_name: string;         // 冗餘儲存方便顯示
   member_no: string;           // 冗餘儲存方便顯示
+  notes?: string;
   check_in_status?: boolean;
   paid_amount?: number;
   coupon_code?: string;

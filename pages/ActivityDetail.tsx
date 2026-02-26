@@ -46,6 +46,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     company: '',
     title: '',
     referrer: '',
+    notes: '',
     memberId: '' // For member registration
   });
 
@@ -134,6 +135,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       company: member.brand_name || member.company_title || '',
       title: member.job_title || '',
       referrer: member.referrer || '',
+      notes: '',
       memberId: String(member.id)
     });
     setMemberSearchTerm(member.name);
@@ -247,6 +249,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
           company: formData.company,
           title: formData.title,
           referrer: formData.referrer,
+          notes: formData.notes,
         };
         success = await props.onRegister(newReg, validCouponId);
       } else if (props.type === 'member' && props.onMemberRegister) {
@@ -255,6 +258,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
           memberId: formData.memberId,
           member_name: formData.name,
           member_no: '', 
+          notes: formData.notes,
         };
         success = await props.onMemberRegister(newMemberReg, validCouponId);
       }
@@ -449,6 +453,8 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">公司/品牌名稱</label><input required type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的公司名稱" readOnly={props.type === 'member'} /></div>
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">職務</label><input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的目前職位" readOnly={props.type === 'member'} /></div>
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">引薦人 (選填)</label><input type="text" value={formData.referrer} onChange={e => setFormData({...formData, referrer: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="引薦您的夥伴姓名" readOnly={props.type === 'member'} /></div>
+                  
+                  <div><label className="block text-sm font-bold text-gray-700 mb-2">備註 (選填)</label><textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none transition-all" placeholder="若有特殊需求請在此說明" rows={2} /></div>
 
                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
                     <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1"><Ticket size={16} /> 活動折扣券</label>
