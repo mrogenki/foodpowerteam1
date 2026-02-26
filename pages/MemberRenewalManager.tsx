@@ -194,6 +194,7 @@ const MemberRenewalManager: React.FC = () => {
                 <td className="p-4">
                   <div className="font-bold text-gray-900">{renewal.member_name}</div>
                   <div className="text-xs text-gray-400">{renewal.member_no}</div>
+                  {renewal.merchant_order_no && <div className="text-[10px] text-gray-400 font-mono">#{renewal.merchant_order_no}</div>}
                 </td>
                 <td className="p-4 font-mono">NT$ {renewal.amount.toLocaleString()}</td>
                 <td className="p-4">

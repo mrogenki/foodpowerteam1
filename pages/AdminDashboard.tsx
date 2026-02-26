@@ -383,7 +383,10 @@ const MemberApplicationManager: React.FC<{
                 return (
                   <tr key={app.id} className="hover:bg-gray-50">
                     <td className="p-4 text-gray-500">{new Date(app.created_at).toLocaleDateString()}</td>
-                    <td className="p-4 font-bold text-gray-900">{app.name}</td>
+                    <td className="p-4">
+                      <div className="font-bold text-gray-900">{app.name}</div>
+                      {app.merchant_order_no && <div className="text-[10px] text-gray-400 font-mono">#{app.merchant_order_no}</div>}
+                    </td>
                     <td className="p-4">
                       <div className="font-bold">{app.brand_name || app.company_title}</div>
                       <div className="text-xs text-gray-500">{app.job_title}</div>
