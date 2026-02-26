@@ -112,42 +112,121 @@ serve(async (req) => {
             payment_method: paymentMethod
           }
 
+          // Init Supabase
+          const supabase = createClient(SupabaseUrl, SupabaseKey)
+
+          // Helper: Send Email via EmailJS REST API
+          const sendEmail = async (templateId: string, params: any) => {
+            const serviceId = Deno.env.get('EMAILJS_SERVICE_ID');
+            const publicKey = Deno.env.get('EMAILJS_PUBLIC_KEY');
+            
+            if (!serviceId || !publicKey) {
+              console.warn('[Notify] EmailJS env variables missing, skipping email');
+              return;
+            }
+
+            try {
+              const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  service_id: serviceId,
+                  template_id: templateId,
+                  user_id: publicKey,
+                  template_params: params
+                })
+              });
+              
+              if (response.ok) {
+                console.log(`[Notify] Email sent successfully to ${params.email || params.to_email}`);
+              } else {
+                const errText = await response.text();
+                console.error('[Notify] Email sending failed:', errText);
+              }
+            } catch (e) {
+              console.error('[Notify] Email sending error:', e);
+            }
+          };
+
           // 6.1 Update 'registrations' (一般活動)
           const { data: regData, error: regError } = await supabase
             .from('registrations')
             .update(updatePayload)
             .eq('merchant_order_no', merchantOrderNo)
-            .select()
+            .select('*, activities(*)')
+            .single()
 
           if (regError) {
-            console.error('[Notify] Update Registrations Error:', regError)
-          } else if (regData && regData.length > 0) {
+            // Not in registrations, try member_registrations
+          } else if (regData) {
             console.log(`[Notify] Success! Updated Registration: ${merchantOrderNo}`)
-          } else {
+            // Send Email
+            const activity = regData.activities;
+            await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
+              to_name: regData.name,
+              email: regData.email,
+              activity_title: activity?.title,
+              activity_date: activity?.date,
+              activity_time: activity?.time,
+              activity_location: activity?.location,
+              activity_price: regData.paid_amount
+            });
+          }
+
+          if (!regData) {
             // 6.2 If not found, Update 'member_registrations' (會員活動)
             const { data: memData, error: memError } = await supabase
               .from('member_registrations')
               .update(updatePayload)
               .eq('merchant_order_no', merchantOrderNo)
-              .select()
+              .select('*, activities(*), member:members(email)')
+              .single()
 
             if (memError) {
-              console.error('[Notify] Update Member Registrations Error:', memError)
-            } else if (memData && memData.length > 0) {
+              // Not in member_registrations, try member_applications
+            } else if (memData) {
               console.log(`[Notify] Success! Updated Member Registration: ${merchantOrderNo}`)
-            } else {
+              // Send Email
+              const activity = memData.activities;
+              const memberEmail = memData.member?.email;
+              await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
+                to_name: memData.member_name,
+                email: memberEmail || '', 
+                activity_title: activity?.title,
+                activity_date: activity?.date,
+                activity_time: activity?.time,
+                activity_location: activity?.location,
+                activity_price: memData.paid_amount
+              });
+            }
+
+            if (!memData) {
               // 6.3 If not found, Update 'member_applications' (新會員入會)
               const { data: appData, error: appError } = await supabase
                 .from('member_applications')
                 .update(updatePayload)
                 .eq('merchant_order_no', merchantOrderNo)
                 .select()
+                .single()
 
               if (appError) {
-                console.error('[Notify] Update Member Applications Error:', appError)
-              } else if (appData && appData.length > 0) {
+                // Not in member_applications, try member_renewals
+              } else if (appData) {
                 console.log(`[Notify] Success! Updated Member Application: ${merchantOrderNo}`)
-              } else {
+                // Send Email
+                await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
+                  to_name: appData.name,
+                  email: appData.email,
+                  activity_title: '【食在力量】會員入會申請',
+                  activity_date: new Date().toISOString().slice(0, 10),
+                  activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                  activity_location: '線上申請 (已完成繳費)',
+                  activity_price: `NT$ ${appData.paid_amount?.toLocaleString()}`,
+                  message: `您的入會申請已收到並完成繳費，管理員將於 3-5 個工作天內完成審核。`
+                });
+              }
+
+              if (!appData) {
                 // 6.4 If not found, Update 'member_renewals' (會員續約)
                 const { data: renewData, error: renewError } = await supabase
                   .from('member_renewals')
@@ -157,12 +236,24 @@ serve(async (req) => {
                     payment_method: paymentMethod
                   })
                   .eq('merchant_order_no', merchantOrderNo)
-                  .select()
+                  .select('*, member:members(name, email)')
+                  .single()
 
                 if (renewError) {
                   console.error('[Notify] Update Member Renewals Error:', renewError)
-                } else if (renewData && renewData.length > 0) {
+                } else if (renewData) {
                   console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
+                  // Send Email
+                  await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
+                    to_name: renewData.member?.name,
+                    email: renewData.member?.email,
+                    activity_title: '【食在力量】會員續約申請',
+                    activity_date: new Date().toISOString().slice(0, 10),
+                    activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                    activity_location: '線上續約 (已完成繳費)',
+                    activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
+                    message: `您的會員續約已完成繳費，會籍已自動延長。`
+                  });
                 } else {
                   console.warn(`[Notify] Warning: Order not found in any table: ${merchantOrderNo}`)
                 }

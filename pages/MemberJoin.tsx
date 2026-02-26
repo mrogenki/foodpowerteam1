@@ -157,12 +157,8 @@ ${memberData.notes || '(無)'}
 
       if (insertError) throw insertError;
 
-      // 3. 發送 Email 通知 (使用新模板)
-      // 注意：這裡先發送 "申請已收到" 的信，付款成功後通常會有另一封 (由後端或藍新觸發，或前端無法控制)
-      // 我們可以在信中說明 "請完成繳費程序"
-      await sendJoinConfirmationEmail(newApplication);
-
-      // 4. 轉導至藍新金流付款
+      // 3. 轉導至藍新金流付款
+      // 注意：原本在此發送的 "申請已收到" 信件已移除，改為付款成功後由後端發送，避免使用者誤會
       alert(`申請資料已送出！\n\n即將轉導至付款頁面，請完成繳費以完成入會程序。`);
       
       submitNewebPayForm({

@@ -260,8 +260,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       }
 
       if (success) {
-        // 發送確認信 (無論是否立即付款都先發送報名確認)
-        if (formData.email) {
+        // 只有在「免費活動」或「不須立即付款」時才發送確認信
+        // 繳費活動的信件將移至後端付款成功後發送，避免使用者誤會
+        if (formData.email && (!payNow || finalPrice === 0)) {
           await sendConfirmationEmail(formData.name, formData.email);
         }
 
