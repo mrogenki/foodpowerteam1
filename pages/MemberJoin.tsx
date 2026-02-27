@@ -120,6 +120,24 @@ ${memberData.notes || '(無)'}
     setIsSubmitting(true);
 
     try {
+      // 0. 檢查是否已經是會員 (避免重複申請)
+      const { data: existingMember, error: checkError } = await supabase
+        .from('members')
+        .select('id, name, member_no')
+        .eq('id_number', formData.id_number.trim())
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Check existing member error:', checkError);
+      }
+
+      if (existingMember) {
+        alert(`系統偵測到您已是本會會員 (編號: ${existingMember.member_no})。\n\n舊會員請直接辦理「會員續約」，不須重新申請入會。`);
+        navigate('/member-renewal');
+        setIsSubmitting(false);
+        return;
+      }
+
       // 1. 準備寫入資料 (寫入 member_applications 表)
       const merchantOrderNo = `JOIN_${Date.now()}`;
       const newApplication = {
