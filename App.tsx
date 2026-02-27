@@ -13,6 +13,7 @@ import ApplicationPayment from './pages/ApplicationPayment';
 import ActivityPayment from './pages/ActivityPayment';
 import MemberRenewal from './pages/MemberRenewal';
 import RenewalPayment from './pages/RenewalPayment';
+import AboutUs from './pages/AboutUs';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { supabase } from './utils/supabaseClient';
@@ -39,6 +40,7 @@ const Header: React.FC = () => {
           </div>
           <div className="hidden sm:flex items-center space-x-8">
             <Link to="/" className="text-gray-700 hover:text-red-600 transition-colors font-medium">活動首頁</Link>
+            <Link to="/about" className="text-gray-700 hover:text-red-600 transition-colors font-medium">關於我們</Link>
             <Link to="/members" className="text-gray-700 hover:text-red-600 transition-colors font-medium">會員列表</Link>
             <Link to="/join" className="flex items-center gap-1 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-red-700 shadow-md shadow-red-100 transition-all"><UserPlus size={16} /> 加入會員</Link>
             <Link to="/admin" className="text-gray-500 hover:text-gray-900 flex items-center gap-1 border border-gray-200 px-3 py-1 rounded-full text-sm font-bold">後台管理</Link>
@@ -53,6 +55,7 @@ const Header: React.FC = () => {
       {isOpen && (
         <div className="sm:hidden bg-white border-t px-4 py-3 space-y-3 shadow-lg">
           <Link to="/" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">活動首頁</Link>
+          <Link to="/about" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">關於我們</Link>
           <Link to="/members" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">會員列表</Link>
           <Link to="/join" onClick={() => setIsOpen(false)} className="block text-red-600 font-bold">加入會員</Link>
           <Link to="/admin" onClick={() => setIsOpen(false)} className="block text-gray-500 text-sm font-bold">後台管理</Link>
@@ -525,6 +528,7 @@ const App: React.FC = () => {
         <main className="flex-grow bg-gray-50/30">
           <Routes>
             <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} />} />
+            <Route path="/about" element={<AboutUs />} />
             <Route path="/members" element={<MemberList members={members} />} />
             <Route path="/join" element={<MemberJoin />} />
             <Route path="/renew" element={<MemberRenewal />} />
