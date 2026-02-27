@@ -133,7 +133,7 @@ ${memberData.notes || '(無)'}
 
       if (existingMember) {
         alert(`系統偵測到您已是本會會員 (編號: ${existingMember.member_no})。\n\n舊會員請直接辦理「會員續約」，不須重新申請入會。`);
-        navigate('/member-renewal');
+        navigate('/renew');
         setIsSubmitting(false);
         return;
       }
