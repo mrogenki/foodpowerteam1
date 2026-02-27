@@ -112,9 +112,6 @@ serve(async (req) => {
             payment_method: paymentMethod
           }
 
-          // Init Supabase
-          const supabase = createClient(SupabaseUrl, SupabaseKey)
-
           // Helper: Send Email via EmailJS REST API
           const sendEmail = async (templateId: string, params: any) => {
             const serviceId = Deno.env.get('EMAILJS_SERVICE_ID');
@@ -243,6 +240,50 @@ serve(async (req) => {
                   console.error('[Notify] Update Member Renewals Error:', renewError)
                 } else if (renewData) {
                   console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
+                  
+                  // --- NEW: Automatically extend membership expiry date ---
+                  try {
+                    const memberId = renewData.member_id;
+                    const { data: memberData, error: memberError } = await supabase
+                      .from('members')
+                      .select('membership_expiry_date')
+                      .eq('id', memberId)
+                      .single();
+                    
+                    if (!memberError && memberData) {
+                      let newExpiryDate;
+                      const currentExpiry = memberData.membership_expiry_date ? new Date(memberData.membership_expiry_date) : null;
+                      const today = new Date();
+                      
+                      if (currentExpiry && currentExpiry > today) {
+                        // If not expired, add 1 year to current expiry
+                        newExpiryDate = new Date(currentExpiry);
+                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                      } else {
+                        // If expired or no date, add 1 year to today
+                        newExpiryDate = new Date(today);
+                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                      }
+
+                      const { error: extendError } = await supabase
+                        .from('members')
+                        .update({
+                          membership_expiry_date: newExpiryDate.toISOString().split('T')[0],
+                          status: 'active'
+                        })
+                        .eq('id', memberId);
+                      
+                      if (extendError) {
+                        console.error('[Notify] Auto-extend membership error:', extendError);
+                      } else {
+                        console.log(`[Notify] Successfully extended membership for member ${memberId} to ${newExpiryDate.toISOString().split('T')[0]}`);
+                      }
+                    }
+                  } catch (extendCatch) {
+                    console.error('[Notify] Exception during auto-extend:', extendCatch);
+                  }
+                  // --- End of Auto-extend ---
+
                   // Send Email
                   await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
                     to_name: renewData.member?.name,

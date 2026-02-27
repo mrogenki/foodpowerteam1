@@ -36,6 +36,14 @@ BEGIN
   WHERE merchant_order_no = order_no;
   
   IF FOUND THEN RETURN; END IF;
+
+  -- 4. Check member_renewals (會員續約)
+  RETURN QUERY 
+  SELECT payment_status::text, amount as paid_amount, paid_at 
+  FROM member_renewals 
+  WHERE merchant_order_no = order_no;
+  
+  IF FOUND THEN RETURN; END IF;
 END;
 $$;
 
