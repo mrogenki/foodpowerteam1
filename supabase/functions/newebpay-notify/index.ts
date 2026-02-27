@@ -146,6 +146,7 @@ serve(async (req) => {
           };
 
           // 6.1 Update 'registrations' (一般活動)
+          console.log(`[Notify] Attempting to update registrations for ${merchantOrderNo}`);
           const { data: regData, error: regError } = await supabase
             .from('registrations')
             .update(updatePayload)
@@ -153,9 +154,11 @@ serve(async (req) => {
             .select('*, activities(*)')
             .single()
 
-          if (regError) {
-            // Not in registrations, try member_registrations
-          } else if (regData) {
+          if (regError && regError.code !== 'PGRST116') {
+            console.error(`[Notify] registrations update error:`, regError);
+          }
+          
+          if (regData) {
             console.log(`[Notify] Success! Updated Registration: ${merchantOrderNo}`)
             // Send Email
             const activity = regData.activities;
@@ -172,6 +175,7 @@ serve(async (req) => {
 
           if (!regData) {
             // 6.2 If not found, Update 'member_registrations' (會員活動)
+            console.log(`[Notify] Attempting to update member_registrations for ${merchantOrderNo}`);
             const { data: memData, error: memError } = await supabase
               .from('member_registrations')
               .update(updatePayload)
@@ -179,9 +183,11 @@ serve(async (req) => {
               .select('*, activities(*), member:members(email)')
               .single()
 
-            if (memError) {
-              // Not in member_registrations, try member_applications
-            } else if (memData) {
+            if (memError && memError.code !== 'PGRST116') {
+              console.error(`[Notify] member_registrations update error:`, memError);
+            }
+            
+            if (memData) {
               console.log(`[Notify] Success! Updated Member Registration: ${merchantOrderNo}`)
               // Send Email
               const activity = memData.activities;
@@ -199,6 +205,7 @@ serve(async (req) => {
 
             if (!memData) {
               // 6.3 If not found, Update 'member_applications' (新會員入會)
+              console.log(`[Notify] Attempting to update member_applications for ${merchantOrderNo}`);
               const { data: appData, error: appError } = await supabase
                 .from('member_applications')
                 .update(updatePayload)
@@ -206,9 +213,11 @@ serve(async (req) => {
                 .select()
                 .single()
 
-              if (appError) {
-                // Not in member_applications, try member_renewals
-              } else if (appData) {
+              if (appError && appError.code !== 'PGRST116') {
+                console.error(`[Notify] member_applications update error:`, appError);
+              }
+              
+              if (appData) {
                 console.log(`[Notify] Success! Updated Member Application: ${merchantOrderNo}`)
                 // Send Email
                 await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
@@ -225,6 +234,7 @@ serve(async (req) => {
 
               if (!appData) {
                 // 6.4 If not found, Update 'member_renewals' (會員續約)
+                console.log(`[Notify] Attempting to update member_renewals for ${merchantOrderNo}`);
                 const { data: renewData, error: renewError } = await supabase
                   .from('member_renewals')
                   .update({
@@ -236,9 +246,11 @@ serve(async (req) => {
                   .select('*, member:members(name, email)')
                   .single()
 
-                if (renewError) {
-                  console.error('[Notify] Update Member Renewals Error:', renewError)
-                } else if (renewData) {
+                if (renewError && renewError.code !== 'PGRST116') {
+                  console.error(`[Notify] member_renewals update error:`, renewError);
+                }
+                
+                if (renewData) {
                   console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
                   
                   // --- NEW: Automatically extend membership expiry date ---
