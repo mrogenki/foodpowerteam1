@@ -202,7 +202,7 @@ serve(async (req) => {
               .from('member_registrations')
               .update(updatePayload)
               .eq('merchant_order_no', merchantOrderNo)
-              .select('*, member_activities(*), member:members(email)')
+              .select('*, member_activities(*), members(email)')
               .single()
 
             if (memError && memError.code !== 'PGRST116') {
@@ -215,7 +215,7 @@ serve(async (req) => {
               // Send Email
               try {
                 const activity = memData.member_activities;
-                const memberEmail = memData.member?.email;
+                const memberEmail = memData.members?.email;
                 console.log(`[Notify] Sending member activity email to ${memberEmail} for activity ${activity?.title || '未知活動'}`);
                 await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
                   to_name: memData.member_name,
