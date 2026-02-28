@@ -146,7 +146,7 @@ const MemberRenewalManager: React.FC = () => {
     try {
       await emailjs.send(
         EMAIL_CONFIG.SERVICE_ID,
-        EMAIL_CONFIG.MEMBER_JOIN_TEMPLATE_ID, // Reuse join template or create new one
+        EMAIL_CONFIG.MEMBER_JOIN_TEMPLATE_ID,
         {
           to_name: renewal.member_name,
           email: renewal.member_email,
@@ -155,7 +155,10 @@ const MemberRenewalManager: React.FC = () => {
         },
         EMAIL_CONFIG.PUBLIC_KEY
       );
-      alert('已發送連結');
+      
+      // Copy to clipboard for manual sharing
+      await navigator.clipboard.writeText(renewalPaymentLink);
+      alert('已發送 Email 連結，且付款連結已複製到剪貼簿，您可以直接貼上傳送給會員。');
     } catch (e: any) {
       console.error(e);
       alert('發送失敗');
