@@ -35,8 +35,8 @@ const PaymentResult: React.FC = () => {
         }
 
         if (data && data.length > 0) {
-          // 支援新舊欄位名稱 (out_status 為新版別名，status 為舊版)
-          const paymentStatus = data[0].out_status || data[0].status;
+          // 支援新版 res_status 與舊版欄位名稱
+          const paymentStatus = data[0].res_status || data[0].out_status || data[0].status;
           if (paymentStatus === 'paid') {
             setStatus('paid');
           } else {

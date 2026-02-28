@@ -15,97 +15,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// --- ezPay Invoice Helpers ---
-async function issueEzPayInvoice(params: {
-  merchantOrderNo: string,
-  buyerName: string,
-  buyerEmail: string,
-  totalAmt: number,
-  itemName: string,
-  taxId?: string,
-  companyName?: string
-}) {
-  const merchantId = Deno.env.get('EZPAY_MERCHANT_ID');
-  const hashKey = Deno.env.get('EZPAY_HASH_KEY');
-  const hashIV = Deno.env.get('EZPAY_HASH_IV');
-
-  if (!merchantId || !hashKey || !hashIV) {
-    console.warn('[Notify] ezPay credentials missing, skipping invoice');
-    return { success: false, message: 'Missing credentials' };
-  }
-
-  // Calculate Tax (B2C/B2B Taxable 5%)
-  const totalAmt = params.totalAmt;
-  const amt = Math.round(totalAmt / 1.05);
-  const taxAmt = totalAmt - amt;
-
-  const postData: any = {
-    RespondType: 'JSON',
-    Version: '1.5',
-    TimeStamp: Math.floor(Date.now() / 1000).toString(),
-    MerchantOrderNo: params.merchantOrderNo,
-    Status: '1', // 1=立即開立
-    Category: params.taxId ? 'B2B' : 'B2C',
-    BuyerName: params.buyerName,
-    BuyerEmail: params.buyerEmail,
-    PrintFlag: 'Y',
-    TaxType: '1',
-    TaxRate: 5,
-    Amt: amt,
-    TaxAmt: taxAmt,
-    TotalAmt: totalAmt,
-    ItemName: params.itemName,
-    ItemCount: '1',
-    ItemUnit: '式',
-    ItemPrice: totalAmt,
-    ItemAmt: totalAmt,
-  };
-
-  if (params.taxId) {
-    postData.BuyerUBN = params.taxId;
-    postData.BuyerName = params.companyName || params.buyerName;
-  }
-
-  // Encrypt PostData
-  const postDataString = Object.keys(postData)
-    .map(key => `${key}=${encodeURIComponent(postData[key])}`)
-    .join('&');
-  
-  const key = CryptoJS.enc.Utf8.parse(hashKey);
-  const iv = CryptoJS.enc.Utf8.parse(hashIV);
-  const encrypted = CryptoJS.AES.encrypt(postDataString, key, {
-    iv: iv,
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7
-  });
-  const encryptedString = encrypted.toString();
-
-  try {
-    const formData = new URLSearchParams();
-    formData.append('MerchantID_', merchantId);
-    formData.append('PostData_', encryptedString);
-
-    const response = await fetch('https://inv.ezpay.com.tw/Api_inv_issue/AESissue', {
-      method: 'POST',
-      body: formData,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
-
-    const result = await response.json();
-    console.log('[Notify] ezPay Response:', result);
-
-    if (result.Status === 'SUCCESS') {
-      const data = JSON.parse(result.Result);
-      return { success: true, invoiceNo: data.InvoiceNumber };
-    } else {
-      return { success: false, message: result.Message };
-    }
-  } catch (err) {
-    console.error('[Notify] ezPay API Error:', err);
-    return { success: false, message: 'API connection failed' };
-  }
-}
-
 // --- Main Handler ---
 serve(async (req) => {
   // Handle CORS preflight
@@ -253,32 +162,6 @@ serve(async (req) => {
           if (regData) {
             console.log(`[Notify] Success! Updated Registration: ${merchantOrderNo}`)
             
-            // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
-            try {
-              const invResult = await issueEzPayInvoice({
-                merchantOrderNo: merchantOrderNo,
-                buyerName: regData.name,
-                buyerEmail: regData.email,
-                totalAmt: regData.paid_amount,
-                itemName: regData.activities?.title || '活動報名費'
-              });
-
-              if (invResult.success) {
-                await supabase.from('registrations').update({
-                  invoice_no: invResult.invoiceNo,
-                  invoice_status: 'issued'
-                }).eq('merchant_order_no', merchantOrderNo);
-                console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
-              } else {
-                await supabase.from('registrations').update({
-                  invoice_status: 'failed'
-                }).eq('merchant_order_no', merchantOrderNo);
-                console.warn(`[Notify] Invoice failed: ${invResult.message}`);
-              }
-            } catch (invErr) {
-              console.error(`[Notify] Invoice process error:`, invErr);
-            }
-
             // Send Email (Wrapped in try-catch)
             try {
               const activity = regData.activities;
@@ -313,32 +196,6 @@ serve(async (req) => {
             if (memData) {
               console.log(`[Notify] Success! Updated Member Registration: ${merchantOrderNo}`)
               
-              // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
-              try {
-                const invResult = await issueEzPayInvoice({
-                  merchantOrderNo: merchantOrderNo,
-                  buyerName: memData.member_name,
-                  buyerEmail: memData.member?.email || '',
-                  totalAmt: memData.paid_amount,
-                  itemName: memData.activities?.title || '會員活動報名費'
-                });
-
-                if (invResult.success) {
-                  await supabase.from('member_registrations').update({
-                    invoice_no: invResult.invoiceNo,
-                    invoice_status: 'issued'
-                  }).eq('merchant_order_no', merchantOrderNo);
-                  console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
-                } else {
-                  await supabase.from('member_registrations').update({
-                    invoice_status: 'failed'
-                  }).eq('merchant_order_no', merchantOrderNo);
-                  console.warn(`[Notify] Invoice failed: ${invResult.message}`);
-                }
-              } catch (invErr) {
-                console.error(`[Notify] Invoice process error:`, invErr);
-              }
-
               // Send Email
               try {
                 const activity = memData.activities;
@@ -374,34 +231,6 @@ serve(async (req) => {
               if (appData) {
                 console.log(`[Notify] Success! Updated Member Application: ${merchantOrderNo}`)
                 
-                // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
-                try {
-                  const invResult = await issueEzPayInvoice({
-                    merchantOrderNo: merchantOrderNo,
-                    buyerName: appData.name,
-                    buyerEmail: appData.email,
-                    totalAmt: appData.paid_amount,
-                    itemName: '食在力量會員入會費',
-                    taxId: appData.tax_id,
-                    companyName: appData.company_name
-                  });
-
-                  if (invResult.success) {
-                    await supabase.from('member_applications').update({
-                      invoice_no: invResult.invoiceNo,
-                      invoice_status: 'issued'
-                    }).eq('merchant_order_no', merchantOrderNo);
-                    console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
-                  } else {
-                    await supabase.from('member_applications').update({
-                      invoice_status: 'failed'
-                    }).eq('merchant_order_no', merchantOrderNo);
-                    console.warn(`[Notify] Invoice failed: ${invResult.message}`);
-                  }
-                } catch (invErr) {
-                  console.error(`[Notify] Invoice process error:`, invErr);
-                }
-
                 // Send Email
                 try {
                   await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
@@ -440,32 +269,6 @@ serve(async (req) => {
                 if (renewData) {
                   console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
                   
-                  // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
-                  try {
-                    const invResult = await issueEzPayInvoice({
-                      merchantOrderNo: merchantOrderNo,
-                      buyerName: renewData.member?.name || '',
-                      buyerEmail: renewData.member?.email || '',
-                      totalAmt: renewData.amount,
-                      itemName: '食在力量會員續約費'
-                    });
-
-                    if (invResult.success) {
-                      await supabase.from('member_renewals').update({
-                        invoice_no: invResult.invoiceNo,
-                        invoice_status: 'issued'
-                      }).eq('merchant_order_no', merchantOrderNo);
-                      console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
-                    } else {
-                      await supabase.from('member_renewals').update({
-                        invoice_status: 'failed'
-                      }).eq('merchant_order_no', merchantOrderNo);
-                      console.warn(`[Notify] Invoice failed: ${invResult.message}`);
-                    }
-                  } catch (invErr) {
-                    console.error(`[Notify] Invoice process error:`, invErr);
-                  }
-
                   // --- NEW: Automatically extend membership expiry date ---
                   try {
                     const memberId = renewData.member_id;
