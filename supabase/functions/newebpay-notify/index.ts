@@ -137,6 +137,12 @@ serve(async (req) => {
                 payload.accessToken = privateKey;
               }
 
+              console.log(`[Notify] Sending email payload to EmailJS:`, JSON.stringify({
+                ...payload,
+                accessToken: payload.accessToken ? '***HIDDEN***' : undefined,
+                user_id: '***HIDDEN***'
+              }));
+
               const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -183,6 +189,7 @@ serve(async (req) => {
                 activity_location: activity?.location || '',
                 activity_price: regData.paid_amount || 0
               });
+              console.log(`[Notify] Finished awaiting sendEmail for general activity`);
             } catch (emailErr) {
               console.error(`[Notify] Email process error:`, emailErr);
             }
@@ -219,6 +226,7 @@ serve(async (req) => {
                   activity_location: activity?.location || '',
                   activity_price: memData.paid_amount || 0
                 });
+                console.log(`[Notify] Finished awaiting sendEmail for member activity`);
               } catch (emailErr) {
                 console.error(`[Notify] Email process error:`, emailErr);
               }
@@ -254,6 +262,7 @@ serve(async (req) => {
                     activity_price: `NT$ ${appData.paid_amount?.toLocaleString()}`,
                     message: `您的入會申請已收到並完成繳費，管理員將於 3-5 個工作天內完成審核。`
                   });
+                  console.log(`[Notify] Finished awaiting sendEmail for member application`);
                 } catch (emailErr) {
                   console.error(`[Notify] Email process error:`, emailErr);
                 }
@@ -338,6 +347,7 @@ serve(async (req) => {
                       activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
                       message: `您的會員續約已完成繳費，會籍已自動延長。`
                     });
+                    console.log(`[Notify] Finished awaiting sendEmail for member renewal`);
                   } catch (emailErr) {
                     console.error(`[Notify] Email process error:`, emailErr);
                   }
