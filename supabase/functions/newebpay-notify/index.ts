@@ -166,7 +166,7 @@ serve(async (req) => {
             .from('registrations')
             .update(updatePayload)
             .eq('merchant_order_no', merchantOrderNo)
-            .select('*, activities(*)')
+            .select()
             .single()
 
           if (regError && regError.code !== 'PGRST116') {
@@ -176,17 +176,32 @@ serve(async (req) => {
           if (regData) {
             console.log(`[Notify] Success! Updated Registration: ${merchantOrderNo}`)
             
+            // Fetch activity details separately to avoid PGRST200
+            let activityTitle = '活動報名確認';
+            let activityDate = '';
+            let activityTime = '';
+            let activityLocation = '';
+            
+            if (regData.activity_id) {
+              const { data: actData } = await supabase.from('activities').select('*').eq('id', regData.activity_id).single();
+              if (actData) {
+                activityTitle = actData.title || activityTitle;
+                activityDate = actData.date || activityDate;
+                activityTime = actData.time || activityTime;
+                activityLocation = actData.location || activityLocation;
+              }
+            }
+
             // Send Email (Wrapped in try-catch)
             try {
-              const activity = regData.activities;
-              console.log(`[Notify] Sending general activity email to ${regData.email} for activity ${activity?.title || '未知活動'}`);
+              console.log(`[Notify] Sending general activity email to ${regData.email} for activity ${activityTitle}`);
               await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
                 to_name: regData.name,
                 email: regData.email,
-                activity_title: activity?.title || '活動報名確認',
-                activity_date: activity?.date || '',
-                activity_time: activity?.time || '',
-                activity_location: activity?.location || '',
+                activity_title: activityTitle,
+                activity_date: activityDate,
+                activity_time: activityTime,
+                activity_location: activityLocation,
                 activity_price: regData.paid_amount || 0
               });
               console.log(`[Notify] Finished awaiting sendEmail for general activity`);
@@ -202,7 +217,7 @@ serve(async (req) => {
               .from('member_registrations')
               .update(updatePayload)
               .eq('merchant_order_no', merchantOrderNo)
-              .select('*, member_activities(*), members(email)')
+              .select()
               .single()
 
             if (memError && memError.code !== 'PGRST116') {
@@ -212,18 +227,39 @@ serve(async (req) => {
             if (memData) {
               console.log(`[Notify] Success! Updated Member Registration: ${merchantOrderNo}`)
               
+              // Fetch activity and member details separately to avoid PGRST200
+              let activityTitle = '活動報名確認';
+              let activityDate = '';
+              let activityTime = '';
+              let activityLocation = '';
+              let memberEmail = '';
+
+              if (memData.activity_id) {
+                const { data: actData } = await supabase.from('member_activities').select('*').eq('id', memData.activity_id).single();
+                if (actData) {
+                  activityTitle = actData.title || activityTitle;
+                  activityDate = actData.date || activityDate;
+                  activityTime = actData.time || activityTime;
+                  activityLocation = actData.location || activityLocation;
+                }
+              }
+              if (memData.member_id) {
+                const { data: memberRec } = await supabase.from('members').select('email').eq('id', memData.member_id).single();
+                if (memberRec) {
+                  memberEmail = memberRec.email;
+                }
+              }
+
               // Send Email
               try {
-                const activity = memData.member_activities;
-                const memberEmail = memData.members?.email;
-                console.log(`[Notify] Sending member activity email to ${memberEmail} for activity ${activity?.title || '未知活動'}`);
+                console.log(`[Notify] Sending member activity email to ${memberEmail} for activity ${activityTitle}`);
                 await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
                   to_name: memData.member_name,
                   email: memberEmail || '', 
-                  activity_title: activity?.title || '活動報名確認',
-                  activity_date: activity?.date || '',
-                  activity_time: activity?.time || '',
-                  activity_location: activity?.location || '',
+                  activity_title: activityTitle,
+                  activity_date: activityDate,
+                  activity_time: activityTime,
+                  activity_location: activityLocation,
                   activity_price: memData.paid_amount || 0
                 });
                 console.log(`[Notify] Finished awaiting sendEmail for member activity`);
@@ -279,7 +315,7 @@ serve(async (req) => {
                     payment_method: paymentMethod
                   })
                   .eq('merchant_order_no', merchantOrderNo)
-                  .select('*, member:members(name, email)')
+                  .select()
                   .single()
 
                 if (renewError && renewError.code !== 'PGRST116') {
@@ -289,6 +325,16 @@ serve(async (req) => {
                 if (renewData) {
                   console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
                   
+                  let memberName = '';
+                  let memberEmail = '';
+                  if (renewData.member_id) {
+                     const { data: memberRec } = await supabase.from('members').select('name, email').eq('id', renewData.member_id).single();
+                     if (memberRec) {
+                        memberName = memberRec.name;
+                        memberEmail = memberRec.email;
+                     }
+                  }
+
                   // --- NEW: Automatically extend membership expiry date ---
                   try {
                     const memberId = renewData.member_id;
@@ -334,8 +380,6 @@ serve(async (req) => {
 
                   // Send Email
                   try {
-                    const memberName = renewData.member?.name;
-                    const memberEmail = renewData.member?.email;
                     console.log(`[Notify] Sending renewal email to ${memberEmail} for member ${memberName}`);
                     await sendEmail(Deno.env.get('EMAILJS_RENEWAL_TEMPLATE_ID') || 'template_3bgk8ts', {
                       to_name: memberName,
