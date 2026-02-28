@@ -182,8 +182,9 @@ serve(async (req) => {
             let activityTime = '';
             let activityLocation = '';
             
-            if (regData.activity_id) {
-              const { data: actData } = await supabase.from('activities').select('*').eq('id', regData.activity_id).single();
+            if (regData.activityId || regData.activity_id) {
+              const actId = regData.activityId || regData.activity_id;
+              const { data: actData } = await supabase.from('activities').select('*').eq('id', actId).single();
               if (actData) {
                 activityTitle = actData.title || activityTitle;
                 activityDate = actData.date || activityDate;
@@ -234,8 +235,9 @@ serve(async (req) => {
               let activityLocation = '';
               let memberEmail = '';
 
-              if (memData.activity_id) {
-                const { data: actData } = await supabase.from('member_activities').select('*').eq('id', memData.activity_id).single();
+              if (memData.activityId || memData.activity_id) {
+                const actId = memData.activityId || memData.activity_id;
+                const { data: actData } = await supabase.from('member_activities').select('*').eq('id', actId).single();
                 if (actData) {
                   activityTitle = actData.title || activityTitle;
                   activityDate = actData.date || activityDate;
@@ -243,8 +245,9 @@ serve(async (req) => {
                   activityLocation = actData.location || activityLocation;
                 }
               }
-              if (memData.member_id) {
-                const { data: memberRec } = await supabase.from('members').select('email').eq('id', memData.member_id).single();
+              if (memData.memberId || memData.member_id) {
+                const memId = memData.memberId || memData.member_id;
+                const { data: memberRec } = await supabase.from('members').select('email').eq('id', memId).single();
                 if (memberRec) {
                   memberEmail = memberRec.email;
                 }
