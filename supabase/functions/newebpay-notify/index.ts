@@ -147,10 +147,10 @@ serve(async (req) => {
                 console.log(`[Notify] Email sent successfully to ${params.email || params.to_email}`);
               } else {
                 const errText = await response.text();
-                console.error('[Notify] Email sending failed:', errText);
+                console.error(`[Notify] Email sending failed with status ${response.status}:`, errText);
               }
             } catch (e) {
-              console.error('[Notify] Email sending error:', e);
+              console.error('[Notify] Email sending network/fetch error:', e);
             }
           };
 
