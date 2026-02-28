@@ -253,37 +253,47 @@ serve(async (req) => {
           if (regData) {
             console.log(`[Notify] Success! Updated Registration: ${merchantOrderNo}`)
             
-            // --- NEW: Issue ezPay Invoice ---
-            const invResult = await issueEzPayInvoice({
-              merchantOrderNo: merchantOrderNo,
-              buyerName: regData.name,
-              buyerEmail: regData.email,
-              totalAmt: regData.paid_amount,
-              itemName: regData.activities?.title || '活動報名費'
-            });
+            // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
+            try {
+              const invResult = await issueEzPayInvoice({
+                merchantOrderNo: merchantOrderNo,
+                buyerName: regData.name,
+                buyerEmail: regData.email,
+                totalAmt: regData.paid_amount,
+                itemName: regData.activities?.title || '活動報名費'
+              });
 
-            if (invResult.success) {
-              await supabase.from('registrations').update({
-                invoice_no: invResult.invoiceNo,
-                invoice_status: 'issued'
-              }).eq('merchant_order_no', merchantOrderNo);
-            } else {
-              await supabase.from('registrations').update({
-                invoice_status: 'failed'
-              }).eq('merchant_order_no', merchantOrderNo);
+              if (invResult.success) {
+                await supabase.from('registrations').update({
+                  invoice_no: invResult.invoiceNo,
+                  invoice_status: 'issued'
+                }).eq('merchant_order_no', merchantOrderNo);
+                console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
+              } else {
+                await supabase.from('registrations').update({
+                  invoice_status: 'failed'
+                }).eq('merchant_order_no', merchantOrderNo);
+                console.warn(`[Notify] Invoice failed: ${invResult.message}`);
+              }
+            } catch (invErr) {
+              console.error(`[Notify] Invoice process error:`, invErr);
             }
 
-            // Send Email
-            const activity = regData.activities;
-            await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
-              to_name: regData.name,
-              email: regData.email,
-              activity_title: activity?.title,
-              activity_date: activity?.date,
-              activity_time: activity?.time,
-              activity_location: activity?.location,
-              activity_price: regData.paid_amount
-            });
+            // Send Email (Wrapped in try-catch)
+            try {
+              const activity = regData.activities;
+              await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
+                to_name: regData.name,
+                email: regData.email,
+                activity_title: activity?.title,
+                activity_date: activity?.date,
+                activity_time: activity?.time,
+                activity_location: activity?.location,
+                activity_price: regData.paid_amount
+              });
+            } catch (emailErr) {
+              console.error(`[Notify] Email process error:`, emailErr);
+            }
           }
 
           if (!regData) {
@@ -303,38 +313,48 @@ serve(async (req) => {
             if (memData) {
               console.log(`[Notify] Success! Updated Member Registration: ${merchantOrderNo}`)
               
-              // --- NEW: Issue ezPay Invoice ---
-              const invResult = await issueEzPayInvoice({
-                merchantOrderNo: merchantOrderNo,
-                buyerName: memData.member_name,
-                buyerEmail: memData.member?.email || '',
-                totalAmt: memData.paid_amount,
-                itemName: memData.activities?.title || '會員活動報名費'
-              });
+              // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
+              try {
+                const invResult = await issueEzPayInvoice({
+                  merchantOrderNo: merchantOrderNo,
+                  buyerName: memData.member_name,
+                  buyerEmail: memData.member?.email || '',
+                  totalAmt: memData.paid_amount,
+                  itemName: memData.activities?.title || '會員活動報名費'
+                });
 
-              if (invResult.success) {
-                await supabase.from('member_registrations').update({
-                  invoice_no: invResult.invoiceNo,
-                  invoice_status: 'issued'
-                }).eq('merchant_order_no', merchantOrderNo);
-              } else {
-                await supabase.from('member_registrations').update({
-                  invoice_status: 'failed'
-                }).eq('merchant_order_no', merchantOrderNo);
+                if (invResult.success) {
+                  await supabase.from('member_registrations').update({
+                    invoice_no: invResult.invoiceNo,
+                    invoice_status: 'issued'
+                  }).eq('merchant_order_no', merchantOrderNo);
+                  console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
+                } else {
+                  await supabase.from('member_registrations').update({
+                    invoice_status: 'failed'
+                  }).eq('merchant_order_no', merchantOrderNo);
+                  console.warn(`[Notify] Invoice failed: ${invResult.message}`);
+                }
+              } catch (invErr) {
+                console.error(`[Notify] Invoice process error:`, invErr);
               }
 
               // Send Email
-              const activity = memData.activities;
-              const memberEmail = memData.member?.email;
-              await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
-                to_name: memData.member_name,
-                email: memberEmail || '', 
-                activity_title: activity?.title,
-                activity_date: activity?.date,
-                activity_time: activity?.time,
-                activity_location: activity?.location,
-                activity_price: memData.paid_amount
-              });
+              try {
+                const activity = memData.activities;
+                const memberEmail = memData.member?.email;
+                await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
+                  to_name: memData.member_name,
+                  email: memberEmail || '', 
+                  activity_title: activity?.title,
+                  activity_date: activity?.date,
+                  activity_time: activity?.time,
+                  activity_location: activity?.location,
+                  activity_price: memData.paid_amount
+                });
+              } catch (emailErr) {
+                console.error(`[Notify] Email process error:`, emailErr);
+              }
             }
 
             if (!memData) {
@@ -354,39 +374,49 @@ serve(async (req) => {
               if (appData) {
                 console.log(`[Notify] Success! Updated Member Application: ${merchantOrderNo}`)
                 
-                // --- NEW: Issue ezPay Invoice ---
-                const invResult = await issueEzPayInvoice({
-                  merchantOrderNo: merchantOrderNo,
-                  buyerName: appData.name,
-                  buyerEmail: appData.email,
-                  totalAmt: appData.paid_amount,
-                  itemName: '食在力量會員入會費',
-                  taxId: appData.tax_id,
-                  companyName: appData.company_name
-                });
+                // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
+                try {
+                  const invResult = await issueEzPayInvoice({
+                    merchantOrderNo: merchantOrderNo,
+                    buyerName: appData.name,
+                    buyerEmail: appData.email,
+                    totalAmt: appData.paid_amount,
+                    itemName: '食在力量會員入會費',
+                    taxId: appData.tax_id,
+                    companyName: appData.company_name
+                  });
 
-                if (invResult.success) {
-                  await supabase.from('member_applications').update({
-                    invoice_no: invResult.invoiceNo,
-                    invoice_status: 'issued'
-                  }).eq('merchant_order_no', merchantOrderNo);
-                } else {
-                  await supabase.from('member_applications').update({
-                    invoice_status: 'failed'
-                  }).eq('merchant_order_no', merchantOrderNo);
+                  if (invResult.success) {
+                    await supabase.from('member_applications').update({
+                      invoice_no: invResult.invoiceNo,
+                      invoice_status: 'issued'
+                    }).eq('merchant_order_no', merchantOrderNo);
+                    console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
+                  } else {
+                    await supabase.from('member_applications').update({
+                      invoice_status: 'failed'
+                    }).eq('merchant_order_no', merchantOrderNo);
+                    console.warn(`[Notify] Invoice failed: ${invResult.message}`);
+                  }
+                } catch (invErr) {
+                  console.error(`[Notify] Invoice process error:`, invErr);
                 }
 
                 // Send Email
-                await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
-                  to_name: appData.name,
-                  email: appData.email,
-                  activity_title: '【食在力量】會員入會申請',
-                  activity_date: new Date().toISOString().slice(0, 10),
-                  activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-                  activity_location: '線上申請 (已完成繳費)',
-                  activity_price: `NT$ ${appData.paid_amount?.toLocaleString()}`,
-                  message: `您的入會申請已收到並完成繳費，管理員將於 3-5 個工作天內完成審核。`
-                });
+                try {
+                  await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
+                    to_name: appData.name,
+                    email: appData.email,
+                    activity_title: '【食在力量】會員入會申請',
+                    activity_date: new Date().toISOString().slice(0, 10),
+                    activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                    activity_location: '線上申請 (已完成繳費)',
+                    activity_price: `NT$ ${appData.paid_amount?.toLocaleString()}`,
+                    message: `您的入會申請已收到並完成繳費，管理員將於 3-5 個工作天內完成審核。`
+                  });
+                } catch (emailErr) {
+                  console.error(`[Notify] Email process error:`, emailErr);
+                }
               }
 
               if (!appData) {
@@ -410,24 +440,30 @@ serve(async (req) => {
                 if (renewData) {
                   console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
                   
-                  // --- NEW: Issue ezPay Invoice ---
-                  const invResult = await issueEzPayInvoice({
-                    merchantOrderNo: merchantOrderNo,
-                    buyerName: renewData.member?.name || '',
-                    buyerEmail: renewData.member?.email || '',
-                    totalAmt: renewData.amount,
-                    itemName: '食在力量會員續約費'
-                  });
+                  // --- NEW: Issue ezPay Invoice (Wrapped in try-catch) ---
+                  try {
+                    const invResult = await issueEzPayInvoice({
+                      merchantOrderNo: merchantOrderNo,
+                      buyerName: renewData.member?.name || '',
+                      buyerEmail: renewData.member?.email || '',
+                      totalAmt: renewData.amount,
+                      itemName: '食在力量會員續約費'
+                    });
 
-                  if (invResult.success) {
-                    await supabase.from('member_renewals').update({
-                      invoice_no: invResult.invoiceNo,
-                      invoice_status: 'issued'
-                    }).eq('merchant_order_no', merchantOrderNo);
-                  } else {
-                    await supabase.from('member_renewals').update({
-                      invoice_status: 'failed'
-                    }).eq('merchant_order_no', merchantOrderNo);
+                    if (invResult.success) {
+                      await supabase.from('member_renewals').update({
+                        invoice_no: invResult.invoiceNo,
+                        invoice_status: 'issued'
+                      }).eq('merchant_order_no', merchantOrderNo);
+                      console.log(`[Notify] Invoice issued: ${invResult.invoiceNo}`);
+                    } else {
+                      await supabase.from('member_renewals').update({
+                        invoice_status: 'failed'
+                      }).eq('merchant_order_no', merchantOrderNo);
+                      console.warn(`[Notify] Invoice failed: ${invResult.message}`);
+                    }
+                  } catch (invErr) {
+                    console.error(`[Notify] Invoice process error:`, invErr);
                   }
 
                   // --- NEW: Automatically extend membership expiry date ---
@@ -474,16 +510,20 @@ serve(async (req) => {
                   // --- End of Auto-extend ---
 
                   // Send Email
-                  await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
-                    to_name: renewData.member?.name,
-                    email: renewData.member?.email,
-                    activity_title: '【食在力量】會員續約申請',
-                    activity_date: new Date().toISOString().slice(0, 10),
-                    activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-                    activity_location: '線上續約 (已完成繳費)',
-                    activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
-                    message: `您的會員續約已完成繳費，會籍已自動延長。`
-                  });
+                  try {
+                    await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
+                      to_name: renewData.member?.name,
+                      email: renewData.member?.email,
+                      activity_title: '【食在力量】會員續約申請',
+                      activity_date: new Date().toISOString().slice(0, 10),
+                      activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                      activity_location: '線上續約 (已完成繳費)',
+                      activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
+                      message: `您的會員續約已完成繳費，會籍已自動延長。`
+                    });
+                  } catch (emailErr) {
+                    console.error(`[Notify] Email process error:`, emailErr);
+                  }
                 } else {
                   console.warn(`[Notify] Warning: Order not found in any table: ${merchantOrderNo}`)
                 }

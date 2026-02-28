@@ -9,6 +9,7 @@ const PaymentResult: React.FC = () => {
   const orderNo = searchParams.get('order_no');
   const [lastActivityUrl, setLastActivityUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'paid' | 'pending' | 'failed' | 'not_found'>('loading');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [checkCount, setCheckCount] = useState(0);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ const PaymentResult: React.FC = () => {
 
   useEffect(() => {
     if (!orderNo) {
-      setStatus('paid'); // 向下相容：如果沒有 order_no，假設是舊版連結或直接訪問，顯示預設成功畫面 (或可改為 not_found)
+      setStatus('paid'); 
       return;
     }
 
@@ -26,7 +27,12 @@ const PaymentResult: React.FC = () => {
       try {
         const { data, error } = await supabase.rpc('check_payment_status', { order_no: orderNo });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Check status RPC error:', error);
+          setErrorMsg(error.message);
+          setStatus('failed');
+          return;
+        }
 
         if (data && data.length > 0) {
           const paymentStatus = data[0].status;
@@ -38,9 +44,10 @@ const PaymentResult: React.FC = () => {
         } else {
           setStatus('not_found');
         }
-      } catch (err) {
-        console.error('Check status error:', err);
-        setStatus('not_found');
+      } catch (err: any) {
+        console.error('Check status exception:', err);
+        setErrorMsg(err.message || '未知錯誤');
+        setStatus('failed');
       }
     };
 
@@ -75,6 +82,27 @@ const PaymentResult: React.FC = () => {
       );
     }
 
+    if (status === 'failed') {
+      return (
+        <div className="text-center">
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={40} />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">查詢失敗</h1>
+          <p className="text-gray-600 mb-4">
+            系統在查詢訂單時遇到問題：<br/>
+            <span className="text-red-500 font-mono text-sm">{errorMsg}</span>
+          </p>
+          <button 
+            onClick={() => { setStatus('loading'); setCheckCount(0); }} 
+            className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-red-700 transition-colors mb-6"
+          >
+            重試查詢
+          </button>
+        </div>
+      );
+    }
+
     if (status === 'not_found') {
       return (
         <div className="text-center">
@@ -86,6 +114,12 @@ const PaymentResult: React.FC = () => {
             無法查詢到此訂單編號 ({orderNo}) 的付款資訊。<br/>
             請確認您是否已完成付款，或聯繫客服人員協助。
           </p>
+          <button 
+            onClick={() => { setStatus('loading'); setCheckCount(0); }} 
+            className="bg-gray-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-700 transition-colors mb-6"
+          >
+            重新查詢
+          </button>
         </div>
       );
     }
