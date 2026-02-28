@@ -197,7 +197,7 @@ serve(async (req) => {
               console.log(`[Notify] Sending general activity email to ${regData.email} for activity ${activityTitle}`);
               await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
                 to_name: regData.name,
-                email: regData.email,
+                email: regData.email, // Order Confirmation uses {{email}}
                 activity_title: activityTitle,
                 activity_date: activityDate,
                 activity_time: activityTime,
@@ -255,7 +255,7 @@ serve(async (req) => {
                 console.log(`[Notify] Sending member activity email to ${memberEmail} for activity ${activityTitle}`);
                 await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
                   to_name: memData.member_name,
-                  email: memberEmail || '', 
+                  email: memberEmail || '', // Order Confirmation uses {{email}}
                   activity_title: activityTitle,
                   activity_date: activityDate,
                   activity_time: activityTime,
@@ -290,7 +290,7 @@ serve(async (req) => {
                   console.log(`[Notify] Sending member join email to ${appData.email} for ${appData.name}`);
                   await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
                     to_name: appData.name,
-                    email: appData.email,
+                    to_email: appData.email, // Member Application uses {{to_email}}
                     activity_title: '【食在力量】會員入會申請',
                     activity_date: new Date().toISOString().slice(0, 10),
                     activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
@@ -383,7 +383,7 @@ serve(async (req) => {
                     console.log(`[Notify] Sending renewal email to ${memberEmail} for member ${memberName}`);
                     await sendEmail(Deno.env.get('EMAILJS_RENEWAL_TEMPLATE_ID') || 'template_3bgk8ts', {
                       to_name: memberName,
-                      email: memberEmail,
+                      to_email: memberEmail, // Member Renewal uses {{to_email}}
                       activity_title: '【食在力量】會員續約成功',
                       activity_date: new Date().toISOString().slice(0, 10),
                       activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
