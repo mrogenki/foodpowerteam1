@@ -117,6 +117,7 @@ serve(async (req) => {
           const sendEmail = async (templateId: string, params: any) => {
             const serviceId = Deno.env.get('EMAILJS_SERVICE_ID');
             const publicKey = Deno.env.get('EMAILJS_PUBLIC_KEY');
+            const privateKey = Deno.env.get('EMAILJS_PRIVATE_KEY'); // Optional: Private Key (accessToken)
             
             if (!serviceId || !publicKey) {
               console.warn('[Notify] EmailJS env variables missing, skipping email');
@@ -124,15 +125,22 @@ serve(async (req) => {
             }
 
             try {
+              const payload: any = {
+                service_id: serviceId,
+                template_id: templateId,
+                user_id: publicKey,
+                template_params: params
+              };
+
+              // If private key is provided, add it as accessToken
+              if (privateKey) {
+                payload.accessToken = privateKey;
+              }
+
               const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  service_id: serviceId,
-                  template_id: templateId,
-                  user_id: publicKey,
-                  template_params: params
-                })
+                body: JSON.stringify(payload)
               });
               
               if (response.ok) {
@@ -165,14 +173,15 @@ serve(async (req) => {
             // Send Email (Wrapped in try-catch)
             try {
               const activity = regData.activities;
+              console.log(`[Notify] Sending general activity email to ${regData.email} for activity ${activity?.title || '未知活動'}`);
               await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
                 to_name: regData.name,
                 email: regData.email,
-                activity_title: activity?.title,
-                activity_date: activity?.date,
-                activity_time: activity?.time,
-                activity_location: activity?.location,
-                activity_price: regData.paid_amount
+                activity_title: activity?.title || '活動報名確認',
+                activity_date: activity?.date || '',
+                activity_time: activity?.time || '',
+                activity_location: activity?.location || '',
+                activity_price: regData.paid_amount || 0
               });
             } catch (emailErr) {
               console.error(`[Notify] Email process error:`, emailErr);
@@ -186,7 +195,7 @@ serve(async (req) => {
               .from('member_registrations')
               .update(updatePayload)
               .eq('merchant_order_no', merchantOrderNo)
-              .select('*, activities(*), member:members(email)')
+              .select('*, member_activities(*), member:members(email)')
               .single()
 
             if (memError && memError.code !== 'PGRST116') {
@@ -198,16 +207,17 @@ serve(async (req) => {
               
               // Send Email
               try {
-                const activity = memData.activities;
+                const activity = memData.member_activities;
                 const memberEmail = memData.member?.email;
+                console.log(`[Notify] Sending member activity email to ${memberEmail} for activity ${activity?.title || '未知活動'}`);
                 await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
                   to_name: memData.member_name,
                   email: memberEmail || '', 
-                  activity_title: activity?.title,
-                  activity_date: activity?.date,
-                  activity_time: activity?.time,
-                  activity_location: activity?.location,
-                  activity_price: memData.paid_amount
+                  activity_title: activity?.title || '活動報名確認',
+                  activity_date: activity?.date || '',
+                  activity_time: activity?.time || '',
+                  activity_location: activity?.location || '',
+                  activity_price: memData.paid_amount || 0
                 });
               } catch (emailErr) {
                 console.error(`[Notify] Email process error:`, emailErr);
@@ -233,6 +243,7 @@ serve(async (req) => {
                 
                 // Send Email
                 try {
+                  console.log(`[Notify] Sending member join email to ${appData.email} for ${appData.name}`);
                   await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
                     to_name: appData.name,
                     email: appData.email,
@@ -314,10 +325,13 @@ serve(async (req) => {
 
                   // Send Email
                   try {
-                    await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
-                      to_name: renewData.member?.name,
-                      email: renewData.member?.email,
-                      activity_title: '【食在力量】會員續約申請',
+                    const memberName = renewData.member?.name;
+                    const memberEmail = renewData.member?.email;
+                    console.log(`[Notify] Sending renewal email to ${memberEmail} for member ${memberName}`);
+                    await sendEmail(Deno.env.get('EMAILJS_RENEWAL_TEMPLATE_ID') || 'template_3bgk8ts', {
+                      to_name: memberName,
+                      email: memberEmail,
+                      activity_title: '【食在力量】會員續約成功',
                       activity_date: new Date().toISOString().slice(0, 10),
                       activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
                       activity_location: '線上續約 (已完成繳費)',
