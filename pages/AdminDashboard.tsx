@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import emailjs from '@emailjs/browser';
 import { supabase } from '../utils/supabaseClient';
 import MemberRenewalManager from './MemberRenewalManager';
+import MemberBirthdayManager from './MemberBirthdayManager';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
@@ -116,6 +117,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
             <RefreshCcw size={20} />
             <span>會員續約管理</span>
           </Link>
+          <Link to="/admin/birthdays" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/birthdays') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Cake size={20} /><span>會員生日管理</span></Link>
           <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
         </>)}
 
@@ -1383,6 +1385,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
+          <Route path="/birthdays" element={<MemberBirthdayManager members={props.members} />} />
           <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} memberActivities={props.memberActivities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
           
           <Route path="/users" element={<UserManager users={props.users} onAdd={props.onAddUser} onDelete={props.onDeleteUser} />} />
