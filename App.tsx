@@ -474,6 +474,29 @@ const App: React.FC = () => {
       }, 0) || 0;
       const nextNo = (maxNo + 1).toString().padStart(5, '0');
 
+      const translatePaymentMethod = (method?: string) => {
+        if (!method) return '-';
+        const map: Record<string, string> = {
+          'CREDIT': '信用卡',
+          'VACC': 'ATM轉帳',
+          'WEBATM': 'WebATM',
+          'CVS': '超商代碼',
+          'BARCODE': '超商條碼',
+          'LINEPAY': 'Line Pay',
+          'manual_admin': '手動標記',
+          'ALIPAY': '支付寶',
+          'WECHATPAY': '微信支付'
+        };
+        return map[method] || method;
+      };
+
+      const paymentRecord = {
+        id: Date.now(),
+        date: application.paid_at ? application.paid_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        amount: application.paid_amount || 0,
+        note: `入會費 (${translatePaymentMethod(application.payment_method)}) - 訂單編號: ${application.merchant_order_no || '無'}`
+      };
+
       const newMember = {
         id: crypto.randomUUID(),
         member_no: nextNo,
@@ -495,7 +518,8 @@ const App: React.FC = () => {
         job_title: application.job_title,
         website: application.website,
         main_service: application.main_service,
-        notes: application.notes
+        notes: application.notes,
+        payment_records: JSON.stringify([paymentRecord])
       };
 
       const { error: insertError } = await supabase.from('members').insert([newMember]);

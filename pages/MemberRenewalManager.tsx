@@ -92,10 +92,10 @@ const MemberRenewalManager: React.FC = () => {
       if (updateError) throw updateError;
 
       // 2. Update member expiry date
-      // Fetch current member data first to get current expiry
+      // Fetch current member data first to get current expiry and payment records
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('membership_expiry_date')
+        .select('membership_expiry_date, payment_records')
         .eq('id', renewal.member_id)
         .single();
         
@@ -112,11 +112,31 @@ const MemberRenewalManager: React.FC = () => {
         newExpiryDate = new Date(today.setFullYear(today.getFullYear() + 1));
       }
 
+      // Append payment record
+      let currentRecords = [];
+      try {
+        if (memberData.payment_records) {
+          currentRecords = JSON.parse(memberData.payment_records);
+        }
+      } catch (e) {
+        currentRecords = [];
+      }
+
+      const newRecord = {
+        id: Date.now(),
+        date: new Date().toISOString().slice(0, 10),
+        amount: renewal.amount || 0,
+        note: `會籍續約 (手動標記) - 訂單編號: ${renewal.merchant_order_no || '無'}`
+      };
+
+      currentRecords.push(newRecord);
+
       const { error: extendError } = await supabase
         .from('members')
         .update({
           membership_expiry_date: newExpiryDate.toISOString().split('T')[0],
-          status: 'active'
+          status: 'active',
+          payment_records: JSON.stringify(currentRecords)
         })
         .eq('id', renewal.member_id);
 

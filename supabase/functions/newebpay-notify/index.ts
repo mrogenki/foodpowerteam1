@@ -338,12 +338,12 @@ serve(async (req) => {
                      }
                   }
 
-                  // --- NEW: Automatically extend membership expiry date ---
+                  // --- NEW: Automatically extend membership expiry date and append payment record ---
                   try {
                     const memberId = renewData.member_id;
                     const { data: memberData, error: memberError } = await supabase
                       .from('members')
-                      .select('membership_expiry_date')
+                      .select('membership_expiry_date, payment_records')
                       .eq('id', memberId)
                       .single();
                     
@@ -362,11 +362,47 @@ serve(async (req) => {
                         newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
                       }
 
+                      // Append payment record
+                      let currentRecords = [];
+                      try {
+                        if (memberData.payment_records) {
+                          currentRecords = JSON.parse(memberData.payment_records);
+                        }
+                      } catch (e) {
+                        currentRecords = [];
+                      }
+
+                      const translatePaymentMethod = (method?: string) => {
+                        if (!method) return '-';
+                        const map: Record<string, string> = {
+                          'CREDIT': '信用卡',
+                          'VACC': 'ATM轉帳',
+                          'WEBATM': 'WebATM',
+                          'CVS': '超商代碼',
+                          'BARCODE': '超商條碼',
+                          'LINEPAY': 'Line Pay',
+                          'manual_admin': '手動標記',
+                          'ALIPAY': '支付寶',
+                          'WECHATPAY': '微信支付'
+                        };
+                        return map[method] || method;
+                      };
+
+                      const newRecord = {
+                        id: Date.now(),
+                        date: paidAtISO.slice(0, 10),
+                        amount: renewData.amount || 0,
+                        note: `會籍續約 (${translatePaymentMethod(paymentMethod)}) - 訂單編號: ${merchantOrderNo}`
+                      };
+
+                      currentRecords.push(newRecord);
+
                       const { error: extendError } = await supabase
                         .from('members')
                         .update({
                           membership_expiry_date: newExpiryDate.toISOString().split('T')[0],
-                          status: 'active'
+                          status: 'active',
+                          payment_records: JSON.stringify(currentRecords)
                         })
                         .eq('id', memberId);
                       

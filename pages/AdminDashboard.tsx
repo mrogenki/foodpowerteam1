@@ -144,8 +144,10 @@ interface DashboardHomeProps {
 // 儀表板首頁元件
 const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, activities, memberActivities, registrations, memberRegistrations, memberApplications }) => {
   const isStaff = currentUser.role === UserRole.STAFF;
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
 
   const stats = useMemo(() => {
+    // 有效會員總數 (不受月份影響，顯示當前總數)
     const activeMembers = members.filter(m => {
        if (m.membership_expiry_date) {
           return m.membership_expiry_date >= new Date().toISOString().slice(0, 10);
@@ -153,15 +155,36 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
        return m.status === 'active';
     }).length;
 
-    const totalRevenue = 
-      registrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0) + 
-      memberRegistrations.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
-
-    const upcomingActivitiesCount = 
-      activities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length + 
-      memberActivities.filter(a => (a.status === 'active' || !a.status) && a.date >= new Date().toISOString().slice(0, 10)).length;
+    // 該月新會員申請數與營收
+    const newMembersThisMonth = members.filter(m => m.join_date && m.join_date.startsWith(selectedMonth));
+    const newMemberCount = newMembersThisMonth.length;
     
-    const pendingApplications = memberApplications.length;
+    let newMemberRevenue = 0;
+    let renewalRevenue = 0;
+    let renewalCount = 0;
+
+    members.forEach(m => {
+      if (m.payment_records) {
+        try {
+          const records = JSON.parse(m.payment_records);
+          records.forEach((r: any) => {
+            if (r.date && r.date.startsWith(selectedMonth)) {
+              if (r.note && r.note.includes('入會費')) {
+                newMemberRevenue += (r.amount || 0);
+              } else if (r.note && r.note.includes('會籍續約')) {
+                renewalRevenue += (r.amount || 0);
+                renewalCount += 1;
+              }
+            }
+          });
+        } catch (e) {}
+      }
+    });
+
+    // 該月活動數與營收
+    const activitiesThisMonth = activities.filter(a => a.date && a.date.startsWith(selectedMonth));
+    const memberActivitiesThisMonth = memberActivities.filter(a => a.date && a.date.startsWith(selectedMonth));
+    const activityCount = activitiesThisMonth.length + memberActivitiesThisMonth.length;
 
     const calculateActivityStats = (act: Activity | MemberActivity, regs: Registration[] | MemberRegistration[]) => {
        const actRegs = regs.filter(r => String(r.activityId) === String(act.id));
@@ -171,19 +194,42 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
        return { id: act.id, title: act.title, date: act.date, status: act.status || 'active', regCount, checkInCount, revenue };
     };
 
-    const generalStats = activities.map(a => ({...calculateActivityStats(a, registrations), category: '一般'}));
-    const memberStats = memberActivities.map(a => ({...calculateActivityStats(a, memberRegistrations), category: '會員'}));
+    const generalStats = activitiesThisMonth.map(a => ({...calculateActivityStats(a, registrations), category: '一般'}));
+    const memberStats = memberActivitiesThisMonth.map(a => ({...calculateActivityStats(a, memberRegistrations), category: '會員'}));
     
     const allActivityStats = [...generalStats, ...memberStats].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return { activeMembers, totalRevenue, upcomingActivitiesCount, allActivityStats, pendingApplications };
-  }, [members, activities, memberActivities, registrations, memberRegistrations, memberApplications]);
+    const activityRevenue = allActivityStats.reduce((sum, a) => sum + a.revenue, 0);
+    const totalRevenue = newMemberRevenue + renewalRevenue + activityRevenue;
+
+    return { 
+      activeMembers, 
+      newMemberCount, newMemberRevenue,
+      renewalCount, renewalRevenue,
+      activityCount, activityRevenue,
+      totalRevenue,
+      allActivityStats 
+    };
+  }, [members, activities, memberActivities, registrations, memberRegistrations, selectedMonth]);
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">系統概況</h1>
-        <p className="text-gray-500">{isStaff ? '您好，請使用左側選單進行活動報到。' : '歡迎回到管理後台，以下是目前的營運數據。'}</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">系統概況</h1>
+          <p className="text-gray-500">{isStaff ? '您好，請使用左側選單進行活動報到。' : '歡迎回到管理後台，以下是目前的營運數據。'}</p>
+        </div>
+        {!isStaff && (
+          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
+            <Calendar size={18} className="text-gray-500" />
+            <input 
+              type="month" 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="border-none focus:ring-0 text-gray-700 font-medium outline-none bg-transparent"
+            />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -191,46 +237,80 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex justify-between items-start mb-4">
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600"><Users size={20} /></div>
-              <span className="text-xs font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded">有效</span>
+              <span className="text-xs font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded">截至目前</span>
             </div>
-            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">會員總數</p>
+            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">有效會員總數</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{stats.activeMembers}<span className="text-sm text-gray-400 font-normal ml-1">人</span></p>
           </div>
         )}
         
         {!isStaff && (
-          <Link to="/admin/member-applications" className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex justify-between items-start mb-4">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-red-600"><UserPlus size={20} /></div>
-              {stats.pendingApplications > 0 && <span className="text-xs font-bold bg-red-600 text-white px-2 py-1 rounded animate-pulse">待審核</span>}
+              <span className="text-xs font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">{selectedMonth}</span>
             </div>
-            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider group-hover:text-red-600 transition-colors">新會員申請</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{stats.pendingApplications}<span className="text-sm text-gray-400 font-normal ml-1">筆</span></p>
-          </Link>
+            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">新會員申請</p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <p className="text-3xl font-bold text-gray-900">{stats.newMemberCount}<span className="text-sm text-gray-400 font-normal ml-1">人</span></p>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center">
+              <span className="text-xs text-gray-500">營收</span>
+              <span className="text-sm font-bold text-gray-900">NT$ {stats.newMemberRevenue.toLocaleString()}</span>
+            </div>
+          </div>
         )}
         
         {!isStaff && (
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600"><DollarSign size={20} /></div>
+              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600"><RefreshCcw size={20} /></div>
+              <span className="text-xs font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">{selectedMonth}</span>
             </div>
-            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">累積營收</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">NT$ {stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">會員續約</p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <p className="text-3xl font-bold text-gray-900">{stats.renewalCount}<span className="text-sm text-gray-400 font-normal ml-1">人</span></p>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center">
+              <span className="text-xs text-gray-500">營收</span>
+              <span className="text-sm font-bold text-gray-900">NT$ {stats.renewalRevenue.toLocaleString()}</span>
+            </div>
           </div>
         )}
 
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600"><Calendar size={20} /></div>
+            <span className="text-xs font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">{selectedMonth}</span>
           </div>
-          <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">近期活動數</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{stats.upcomingActivitiesCount}<span className="text-sm text-gray-400 font-normal ml-1">場</span></p>
+          <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">活動概況</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <p className="text-3xl font-bold text-gray-900">{stats.activityCount}<span className="text-sm text-gray-400 font-normal ml-1">場</span></p>
+          </div>
+          {!isStaff && (
+            <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center">
+              <span className="text-xs text-gray-500">營收</span>
+              <span className="text-sm font-bold text-gray-900">NT$ {stats.activityRevenue.toLocaleString()}</span>
+            </div>
+          )}
         </div>
       </div>
 
+      {!isStaff && (
+        <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-md flex items-center justify-between">
+          <div>
+            <p className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">{selectedMonth} 總營收</p>
+            <p className="text-4xl font-bold">NT$ {stats.totalRevenue.toLocaleString()}</p>
+          </div>
+          <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center">
+            <DollarSign size={32} className="text-green-400" />
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-50">
-           <h3 className="text-lg font-bold text-gray-900">各活動營運狀態</h3>
+           <h3 className="text-lg font-bold text-gray-900">{selectedMonth} 各活動營運狀態</h3>
         </div>
         <div className="overflow-x-auto">
            <table className="w-full text-left border-collapse">
