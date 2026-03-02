@@ -524,8 +524,8 @@ const App: React.FC = () => {
 
       const { error: insertError } = await supabase.from('members').insert([newMember]);
       if (insertError) throw insertError;
-      const { error: deleteError } = await supabase.from('member_applications').delete().eq('id', application.id);
-      if (deleteError) throw deleteError;
+      const { error: updateError } = await supabase.from('member_applications').update({ status: 'approved' }).eq('id', application.id);
+      if (updateError) throw updateError;
 
       alert(`核准成功！\n會員編號：${nextNo}`);
       await fetchData();

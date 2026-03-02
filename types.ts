@@ -23,6 +23,7 @@ export enum PaymentStatus {
   PAID = 'paid',         // 已付款
   FAILED = 'failed',     // 付款失敗
   REFUNDED = 'refunded', // 已退款
+  PROCESSED = 'processed', // 已處理 (人工確認)
 }
 
 // 一般公開活動

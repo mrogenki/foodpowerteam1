@@ -187,18 +187,57 @@ const MemberRenewalManager: React.FC = () => {
     }
   };
 
+  const handleMarkAsProcessed = async (renewal: MemberRenewal) => {
+    if (!confirm(`確定將 ${renewal.member_name} 的續約標記為「已處理」？\n(這表示您已經開立收據並完成相關人工確認)`)) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('member_renewals')
+        .update({ 
+          payment_status: 'processed'
+        })
+        .eq('id', renewal.id);
+
+      if (updateError) throw updateError;
+
+      alert('已標記為已處理！');
+      fetchRenewals();
+    } catch (err: any) {
+      console.error('Error updating status:', err);
+      alert('更新失敗: ' + err.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('確定要永久刪除這筆續約紀錄嗎？此操作無法復原。')) return;
+
+    try {
+      const { error } = await supabase
+        .from('member_renewals')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      alert('已刪除紀錄');
+      fetchRenewals();
+    } catch (err: any) {
+      console.error('Error deleting renewal:', err);
+      alert('刪除失敗: ' + err.message);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto" /></div>;
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">會員續約管理</h2>
-        <button onClick={fetchRenewals} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
-          <RefreshCcw size={18} /> 重新整理
-        </button>
-      </div>
+  const pendingRenewals = renewals.filter(r => r.payment_status !== 'processed');
+  const processedRenewals = renewals.filter(r => r.payment_status === 'processed');
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+  const renderTable = (items: MemberRenewal[], isProcessed: boolean) => (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mb-8">
+      <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+        <h2 className="text-lg font-bold text-gray-800">{isProcessed ? '已處理續約' : '待處理續約'} <span className="text-sm font-normal text-gray-500 ml-2">共 {items.length} 筆</span></h2>
+      </div>
+      <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
             <tr>
@@ -211,7 +250,7 @@ const MemberRenewalManager: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {renewals.map(renewal => (
+            {items.map(renewal => (
               <tr key={renewal.id} className="hover:bg-gray-50">
                 <td className="p-4 text-sm text-gray-500">{renewal.renewal_date}</td>
                 <td className="p-4">
@@ -223,9 +262,11 @@ const MemberRenewalManager: React.FC = () => {
                 <td className="p-4">
                   <span className={`px-2 py-1 rounded text-xs font-bold ${
                     renewal.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
+                    renewal.payment_status === 'processed' ? 'bg-gray-100 text-gray-700' :
                     renewal.payment_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
                   }`}>
                     {renewal.payment_status === 'paid' ? '已付款' : 
+                     renewal.payment_status === 'processed' ? '已處理' :
                      renewal.payment_status === 'failed' ? '失敗' : '待付款'}
                   </span>
                 </td>
@@ -235,7 +276,7 @@ const MemberRenewalManager: React.FC = () => {
                   </span>
                 </td>
                 <td className="p-4 flex gap-2">
-                  {renewal.payment_status !== 'paid' && (
+                  {!isProcessed && renewal.payment_status !== 'paid' && (
                     <>
                       <button 
                         onClick={() => handleMarkAsPaid(renewal)}
@@ -253,18 +294,50 @@ const MemberRenewalManager: React.FC = () => {
                       </button>
                     </>
                   )}
-                  {renewal.payment_status === 'paid' && (
+                  {!isProcessed && renewal.payment_status === 'paid' && (
+                    <button 
+                      onClick={() => handleMarkAsProcessed(renewal)}
+                      className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 font-bold shadow-sm flex items-center gap-1"
+                    >
+                      <CheckCircle size={12}/> 確認已處理
+                    </button>
+                  )}
+                  {isProcessed && (
                     <span className="text-xs text-gray-400 flex items-center gap-1"><CheckCircle size={12}/> 完成</span>
                   )}
+                  <button 
+                    onClick={() => handleDelete(renewal.id)}
+                    className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors ml-auto flex items-center gap-1"
+                    title="刪除紀錄"
+                  >
+                    <XCircle size={14} /> 刪除
+                  </button>
                 </td>
               </tr>
             ))}
-            {renewals.length === 0 && (
-              <tr><td colSpan={5} className="p-8 text-center text-gray-400">目前無續約申請</td></tr>
+            {items.length === 0 && (
+              <tr><td colSpan={6} className="p-8 text-center text-gray-400">目前無{isProcessed ? '已處理' : '待處理'}續約申請</td></tr>
             )}
           </tbody>
         </table>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">會員續約管理</h2>
+          <p className="text-gray-500 text-sm mt-1">此處顯示會員的續約紀錄，確認款項與開立收據後，可標記為「已處理」。</p>
+        </div>
+        <button onClick={fetchRenewals} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
+          <RefreshCcw size={18} /> 重新整理
+        </button>
+      </div>
+
+      {renderTable(pendingRenewals, false)}
+      {renderTable(processedRenewals, true)}
     </div>
   );
 };
