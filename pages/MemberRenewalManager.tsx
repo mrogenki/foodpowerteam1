@@ -212,12 +212,17 @@ const MemberRenewalManager: React.FC = () => {
     if (!confirm('確定要永久刪除這筆續約紀錄嗎？此操作無法復原。')) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('member_renewals')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('權限不足或找不到該筆資料 (請確認資料庫 RLS 刪除權限已開啟)');
+      }
       
       alert('已刪除紀錄');
       fetchRenewals();
