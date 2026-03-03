@@ -192,7 +192,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
     members.forEach(m => {
       if (m.payment_records) {
         try {
-          const records = JSON.parse(m.payment_records);
+          const records = typeof m.payment_records === 'string' ? JSON.parse(m.payment_records) : m.payment_records;
           records.forEach((r: any) => {
             if (r.date && r.date.startsWith(selectedMonth)) {
               if (r.note && r.note.includes('入會費')) {
@@ -626,6 +626,17 @@ const MemberApplicationManager: React.FC<{
                  <div><span className="text-gray-500 block">公司網站</span><p className="text-blue-600 truncate">{selectedApp.website}</p></div>
                  <div className="md:col-span-2"><span className="text-gray-500 block">主要服務/產品</span><p className="bg-gray-50 p-2 rounded">{selectedApp.main_service}</p></div>
                  <div className="md:col-span-2"><span className="text-gray-500 block">備註</span><p className="bg-gray-50 p-2 rounded">{selectedApp.notes || '無'}</p></div>
+                 
+                 {selectedApp.payment_status === PaymentStatus.PAID && (
+                   <>
+                     <div className="col-span-2 border-t pt-4 mt-2"><h3 className="font-bold text-gray-900 mb-2">付款資訊</h3></div>
+                     <div><span className="text-gray-500 block">繳費狀態</span><p className="font-bold text-green-600">已付款</p></div>
+                     <div><span className="text-gray-500 block">付款方式</span><p>{translatePaymentMethod(selectedApp.payment_method)}</p></div>
+                     <div><span className="text-gray-500 block">繳費金額</span><p>NT$ {selectedApp.paid_amount?.toLocaleString() || 0}</p></div>
+                     <div><span className="text-gray-500 block">繳費時間</span><p>{selectedApp.paid_at ? new Date(selectedApp.paid_at).toLocaleString() : '-'}</p></div>
+                     <div className="md:col-span-2"><span className="text-gray-500 block">訂單編號</span><p className="font-mono text-xs">{selectedApp.merchant_order_no || '-'}</p></div>
+                   </>
+                 )}
                </div>
              </div>
              <div className="flex gap-4 mt-8 pt-6 border-t">
@@ -952,7 +963,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
       
       // Parse Payment Records
       try {
-          const records = m.payment_records ? JSON.parse(m.payment_records) : [];
+          const records = typeof m.payment_records === 'string' ? JSON.parse(m.payment_records) : (m.payment_records || []);
           setPaymentRecords(records);
       } catch (e) {
           setPaymentRecords([]);
@@ -1042,7 +1053,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
       '加入日期': m.join_date,
       '退出日期': m.quit_date,
       '備註': m.notes,
-      '繳費紀錄': m.payment_records
+      '繳費紀錄': typeof m.payment_records === 'string' ? m.payment_records : JSON.stringify(m.payment_records || [])
     })); 
     const ws = XLSX.utils.json_to_sheet(exportData); 
     const wb = XLSX.utils.book_new(); 

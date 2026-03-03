@@ -118,7 +118,7 @@ export interface Member {
   status: 'active' | 'inactive'; // 活躍/失效 (邏輯判斷：若今日 > 到期日 ? inactive : status)
   membership_expiry_date?: string; // 會籍到期日 (YYYY-MM-DD)
   notes?: string; // 備註
-  payment_records?: string; // 會籍繳費記錄 (文字描述或 JSON string)
+  payment_records?: any; // 會籍繳費記錄 (文字描述或 JSON string)
 
   // --- 個人資料 ---
   member_no: string; // 會員編號 (系統自動產生)
