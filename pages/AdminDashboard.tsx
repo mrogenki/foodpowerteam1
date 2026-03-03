@@ -80,6 +80,29 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
   const isManager = user.role === UserRole.MANAGER || isSuperAdmin;
   const isStaff = user.role === UserRole.STAFF;
 
+  const [pendingRenewalCount, setPendingRenewalCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPendingRenewals = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('member_renewals')
+          .select('*', { count: 'exact', head: true })
+          .neq('payment_status', 'processed');
+        
+        if (!error && count !== null) {
+          setPendingRenewalCount(count);
+        }
+      } catch (err) {
+        console.error('Error fetching pending renewals:', err);
+      }
+    };
+
+    fetchPendingRenewals();
+    const interval = setInterval(fetchPendingRenewals, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="w-64 bg-gray-900 text-gray-400 flex flex-col min-h-screen shrink-0">
       <div className="p-6 border-b border-gray-800">
@@ -115,7 +138,10 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
           </Link>
           <Link to="/admin/member-renewals" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-renewals') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}>
             <RefreshCcw size={20} />
-            <span>會員續約管理</span>
+            <div className="flex-grow flex justify-between items-center">
+                <span>會員續約管理</span>
+                {pendingRenewalCount > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingRenewalCount}</span>}
+            </div>
           </Link>
           <Link to="/admin/birthdays" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/birthdays') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Cake size={20} /><span>會員生日管理</span></Link>
           <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
