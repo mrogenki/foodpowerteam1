@@ -16,6 +16,7 @@ import RenewalPayment from './pages/RenewalPayment';
 import AboutUs from './pages/AboutUs';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
+import { notifyAdmin } from './utils/notification';
 import { supabase } from './utils/supabaseClient';
 
 // 定義系統擁有者 (白名單)，確保即使資料庫設定錯誤也能登入
@@ -379,7 +380,13 @@ const App: React.FC = () => {
     const { error } = await supabase.from('registrations').insert([newReg]);
     if (error) { alert('報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); return true;
+    await fetchData(); 
+    
+    // Notify Admin
+    const activity = activities.find(a => a.id === newReg.activityId);
+    notifyAdmin('一般活動報名', `活動：${activity?.title || '未知活動'}\n姓名：${newReg.name}\n電話：${newReg.phone}\n人數：${newReg.participantsCount}人`);
+    
+    return true;
   };
 
   const handleMemberRegister = async (newReg: MemberRegistration, couponId?: string): Promise<boolean> => {
@@ -387,7 +394,14 @@ const App: React.FC = () => {
     const { error } = await supabase.from('member_registrations').insert([newReg]);
     if (error) { alert('會員報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); return true;
+    await fetchData(); 
+    
+    // Notify Admin
+    const activity = memberActivities.find(a => a.id === newReg.activityId);
+    const member = members.find(m => m.id === newReg.memberId);
+    notifyAdmin('會員專屬活動報名', `活動：${activity?.title || '未知活動'}\n會員：${member?.name || '未知會員'}\n人數：${newReg.participantsCount}人`);
+    
+    return true;
   };
 
   const handleUpdateRegistration = async (updated: Registration) => {

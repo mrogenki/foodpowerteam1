@@ -7,6 +7,7 @@ import { UserPlus, Save, Loader2, Building2, User, Phone, Briefcase, FileText, C
 import { IndustryCategories, PaymentStatus } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 import { submitNewebPayForm } from '../utils/newebpay';
+import { notifyAdmin } from '../utils/notification';
 import { supabase } from '../utils/supabaseClient';
 
 const ANNUAL_FEE = 5000;
@@ -174,6 +175,9 @@ ${memberData.notes || '(無)'}
       const { error: insertError } = await supabase.from('member_applications').insert([newApplication]);
 
       if (insertError) throw insertError;
+
+      // Notify Admin
+      notifyAdmin('新會員申請', `姓名：${newApplication.name}\n公司：${newApplication.company_title}\n電話：${newApplication.phone}\nEmail：${newApplication.email}`);
 
       // 3. 轉導至藍新金流付款
       // 注意：原本在此發送的 "申請已收到" 信件已移除，改為付款成功後由後端發送，避免使用者誤會
