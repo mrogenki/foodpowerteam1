@@ -176,9 +176,6 @@ ${memberData.notes || '(無)'}
 
       if (insertError) throw insertError;
 
-      // Notify Admin
-      notifyAdmin('新會員申請', `姓名：${newApplication.name}\n公司：${newApplication.company_title}\n電話：${newApplication.phone}\nEmail：${newApplication.email}`);
-
       // 3. 轉導至藍新金流付款
       // 注意：原本在此發送的 "申請已收到" 信件已移除，改為付款成功後由後端發送，避免使用者誤會
       alert(`申請資料已送出！\n\n即將轉導至付款頁面，請完成繳費以完成入會程序。`);

@@ -65,9 +65,6 @@ const MemberRenewal: React.FC = () => {
 
       if (error) throw error;
 
-      // Notify Admin
-      notifyAdmin('會員續約申請', `會員：${selectedMember.name} (${selectedMember.member_no})\n金額：NT$ ${amount.toLocaleString()}`);
-
       // 2. 送出金流表單
       submitNewebPayForm({
         MerchantOrderNo: merchantOrderNo,

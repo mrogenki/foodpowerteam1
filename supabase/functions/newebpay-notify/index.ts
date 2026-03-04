@@ -113,6 +113,38 @@ serve(async (req) => {
             payment_method: paymentMethod
           }
 
+          // Helper: Send Telegram Notification
+          const sendTelegram = async (action: string, details: string) => {
+            const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
+            const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
+            if (!token || !chatId) {
+              console.warn('[Notify] Telegram env variables missing, skipping Telegram notification');
+              return;
+            }
+            
+            const message = `🔔 <b>新通知：${action}</b>\n\n${details}`;
+            try {
+              console.log(`[Notify] Sending Telegram notification for ${action}`);
+              const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: message,
+                  parse_mode: 'HTML'
+                }),
+              });
+              if (!response.ok) {
+                const errText = await response.text();
+                console.error(`[Notify] Telegram sending failed with status ${response.status}:`, errText);
+              } else {
+                console.log(`[Notify] Telegram notification sent successfully`);
+              }
+            } catch (e) {
+              console.error('[Notify] Telegram sending network/fetch error:', e);
+            }
+          };
+
           // Helper: Send Email via EmailJS REST API
           const sendEmail = async (templateId: string, params: any) => {
             const serviceId = Deno.env.get('EMAILJS_SERVICE_ID');
@@ -193,19 +225,22 @@ serve(async (req) => {
               }
             }
 
-            // Send Email (Wrapped in try-catch)
+            // Send Email & Telegram
             try {
               console.log(`[Notify] Sending general activity email to ${regData.email} for activity ${activityTitle}`);
-              await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
-                to_name: regData.name,
-                email: regData.email, // Order Confirmation uses {{email}}
-                activity_title: activityTitle,
-                activity_date: activityDate,
-                activity_time: activityTime,
-                activity_location: activityLocation,
-                activity_price: regData.paid_amount || 0
-              });
-              console.log(`[Notify] Finished awaiting sendEmail for general activity`);
+              await Promise.all([
+                sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
+                  to_name: regData.name,
+                  email: regData.email,
+                  activity_title: activityTitle,
+                  activity_date: activityDate,
+                  activity_time: activityTime,
+                  activity_location: activityLocation,
+                  activity_price: regData.paid_amount || 0
+                }),
+                sendTelegram('一般活動報名 (已付款)', `活動：${activityTitle}\n姓名：${regData.name}\n電話：${regData.phone}\n人數：${regData.participantsCount || 1}人\n金額：NT$ ${regData.paid_amount?.toLocaleString()}`)
+              ]);
+              console.log(`[Notify] Finished awaiting notifications for general activity`);
             } catch (emailErr) {
               console.error(`[Notify] Email process error:`, emailErr);
             }
@@ -253,19 +288,22 @@ serve(async (req) => {
                 }
               }
 
-              // Send Email
+              // Send Email & Telegram
               try {
                 console.log(`[Notify] Sending member activity email to ${memberEmail} for activity ${activityTitle}`);
-                await sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
-                  to_name: memData.member_name,
-                  email: memberEmail || '', // Order Confirmation uses {{email}}
-                  activity_title: activityTitle,
-                  activity_date: activityDate,
-                  activity_time: activityTime,
-                  activity_location: activityLocation,
-                  activity_price: memData.paid_amount || 0
-                });
-                console.log(`[Notify] Finished awaiting sendEmail for member activity`);
+                await Promise.all([
+                  sendEmail(Deno.env.get('EMAILJS_TEMPLATE_ID') || 'template_ih0plai', {
+                    to_name: memData.member_name,
+                    email: memberEmail || '',
+                    activity_title: activityTitle,
+                    activity_date: activityDate,
+                    activity_time: activityTime,
+                    activity_location: activityLocation,
+                    activity_price: memData.paid_amount || 0
+                  }),
+                  sendTelegram('會員專屬活動報名 (已付款)', `活動：${activityTitle}\n會員：${memData.member_name}\n人數：${memData.participantsCount || 1}人\n金額：NT$ ${memData.paid_amount?.toLocaleString()}`)
+                ]);
+                console.log(`[Notify] Finished awaiting notifications for member activity`);
               } catch (emailErr) {
                 console.error(`[Notify] Email process error:`, emailErr);
               }
@@ -288,20 +326,23 @@ serve(async (req) => {
               if (appData) {
                 console.log(`[Notify] Success! Updated Member Application: ${merchantOrderNo}`)
                 
-                // Send Email
+                // Send Email & Telegram
                 try {
                   console.log(`[Notify] Sending member join email to ${appData.email} for ${appData.name}`);
-                  await sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
-                    to_name: appData.name,
-                    to_email: appData.email, // Member Application uses {{to_email}}
-                    activity_title: '【食在力量】會員入會申請',
-                    activity_date: new Date().toISOString().slice(0, 10),
-                    activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-                    activity_location: '線上申請 (已完成繳費)',
-                    activity_price: `NT$ ${appData.paid_amount?.toLocaleString()}`,
-                    message: `您的入會申請已收到並完成繳費，管理員將於 3-5 個工作天內完成審核。`
-                  });
-                  console.log(`[Notify] Finished awaiting sendEmail for member application`);
+                  await Promise.all([
+                    sendEmail(Deno.env.get('EMAILJS_MEMBER_JOIN_TEMPLATE_ID') || 'template_gu7mwvm', {
+                      to_name: appData.name,
+                      to_email: appData.email,
+                      activity_title: '【食在力量】會員入會申請',
+                      activity_date: new Date().toISOString().slice(0, 10),
+                      activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                      activity_location: '線上申請 (已完成繳費)',
+                      activity_price: `NT$ ${appData.paid_amount?.toLocaleString()}`,
+                      message: `您的入會申請已收到並完成繳費，管理員將於 3-5 個工作天內完成審核。`
+                    }),
+                    sendTelegram('新會員申請 (已付款)', `姓名：${appData.name}\n公司：${appData.company_title || '無'}\n電話：${appData.phone}\nEmail：${appData.email}\n金額：NT$ ${appData.paid_amount?.toLocaleString()}`)
+                  ]);
+                  console.log(`[Notify] Finished awaiting notifications for member application`);
                 } catch (emailErr) {
                   console.error(`[Notify] Email process error:`, emailErr);
                 }
@@ -417,20 +458,23 @@ serve(async (req) => {
                   }
                   // --- End of Auto-extend ---
 
-                  // Send Email
+                  // Send Email & Telegram
                   try {
                     console.log(`[Notify] Sending renewal email to ${memberEmail} for member ${memberName}`);
-                    await sendEmail(Deno.env.get('EMAILJS_RENEWAL_TEMPLATE_ID') || 'template_3bgk8ts', {
-                      to_name: memberName,
-                      to_email: memberEmail, // Member Renewal uses {{to_email}}
-                      activity_title: '【食在力量】會員續約成功',
-                      activity_date: new Date().toISOString().slice(0, 10),
-                      activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-                      activity_location: '線上續約 (已完成繳費)',
-                      activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
-                      message: `您的會員續約已完成繳費，會籍已自動延長。`
-                    });
-                    console.log(`[Notify] Finished awaiting sendEmail for member renewal`);
+                    await Promise.all([
+                      sendEmail(Deno.env.get('EMAILJS_RENEWAL_TEMPLATE_ID') || 'template_3bgk8ts', {
+                        to_name: memberName,
+                        to_email: memberEmail,
+                        activity_title: '【食在力量】會員續約成功',
+                        activity_date: new Date().toISOString().slice(0, 10),
+                        activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                        activity_location: '線上續約 (已完成繳費)',
+                        activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
+                        message: `您的會員續約已完成繳費，會籍已自動延長。`
+                      }),
+                      sendTelegram('會員續約申請 (已付款)', `會員：${memberName}\n金額：NT$ ${renewData.amount?.toLocaleString()}`)
+                    ]);
+                    console.log(`[Notify] Finished awaiting notifications for member renewal`);
                   } catch (emailErr) {
                     console.error(`[Notify] Email process error:`, emailErr);
                   }

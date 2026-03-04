@@ -380,13 +380,7 @@ const App: React.FC = () => {
     const { error } = await supabase.from('registrations').insert([newReg]);
     if (error) { alert('報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); 
-    
-    // Notify Admin
-    const activity = activities.find(a => a.id === newReg.activityId);
-    notifyAdmin('一般活動報名', `活動：${activity?.title || '未知活動'}\n姓名：${newReg.name}\n電話：${newReg.phone}\n人數：${newReg.participantsCount}人`);
-    
-    return true;
+    await fetchData(); return true;
   };
 
   const handleMemberRegister = async (newReg: MemberRegistration, couponId?: string): Promise<boolean> => {
@@ -394,14 +388,7 @@ const App: React.FC = () => {
     const { error } = await supabase.from('member_registrations').insert([newReg]);
     if (error) { alert('會員報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); 
-    
-    // Notify Admin
-    const activity = memberActivities.find(a => a.id === newReg.activityId);
-    const member = members.find(m => m.id === newReg.memberId);
-    notifyAdmin('會員專屬活動報名', `活動：${activity?.title || '未知活動'}\n會員：${member?.name || '未知會員'}\n人數：${newReg.participantsCount}人`);
-    
-    return true;
+    await fetchData(); return true;
   };
 
   const handleUpdateRegistration = async (updated: Registration) => {
