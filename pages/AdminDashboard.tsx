@@ -680,6 +680,7 @@ const ActivityManager: React.FC<{
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [regSearch, setRegSearch] = useState('');
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
 
   const currentActivity = activities.find(a => a.id === editingId);
   const currentRegistrations = registrations.filter(r => String(r.activityId) === String(editingId));
@@ -694,6 +695,58 @@ const ActivityManager: React.FC<{
   const handleCreate = () => { setEditingId(null); setFormData({ type: type === 'general' ? ActivityType.GATHERING : ActivityType.GATHERING, title: '', date: '', time: '', location: '', price: 0, picture: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1', description: '', status: 'active' }); setView('edit'); };
   const handleSave = async (e: React.FormEvent) => { e.preventDefault(); if (editingId) onUpdate(formData); else onAdd(formData); setView('list'); };
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files && e.target.files[0]) { const url = await onUploadImage(e.target.files[0]); if (url) setFormData({ ...formData, picture: url }); } };
+
+  const sendToTelegram = async () => {
+    if (!currentActivity || currentRegistrations.length === 0) {
+      alert('目前沒有報名資料');
+      return;
+    }
+    
+    setIsSendingTelegram(true);
+    try {
+      const botToken = import.meta.env.TELEGRAM_BOT_TOKEN || import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+      const chatId = import.meta.env.TELEGRAM_CHAT_ID || import.meta.env.VITE_TELEGRAM_CHAT_ID;
+      
+      if (!botToken || !chatId) {
+        alert('請先在環境變數設定 TELEGRAM_BOT_TOKEN 與 TELEGRAM_CHAT_ID');
+        return;
+      }
+
+      let message = `【${currentActivity.title}】\n`;
+      
+      currentRegistrations.forEach((r: any, index: number) => {
+        const member = members?.find(m => String(m.id) === String(r.memberId));
+        const name = r.name || r.member_name || member?.name || '';
+        const company = r.company || member?.brand_name || member?.company || '';
+        const isPaid = r.payment_status === PaymentStatus.PAID;
+        const statusText = isPaid ? '✅已付款' : '❌待付款';
+        
+        message += `${index + 1}. ${name} / ${company}${company ? ' ' : ''}${statusText}\n`;
+      });
+
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('傳送失敗');
+      }
+
+      alert('已成功傳送名單至 Telegram！');
+    } catch (error) {
+      console.error('Telegram send error:', error);
+      alert('傳送失敗，請檢查網路或設定。');
+    } finally {
+      setIsSendingTelegram(false);
+    }
+  };
 
   const exportCSV = () => {
     const data = currentRegistrations.map((r: any) => {
@@ -737,7 +790,13 @@ const ActivityManager: React.FC<{
       <div className="space-y-6 animate-in slide-in-from-right duration-300">
         <div className="flex items-center justify-between">
           <button onClick={() => setView('list')} className="flex items-center gap-2 text-gray-500 hover:text-gray-900"><ChevronRight className="rotate-180" size={20} /> 返回列表</button>
-          <div className="flex gap-2"><button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm"><FileDown size={16} /> 匯出名單</button></div>
+          <div className="flex gap-2">
+            <button onClick={sendToTelegram} disabled={isSendingTelegram} className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold text-sm disabled:opacity-50">
+              {isSendingTelegram ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} 
+              傳送名單至 Telegram
+            </button>
+            <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm"><FileDown size={16} /> 匯出名單</button>
+          </div>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100">
           <h2 className="text-2xl font-bold mb-2">{currentActivity.title}</h2>
