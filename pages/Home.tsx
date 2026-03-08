@@ -42,14 +42,14 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
 
   // 重設 Meta Tags 為網站預設值
   useEffect(() => {
-    document.title = `食在力量活動&會員系統`;
+    document.title = `食在力量`;
     
     const updateMeta = (prop: string, content: string) => {
       let el = document.querySelector(`meta[property="${prop}"]`);
       if (el) el.setAttribute('content', content);
     };
     
-    updateMeta('og:title', '食在力量活動&會員系統');
+    updateMeta('og:title', '食在力量');
     updateMeta('og:description', '食在力量 - 連結產業，創造共好。匯聚各產業菁英，提供產業小聚、企業參訪、專業課程等活動報名與會員管理服務。');
     updateMeta('og:image', 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1200&auto=format&fit=crop');
     updateMeta('og:url', 'https://foodpowerteam.vercel.app/');
@@ -59,7 +59,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     <div className="pb-20">
       {/* Hero Section / Carousel */}
       {allUpcomingActivities.length > 0 ? (
-        <div className="relative w-full h-[500px] md:h-[600px] overflow-hidden bg-gray-900">
+        <div className="relative w-full aspect-video overflow-hidden bg-gray-900">
           {allUpcomingActivities.map((activity, index) => (
             <div 
               key={`${activity.isMemberActivity ? 'm' : 'g'}-${activity.id}`} 

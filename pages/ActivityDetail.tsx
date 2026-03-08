@@ -328,7 +328,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-8">
           <div className="rounded-2xl overflow-hidden shadow-sm relative">
-            <img src={activity.picture} alt={activity.title} className={`w-full h-[400px] object-cover ${isClosed ? 'grayscale opacity-70' : ''}`} />
+            <img src={activity.picture} alt={activity.title} className={`w-full aspect-video object-cover ${isClosed ? 'grayscale opacity-70' : ''}`} />
             {props.type === 'member' && (
                <div className="absolute top-4 left-4 bg-red-600/90 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 backdrop-blur-sm shadow-lg"><Crown size={20} /> 會員專屬活動</div>
             )}
