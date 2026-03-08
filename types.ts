@@ -1,6 +1,6 @@
 
 export enum ActivityType {
-  GATHERING = '產業小聚',
+  GATHERING = '講座論壇',
   VISIT = '企業參訪',
   COURSE = '專業課程',
   DINNER = '交流餐敘',

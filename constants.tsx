@@ -16,7 +16,7 @@ export const INITIAL_ACTIVITIES: Activity[] = [
   {
     id: '1',
     type: ActivityType.GATHERING,
-    title: '食在力量 - 十月產業小聚',
+    title: '食在力量 - 十月講座論壇',
     date: '2025-10-18',
     time: '14:00',
     location: '台北市大安區忠孝東路四段 (食在力量總部)',

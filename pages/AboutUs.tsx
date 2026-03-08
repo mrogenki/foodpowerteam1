@@ -25,7 +25,7 @@ const AboutUs: React.FC = () => {
       title: '營運團隊',
       icon: <Briefcase className="text-red-600" />,
       groups: [
-        { name: '活動組', description: '策劃各類產業小聚、參訪與課程。' },
+        { name: '活動組', description: '策劃各類講座論壇、參訪與課程。' },
         { name: '資訊組', description: '維護系統運作，推動數位轉型。' },
         { name: '行政組', description: '處理協會日常庶務與會員服務。' },
         { 
@@ -89,7 +89,7 @@ const AboutUs: React.FC = () => {
                 「食在力量」起源於對台灣餐飲/食品產業的熱愛與使命感。我們發現許多優秀的餐飲/食品品牌在成長過程中，常面臨通路對接困難、資訊不對稱等挑戰。
               </p>
               <p className="text-lg mt-4">
-                因此，我們建立了一個專業的交流平台，透過「產業小聚」、「企業參訪」與「專業課程」，讓業者能互相學習、資源共享。從最初的小型聚會，發展至今已成為連結數百家品牌的指標性協會。
+                因此，我們建立了一個專業的交流平台，透過「講座論壇」、「企業參訪」與「專業課程」，讓業者能互相學習、資源共享。從最初的小型聚會，發展至今已成為連結數百家品牌的指標性協會。
               </p>
             </div>
           </motion.div>
@@ -143,7 +143,7 @@ const AboutUs: React.FC = () => {
                 <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
                   <Target size={18} className="text-red-600" /> 活動組
                 </h3>
-                <p className="text-sm text-gray-500">策劃產業小聚、企業參訪、交流餐敘與專業課程。</p>
+                <p className="text-sm text-gray-500">策劃講座論壇、企業參訪、交流餐敘與專業課程。</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">

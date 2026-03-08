@@ -50,7 +50,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     };
     
     updateMeta('og:title', '食在力量');
-    updateMeta('og:description', '食在力量 - 連結產業，創造共好。匯聚各產業菁英，提供產業小聚、企業參訪、專業課程等活動報名與會員管理服務。');
+    updateMeta('og:description', '食在力量 - 連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動報名與會員管理服務。');
     updateMeta('og:image', 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1200&auto=format&fit=crop');
     updateMeta('og:url', 'https://foodpowerteam.vercel.app/');
   }, []);
@@ -111,7 +111,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
         <section className="bg-red-600 text-white py-20 px-4">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-extrabold mb-6">連結產業，創造共好</h1>
-            <p className="text-xl text-red-100 max-w-3xl leading-relaxed">食在力量致力於餐飲業&食品產業的交流與成長，提供產業小聚、企業參訪與專業課程，讓您的事業在這裡蓬勃發展。</p>
+            <p className="text-xl text-red-100 max-w-3xl leading-relaxed">食在力量致力於餐飲業&食品產業的交流與成長，提供講座論壇、企業參訪與專業課程，讓您的事業在這裡蓬勃發展。</p>
           </div>
         </section>
       )}
@@ -123,7 +123,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
           <div className="bg-white border border-gray-100 rounded-3xl p-8 md:p-12 shadow-xl relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="relative z-10 max-w-2xl">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">探索協會活動</h2>
-              <p className="text-gray-600 mb-0">我們定期舉辦產業小聚、企業參訪與專業課程，歡迎報名參加，與我們一起成長。</p>
+              <p className="text-gray-600 mb-0">我們定期舉辦講座論壇、企業參訪與專業課程，歡迎報名參加，與我們一起成長。</p>
             </div>
             <div className="relative z-10">
               <Link to="/activities" className="bg-red-50 text-red-600 hover:bg-red-100 px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap">
