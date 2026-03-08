@@ -695,19 +695,30 @@ const ActivityManager: React.FC<{
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files && e.target.files[0]) { const url = await onUploadImage(e.target.files[0]); if (url) setFormData({ ...formData, picture: url }); } };
 
   const exportCSV = () => {
-    const data = currentRegistrations.map((r: any) => ({
-      '報名時間': new Date(r.created_at).toLocaleString(),
-      '姓名': r.name || r.member_name,
-      '電話': r.phone || (members?.find(m => String(m.id) === String(r.memberId))?.phone),
-      'Email': r.email,
-      '單位/職稱': r.company ? `${r.company}/${r.title}` : '',
-      '報到狀態': r.check_in_status ? '已報到' : '未報到',
-      '付款狀態': r.payment_status === PaymentStatus.PAID ? '已付款' : (r.payment_status === 'refunded' ? '已退費' : '待付款'),
-      '付款金額': r.paid_amount,
-      '金流單號': r.merchant_order_no,
-      '折扣碼': r.coupon_code,
-      '備註': r.notes
-    }));
+    const data = currentRegistrations.map((r: any) => {
+      const member = members?.find(m => String(m.id) === String(r.memberId));
+      const name = r.name || r.member_name || member?.name || '';
+      const phone = r.phone || member?.phone || '';
+      const email = r.email || member?.email || '';
+      
+      const company = r.company || member?.brand_name || member?.company || '';
+      const title = r.title || member?.job_title || '';
+      const companyTitle = company && title ? `${company}/${title}` : (company || title || '');
+
+      return {
+        '報名時間': new Date(r.created_at).toLocaleString(),
+        '姓名': name,
+        '電話': phone,
+        'Email': email,
+        '單位/職稱': companyTitle,
+        '報到狀態': r.check_in_status ? '已報到' : '未報到',
+        '付款狀態': r.payment_status === PaymentStatus.PAID ? '已付款' : (r.payment_status === 'refunded' ? '已退費' : '待付款'),
+        '付款金額': r.paid_amount,
+        '金流單號': r.merchant_order_no,
+        '折扣碼': r.coupon_code,
+        '備註': r.notes
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "報名名單");
@@ -735,9 +746,24 @@ const ActivityManager: React.FC<{
             <table className="w-full text-left border-collapse">
               <thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">姓名/資訊</th><th className="p-4">備註</th><th className="p-4">報到狀態</th><th className="p-4">付款狀態 (點擊切換)</th><th className="p-4">付款方式</th><th className="p-4">金額</th><th className="p-4 rounded-tr-lg text-right">操作</th></tr></thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {filteredRegs.map((reg: any) => (
+                {filteredRegs.map((reg: any) => {
+                  const member = members?.find(m => String(m.id) === String(reg.memberId));
+                  const name = reg.name || reg.member_name || member?.name || '';
+                  const phone = reg.phone || member?.phone || '';
+                  const company = reg.company || member?.brand_name || member?.company || '';
+                  const title = reg.title || member?.job_title || '';
+                  
+                  return (
                   <tr key={reg.id} className={`hover:bg-gray-50 ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}>
-                    <td className="p-4"><div className={`font-bold flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{reg.name || reg.member_name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-xs text-gray-400">{reg.phone}</div>{reg.merchant_order_no && <div className="text-[10px] text-gray-400 font-mono mt-0.5">#{reg.merchant_order_no}</div>}</td>
+                    <td className="p-4">
+                      <div className={`font-bold flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        {name}
+                        {reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}
+                      </div>
+                      <div className="text-xs text-gray-400">{phone}</div>
+                      {(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}
+                      {reg.merchant_order_no && <div className="text-[10px] text-gray-400 font-mono mt-0.5">#{reg.merchant_order_no}</div>}
+                    </td>
                     <td className="p-4">
                       {reg.notes ? (
                         <div className="text-xs text-gray-600 max-w-[150px] truncate" title={reg.notes}>
@@ -757,7 +783,8 @@ const ActivityManager: React.FC<{
                     <td className="p-4"><PaidAmountInput value={reg.paid_amount} onSave={(val) => onUpdateReg({...reg, paid_amount: val})} /></td>
                     <td className="p-4 text-right"><button onClick={() => { if(confirm('確定刪除此報名資料？')) onDeleteReg(reg.id); }} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={16} /></button></td>
                   </tr>
-                ))}
+                );
+                })}
               </tbody>
             </table>
           </div>
