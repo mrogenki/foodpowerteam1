@@ -80,7 +80,10 @@ const Footer: React.FC = () => {
               <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center text-white font-bold">食</div>
               <span className="font-bold text-gray-800 tracking-wider text-lg">食在力量</span>
             </div>
-            <p className="text-gray-400 text-sm">&copy; 2026 食在力量活動報名系統 v2.0.<br/>All rights reserved.</p>
+            <p className="text-gray-400 text-sm">
+              &copy; 2026 食在力量活動報名系統 v2.0.<br/>
+              <Link to="/admin" className="hover:text-gray-300 transition-colors">All rights reserved.</Link>
+            </p>
           </div>
 
           {/* LINE Join Section */}
