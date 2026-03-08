@@ -40,6 +40,17 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
   const nextSlide = () => setCurrentSlide(prev => (prev + 1) % allUpcomingActivities.length);
   const prevSlide = () => setCurrentSlide(prev => (prev - 1 + allUpcomingActivities.length) % allUpcomingActivities.length);
 
+  const getTypeColor = (type: string) => {
+    switch(type) {
+      case '講座論壇': return 'bg-orange-600';
+      case '企業參訪': return 'bg-blue-600';
+      case '專業課程': return 'bg-green-600';
+      case '交流餐敘': return 'bg-pink-600';
+      case '專案活動': return 'bg-purple-600';
+      default: return 'bg-gray-800';
+    }
+  };
+
   // 重設 Meta Tags 為網站預設值
   useEffect(() => {
     document.title = `食在力量`;
@@ -68,18 +79,25 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
               <div className="absolute inset-0 bg-black/50 z-10"></div>
               <img src={activity.picture} alt={activity.title} className="w-full h-full object-cover" />
               <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
-                <span className="bg-red-600 text-white px-4 py-1 rounded-full text-sm font-bold mb-4 flex items-center gap-1">
-                  {activity.isMemberActivity && <Crown size={14} />}
-                  {activity.isMemberActivity ? '會員專屬活動' : '最新活動'}
-                </span>
-                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4 drop-shadow-lg max-w-4xl leading-tight">{activity.title}</h2>
-                <div className="flex flex-wrap justify-center items-center gap-4 text-base md:text-lg text-gray-200 mb-8 drop-shadow-md">
-                  <span className="flex items-center gap-1"><Calendar size={18} /> {activity.date}</span>
-                  <span className="flex items-center gap-1"><MapPin size={18} /> {activity.location}</span>
+                <div className="flex items-center gap-2 md:gap-3 lg:gap-4 mb-4 md:mb-6">
+                  <span className={`${getTypeColor(activity.type)} text-white px-3 py-1 md:px-5 md:py-1.5 lg:px-6 lg:py-2 rounded-full text-sm md:text-lg lg:text-xl font-bold flex items-center gap-1`}>
+                    {activity.type}
+                  </span>
+                  {activity.isMemberActivity && (
+                    <span className="bg-red-600 text-white px-3 py-1 md:px-5 md:py-1.5 lg:px-6 lg:py-2 rounded-full text-sm md:text-lg lg:text-xl font-bold flex items-center gap-1 md:gap-2">
+                      <Crown className="w-3.5 h-3.5 md:w-5 md:h-5 lg:w-6 lg:h-6" />
+                      會員專屬
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl md:text-5xl lg:text-6xl font-extrabold text-white mb-4 md:mb-6 drop-shadow-lg max-w-5xl leading-tight">{activity.title}</h2>
+                <div className="flex flex-wrap justify-center items-center gap-3 md:gap-6 text-sm md:text-xl lg:text-2xl text-gray-200 mb-8 md:mb-10 drop-shadow-md">
+                  <span className="flex items-center gap-1.5 md:gap-2"><Calendar className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" /> {activity.date}</span>
+                  <span className="flex items-center gap-1.5 md:gap-2"><MapPin className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" /> {activity.location}</span>
                 </div>
                 <Link 
                   to={activity.isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`} 
-                  className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-3 rounded-full font-bold text-lg transition-colors shadow-lg"
+                  className="bg-white text-gray-900 hover:bg-gray-100 px-6 py-2 md:px-8 md:py-3 lg:px-10 lg:py-4 rounded-full font-bold text-base md:text-xl lg:text-2xl transition-colors shadow-lg"
                 >
                   查看活動詳情
                 </Link>

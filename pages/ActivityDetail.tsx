@@ -344,6 +344,11 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
           <div>
             <div className="flex items-center gap-3 mb-4">
                <span className={`px-3 py-1 rounded-md text-sm font-bold ${isClosed ? 'bg-gray-200 text-gray-500' : 'bg-red-100 text-red-600'}`}>{activity.type}</span>
+               {props.type === 'member' && (
+                 <span className="bg-red-600 text-white px-3 py-1 rounded-md text-sm font-bold flex items-center gap-1">
+                   <Crown size={14} /> 會員專屬
+                 </span>
+               )}
                <span className="text-gray-400 text-sm">已有 {alreadyRegisteredCount} 人報名</span>
             </div>
             <h1 className="text-4xl font-bold mb-6 text-gray-900">{activity.title}</h1>
