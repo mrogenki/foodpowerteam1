@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Menu, X, Loader2, UserPlus, MessageCircle } from 'lucide-react';
 import Home from './pages/Home';
+import ActivitiesPage from './pages/Activities';
 import ActivityDetail from './pages/ActivityDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
@@ -40,7 +41,8 @@ const Header: React.FC = () => {
             </Link>
           </div>
           <div className="hidden sm:flex items-center space-x-8">
-            <Link to="/" className="text-gray-700 hover:text-red-600 transition-colors font-medium">活動首頁</Link>
+            <Link to="/" className="text-gray-700 hover:text-red-600 transition-colors font-medium">首頁</Link>
+            <Link to="/activities" className="text-gray-700 hover:text-red-600 transition-colors font-medium">協會活動</Link>
             <Link to="/about" className="text-gray-700 hover:text-red-600 transition-colors font-medium">關於我們</Link>
             <Link to="/members" className="text-gray-700 hover:text-red-600 transition-colors font-medium">會員列表</Link>
             <Link to="/join" className="flex items-center gap-1 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-red-700 shadow-md shadow-red-100 transition-all"><UserPlus size={16} /> 加入會員</Link>
@@ -55,7 +57,8 @@ const Header: React.FC = () => {
       </div>
       {isOpen && (
         <div className="sm:hidden bg-white border-t px-4 py-3 space-y-3 shadow-lg">
-          <Link to="/" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">活動首頁</Link>
+          <Link to="/" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">首頁</Link>
+          <Link to="/activities" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">協會活動</Link>
           <Link to="/about" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">關於我們</Link>
           <Link to="/members" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">會員列表</Link>
           <Link to="/join" onClick={() => setIsOpen(false)} className="block text-red-600 font-bold">加入會員</Link>
@@ -553,6 +556,7 @@ const App: React.FC = () => {
         <main className="flex-grow bg-gray-50/30">
           <Routes>
             <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} />} />
+            <Route path="/activities" element={<ActivitiesPage activities={activities} memberActivities={memberActivities} />} />
             <Route path="/about" element={<AboutUs />} />
             <Route path="/members" element={<MemberList members={members} />} />
             <Route path="/join" element={<MemberJoin />} />

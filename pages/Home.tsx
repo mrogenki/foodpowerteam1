@@ -1,85 +1,44 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users, Ban, UserPlus } from 'lucide-react';
-import { Activity, MemberActivity, ActivityType } from '../types';
+import { Crown, UserPlus, Calendar, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { Activity, MemberActivity } from '../types';
 
 interface HomeProps {
   activities: Activity[];
   memberActivities: MemberActivity[];
 }
 
-const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActivity?: boolean }> = ({ activity, isMemberActivity = false }) => {
-  // 檢查活動是否已關閉
-  const isClosed = activity.status === 'closed';
+const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const now = new Date();
 
-  // 根據不同活動類型給予不同標籤顏色
-  const getTypeColor = (type: ActivityType) => {
-    switch(type) {
-      case ActivityType.GATHERING: return 'bg-orange-600 text-white';
-      case ActivityType.VISIT: return 'bg-blue-600 text-white';
-      case ActivityType.COURSE: return 'bg-green-600 text-white';
-      case ActivityType.DINNER: return 'bg-pink-600 text-white';
-      case ActivityType.PROJECT: return 'bg-purple-600 text-white';
-      default: return 'bg-gray-800 text-white';
-    }
+  // 篩選出即將到來的活動，並排序取前 5 筆
+  const isUpcoming = (a: Activity | MemberActivity) => {
+    const activityFullDate = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`);
+    return activityFullDate > now;
   };
 
-  const linkPath = isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`;
+  const allUpcomingActivities = [
+    ...activities.map(a => ({ ...a, isMemberActivity: false })),
+    ...memberActivities.map(a => ({ ...a, isMemberActivity: true }))
+  ].filter(isUpcoming).sort((a, b) => {
+    const dateA = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`).getTime();
+    const dateB = new Date(`${b.date.replace(/-/g, '/')} ${b.time}`).getTime();
+    return dateA - dateB; // 越近的排越前面
+  }).slice(0, 5);
 
-  return (
-    <Link to={linkPath} className={`group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 block ${isClosed ? 'opacity-80 grayscale-[0.5]' : ''}`}>
-      <div className="relative h-48 overflow-hidden">
-        <img src={activity.picture} alt={activity.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        <div className="absolute top-4 left-4 flex gap-2">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getTypeColor(activity.type)}`}>
-            {activity.type}
-          </span>
-          {isMemberActivity && (
-             <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-               <Crown size={12} /> 會員專屬
-             </span>
-          )}
-        </div>
-        {isClosed && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-             <span className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold border border-white/30 backdrop-blur-sm">報名已截止</span>
-          </div>
-        )}
-      </div>
-      <div className="p-6">
-        <h3 className={`text-xl font-bold mb-4 line-clamp-1 transition-colors ${isClosed ? 'text-gray-500' : 'group-hover:text-red-600'}`}>{activity.title}</h3>
-        <div className="space-y-2 text-sm text-gray-500 mb-6">
-          <div className="flex items-center gap-2">
-            <Calendar size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
-            <span>{activity.date}</span>
-            <Clock size={16} className={`${isClosed ? 'text-gray-400' : 'text-red-600'} ml-2`} />
-            <span>{activity.time}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <MapPin size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
-            <span className="line-clamp-1">{activity.location}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <DollarSign size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
-            <span>NT$ {activity.price.toLocaleString()}</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-          {isClosed ? (
-             <span className="text-gray-400 font-bold text-sm flex items-center gap-1"><Ban size={16}/> 報名截止</span>
-          ) : (
-             <span className="text-red-600 font-bold text-sm">立即報名</span>
-          )}
-          <ChevronRight size={18} className={isClosed ? 'text-gray-300' : 'text-red-600'} />
-        </div>
-      </div>
-    </Link>
-  );
-};
+  // 輪播自動播放邏輯
+  useEffect(() => {
+    if (allUpcomingActivities.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % allUpcomingActivities.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [allUpcomingActivities.length]);
 
-const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
-  const now = new Date();
+  const nextSlide = () => setCurrentSlide(prev => (prev + 1) % allUpcomingActivities.length);
+  const prevSlide = () => setCurrentSlide(prev => (prev - 1 + allUpcomingActivities.length) % allUpcomingActivities.length);
 
   // 重設 Meta Tags 為網站預設值
   useEffect(() => {
@@ -96,31 +55,86 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     updateMeta('og:url', 'https://foodpowerteam.vercel.app/');
   }, []);
 
-  // 篩選邏輯修正：只要日期還沒過，即使狀態是 closed 也要顯示 (但會標示截止)
-  // 這樣使用者才能知道有這個活動，但已經不能報名了
-  const filterUpcoming = (a: Activity | MemberActivity) => {
-    const activityFullDate = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`);
-    // 只要日期在未來就顯示，狀態由 Card 元件自行判斷
-    return activityFullDate > now;
-  };
-
-  const upcomingActivities = activities.filter(filterUpcoming);
-  const upcomingMemberActivities = memberActivities.filter(filterUpcoming);
-
   return (
     <div className="pb-20">
-      {/* Hero Section */}
-      <section className="bg-red-600 text-white py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-6">連結產業，創造共好</h1>
-          <p className="text-xl text-red-100 max-w-3xl leading-relaxed">食在力量致力於餐飲業&食品產業的交流與成長，提供產業小聚、企業參訪與專業課程，讓您的事業在這裡蓬勃發展。</p>
-        </div>
-      </section>
-
-      {/* 移除原本的 -mt-10，改為 mt-12 增加間距，確保內容在白色區域 */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
-        <div className="space-y-12">
+      {/* Hero Section / Carousel */}
+      {allUpcomingActivities.length > 0 ? (
+        <div className="relative w-full h-[500px] md:h-[600px] overflow-hidden bg-gray-900">
+          {allUpcomingActivities.map((activity, index) => (
+            <div 
+              key={`${activity.isMemberActivity ? 'm' : 'g'}-${activity.id}`} 
+              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            >
+              <div className="absolute inset-0 bg-black/50 z-10"></div>
+              <img src={activity.picture} alt={activity.title} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
+                <span className="bg-red-600 text-white px-4 py-1 rounded-full text-sm font-bold mb-4 flex items-center gap-1">
+                  {activity.isMemberActivity && <Crown size={14} />}
+                  {activity.isMemberActivity ? '會員專屬活動' : '最新活動'}
+                </span>
+                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4 drop-shadow-lg max-w-4xl leading-tight">{activity.title}</h2>
+                <div className="flex flex-wrap justify-center items-center gap-4 text-base md:text-lg text-gray-200 mb-8 drop-shadow-md">
+                  <span className="flex items-center gap-1"><Calendar size={18} /> {activity.date}</span>
+                  <span className="flex items-center gap-1"><MapPin size={18} /> {activity.location}</span>
+                </div>
+                <Link 
+                  to={activity.isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`} 
+                  className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-3 rounded-full font-bold text-lg transition-colors shadow-lg"
+                >
+                  查看活動詳情
+                </Link>
+              </div>
+            </div>
+          ))}
           
+          {allUpcomingActivities.length > 1 && (
+            <>
+              <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all">
+                <ChevronLeft size={32} />
+              </button>
+              <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all">
+                <ChevronRight size={32} />
+              </button>
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+                {allUpcomingActivities.map((_, index) => (
+                  <button 
+                    key={index}
+                    onClick={() => setCurrentSlide(index)}
+                    className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <section className="bg-red-600 text-white py-20 px-4">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-6">連結產業，創造共好</h1>
+            <p className="text-xl text-red-100 max-w-3xl leading-relaxed">食在力量致力於餐飲業&食品產業的交流與成長，提供產業小聚、企業參訪與專業課程，讓您的事業在這裡蓬勃發展。</p>
+          </div>
+        </section>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+        <div className="space-y-8">
+          
+          {/* 協會活動 CTA */}
+          <div className="bg-white border border-gray-100 rounded-3xl p-8 md:p-12 shadow-xl relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 max-w-2xl">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">探索協會活動</h2>
+              <p className="text-gray-600 mb-0">我們定期舉辦產業小聚、企業參訪與專業課程，歡迎報名參加，與我們一起成長。</p>
+            </div>
+            <div className="relative z-10">
+              <Link to="/activities" className="bg-red-50 text-red-600 hover:bg-red-100 px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                <Calendar size={20} />
+                查看所有活動
+              </Link>
+            </div>
+            {/* 裝飾背景 */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-50 rounded-full blur-[80px] opacity-50 -translate-y-1/2 translate-x-1/2"></div>
+          </div>
+
           {/* 加入會員 CTA */}
           <div className="bg-gray-900 rounded-3xl p-8 md:p-12 relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="relative z-10 max-w-2xl">
@@ -142,50 +156,6 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-10 translate-y-1/2 -translate-x-1/2"></div>
           </div>
 
-          {/* 會員專屬活動區塊 */}
-          {upcomingMemberActivities.length > 0 && (
-             <div>
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-bold flex items-center gap-3 text-red-700">
-                    <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-red-600 border border-red-50">
-                      <Crown size={24} />
-                    </span>
-                    會員專屬活動
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {upcomingMemberActivities.map(activity => (
-                    <ActivityCard key={activity.id} activity={activity} isMemberActivity={true} />
-                  ))}
-                </div>
-             </div>
-          )}
-
-          {/* 一般公開活動區塊 */}
-          <div>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold flex items-center gap-3 text-gray-800">
-                <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg text-gray-700 border border-gray-50">
-                  <Users size={24} />
-                </span>
-                一般公開活動
-              </h2>
-            </div>
-            
-            {upcomingActivities.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {upcomingActivities.map(activity => (
-                  <ActivityCard key={activity.id} activity={activity} isMemberActivity={false} />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white p-20 rounded-3xl border border-dashed text-center">
-                <Calendar className="mx-auto text-gray-200 mb-4" size={48} />
-                <h3 className="text-xl font-bold text-gray-400">目前暫無公開活動</h3>
-                <p className="text-gray-300 mt-2">請稍後再回來查看，或聯繫食在力量秘書處。</p>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
