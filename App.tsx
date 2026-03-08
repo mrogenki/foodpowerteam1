@@ -36,7 +36,7 @@ const Header: React.FC = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center gap-2">
-              <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center text-white font-bold">食</div>
+              <img src="/logo.svg" alt="食在力量" className="w-8 h-8 rounded-md object-cover" />
               <span className="text-xl font-bold tracking-tight">食在力量</span>
             </Link>
           </div>
@@ -77,7 +77,7 @@ const Footer: React.FC = () => {
           {/* Logo & Copyright */}
           <div className="text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-              <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center text-white font-bold">食</div>
+              <img src="/logo.svg" alt="食在力量" className="w-8 h-8 rounded-md object-cover" />
               <span className="font-bold text-gray-800 tracking-wider text-lg">食在力量</span>
             </div>
             <p className="text-gray-400 text-sm">
