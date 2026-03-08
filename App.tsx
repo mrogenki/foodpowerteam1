@@ -217,10 +217,10 @@ const App: React.FC = () => {
     };
 
     fetchAdminRole();
-  }, [session]);
+  }, [session?.user?.id, session?.user?.email]);
 
   const fetchData = async (isInitialLoad = false) => {
-    if (isInitialLoad) setLoading(true);
+    if (isInitialLoad && activities.length === 0) setLoading(true);
     setDbError(null);
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
@@ -298,7 +298,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchData(true);
-  }, [currentUser]); // 當使用者登入狀態改變時，重新抓取資料 (確保取得管理員可見的資料)
+  }, [currentUser?.id, currentUser?.role]); // 當使用者登入狀態改變時，重新抓取資料 (確保取得管理員可見的資料)
 
   const handleLogout = async () => {
     if (supabase) {
