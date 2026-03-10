@@ -714,7 +714,12 @@ const ActivityManager: React.FC<{
 
       let message = `【${currentActivity.title}】\n`;
       
-      currentRegistrations.forEach((r: any, index: number) => {
+      // 依據報名時間排序 (越早報名排在越上面)
+      const sortedRegs = [...currentRegistrations].sort((a: any, b: any) => {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+
+      sortedRegs.forEach((r: any, index: number) => {
         const member = members?.find(m => String(m.id) === String(r.memberId));
         const name = r.name || r.member_name || member?.name || '';
         const company = r.company || member?.brand_name || member?.company || '';
