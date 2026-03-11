@@ -66,21 +66,22 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
 
   useEffect(() => {
     const checkDuplicate = async () => {
-      if (isOpen && initialData.orderNo && !initialData.receiptNo) {
+      // If we are editing an existing receipt, don't show duplicate warning for itself
+      if (isOpen && orderNo && (!initialData.receiptNo || orderNo !== initialData.orderNo)) {
         setIsCheckingDuplicate(true);
         try {
           const { data, error } = await supabase
             .from('receipts')
             .select('*')
-            .eq('order_no', initialData.orderNo)
+            .eq('order_no', orderNo)
+            .neq('receipt_no', receiptNo || '')
             .maybeSingle();
 
           if (error) throw error;
-          if (data) {
-            setDuplicateReceipt(data);
-          }
+          setDuplicateReceipt(data || null);
         } catch (err) {
           console.error('Error checking duplicate receipt:', err);
+          setDuplicateReceipt(null);
         } finally {
           setIsCheckingDuplicate(false);
         }
@@ -89,8 +90,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
       }
     };
 
-    checkDuplicate();
-  }, [isOpen, initialData.orderNo, initialData.receiptNo]);
+    const timer = setTimeout(() => {
+      checkDuplicate();
+    }, 500); // Debounce check
+
+    return () => clearTimeout(timer);
+  }, [isOpen, orderNo, initialData.receiptNo, receiptNo, initialData.orderNo]);
 
   const handleSealUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -179,13 +184,13 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
     }
 
     // Check for duplicate order_no if this is a new receipt or order_no changed
-    if (orderNo && (!initialData.orderNo || orderNo !== initialData.orderNo)) {
+    if (orderNo && (!initialData.receiptNo || orderNo !== initialData.orderNo)) {
       try {
         const { data, error } = await supabase
           .from('receipts')
           .select('receipt_no')
           .eq('order_no', orderNo)
-          .neq('receipt_no', receiptNo) // Exclude current receipt if updating
+          .neq('receipt_no', receiptNo || '') // Exclude current receipt if updating
           .maybeSingle();
         
         if (data) {
@@ -244,13 +249,13 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
     try {
       if (!supabase) throw new Error('Supabase 客戶端未初始化');
 
-      // 0. 先檢查是否有重複訂單編號 (如果是新收據)
-      if (orderNo && (!initialData.orderNo || orderNo !== initialData.orderNo)) {
+      // 0. 先檢查是否有重複訂單編號 (如果是新收據或訂單編號已更改)
+      if (orderNo && (!initialData.receiptNo || orderNo !== initialData.orderNo)) {
         const { data: dupData } = await supabase
           .from('receipts')
           .select('receipt_no')
           .eq('order_no', orderNo)
-          .neq('receipt_no', receiptNo)
+          .neq('receipt_no', receiptNo || '')
           .maybeSingle();
         
         if (dupData) {
@@ -375,7 +380,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
             <div className="flex gap-2">
               <button 
                 onClick={handleSave} 
-                disabled={isSaving}
+                disabled={isSaving || !!duplicateReceipt}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold disabled:opacity-50"
               >
                 {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} 
@@ -391,7 +396,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
               </button>
               <button 
                 onClick={handleEmailReceipt} 
-                disabled={isSending || !email}
+                disabled={isSending || !email || !!duplicateReceipt}
                 className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold disabled:opacity-50"
               >
                 {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} 
