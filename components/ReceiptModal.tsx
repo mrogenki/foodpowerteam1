@@ -57,10 +57,40 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+  const [duplicateReceipt, setDuplicateReceipt] = useState<any>(null);
   
   const [sealImage, setSealImage] = useState<string | null>(() => {
     return localStorage.getItem('receipt_seal_image') || null;
   });
+
+  useEffect(() => {
+    const checkDuplicate = async () => {
+      if (isOpen && initialData.orderNo && !initialData.receiptNo) {
+        setIsCheckingDuplicate(true);
+        try {
+          const { data, error } = await supabase
+            .from('receipts')
+            .select('*')
+            .eq('order_no', initialData.orderNo)
+            .maybeSingle();
+
+          if (error) throw error;
+          if (data) {
+            setDuplicateReceipt(data);
+          }
+        } catch (err) {
+          console.error('Error checking duplicate receipt:', err);
+        } finally {
+          setIsCheckingDuplicate(false);
+        }
+      } else {
+        setDuplicateReceipt(null);
+      }
+    };
+
+    checkDuplicate();
+  }, [isOpen, initialData.orderNo, initialData.receiptNo]);
 
   const handleSealUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,75 +172,31 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
     }
   };
 
-  const handleEmailReceipt = async () => {
-    if (!email) {
-      alert('請輸入收件人信箱');
-      return;
-    }
+  const performSave = async (silent = false) => {
     if (!receiptNo) {
-      alert('請先輸入收據編號');
-      return;
+      if (!silent) alert('請輸入收據編號');
+      return false;
     }
 
-    setIsSending(true);
-    try {
-      // 1. 產生 PDF Blob
-      const element = printRef.current;
-      const opt = {
-        margin:       10,
-        filename:     `收據_${receiptNo}.pdf`,
-        image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
-      };
-      
-      const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
-
-      // 2. 上傳到 Supabase Storage
-      const fileName = `${Date.now()}_${receiptNo}.pdf`;
-      const { error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(fileName, pdfBlob, { contentType: 'application/pdf' });
-
-      if (uploadError) throw uploadError;
-
-      // 3. 取得公開連結
-      const { data: { publicUrl } } = supabase.storage
-        .from('receipts')
-        .getPublicUrl(fileName);
-
-      // 4. 透過 EmailJS 寄送
-      const templateParams = {
-        to_email: email,
-        to_name: payerName,
-        receipt_no: receiptNo,
-        amount: amount,
-        receipt_link: publicUrl
-      };
-
-      await emailjs.send(
-        EMAIL_CONFIG.SERVICE_ID,
-        EMAIL_CONFIG.RECEIPT_TEMPLATE_ID,
-        templateParams,
-        EMAIL_CONFIG.PUBLIC_KEY
-      );
-
-      alert('收據已成功寄出！');
-    } catch (err: any) {
-      console.error('Email receipt error:', err);
-      alert('寄送失敗: ' + err.message);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!receiptNo) {
-      alert('請輸入收據編號');
-      return;
+    // Check for duplicate order_no if this is a new receipt or order_no changed
+    if (orderNo && (!initialData.orderNo || orderNo !== initialData.orderNo)) {
+      try {
+        const { data, error } = await supabase
+          .from('receipts')
+          .select('receipt_no')
+          .eq('order_no', orderNo)
+          .neq('receipt_no', receiptNo) // Exclude current receipt if updating
+          .maybeSingle();
+        
+        if (data) {
+          if (!silent) alert(`訂單編號 ${orderNo} 已經開立過收據 (編號: ${data.receipt_no})，不可重複開立。`);
+          return false;
+        }
+      } catch (err) {
+        console.error('Duplicate check error:', err);
+      }
     }
 
-    setIsSaving(true);
     try {
       // 轉換為西元年儲存
       const match = date.match(/(\d+)年(\d+)月(\d+)日/);
@@ -235,17 +221,127 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         note: remarks || null
       }, { onConflict: 'receipt_no' });
 
-      if (error) {
-        throw error;
-      }
-
-      alert('收據儲存成功！');
+      if (error) throw error;
+      return true;
     } catch (err: any) {
       console.error('Error saving receipt:', err);
-      alert('儲存失敗: ' + err.message);
-    } finally {
-      setIsSaving(false);
+      if (!silent) alert('儲存失敗: ' + err.message);
+      return false;
     }
+  };
+
+  const handleEmailReceipt = async () => {
+    if (!email) {
+      alert('請輸入收件人信箱');
+      return;
+    }
+    if (!receiptNo) {
+      alert('請先輸入收據編號');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      if (!supabase) throw new Error('Supabase 客戶端未初始化');
+
+      // 0. 先檢查是否有重複訂單編號 (如果是新收據)
+      if (orderNo && (!initialData.orderNo || orderNo !== initialData.orderNo)) {
+        const { data: dupData } = await supabase
+          .from('receipts')
+          .select('receipt_no')
+          .eq('order_no', orderNo)
+          .neq('receipt_no', receiptNo)
+          .maybeSingle();
+        
+        if (dupData) {
+          throw new Error(`訂單編號 ${orderNo} 已經開立過收據 (編號: ${dupData.receipt_no})，不可重複開立。`);
+        }
+      }
+
+      // 1. 產生 PDF Blob
+      const element = printRef.current;
+      if (!element) throw new Error('找不到列印內容');
+
+      const opt = {
+        margin:       10,
+        filename:     `收據_${receiptNo}.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
+      };
+      
+      const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+
+      // 2. 上傳到 Supabase Storage
+      const fileName = `${Date.now()}_${receiptNo}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(fileName, pdfBlob, { contentType: 'application/pdf' });
+
+      if (uploadError) throw new Error(`上傳失敗: ${uploadError.message}`);
+
+      // 3. 取得公開連結
+      const { data: { publicUrl } } = supabase.storage
+        .from('receipts')
+        .getPublicUrl(fileName);
+
+      // 4. 透過 EmailJS 寄送
+      const templateParams = {
+        email: email,        // 對應模板中的 {{email}}
+        to_name: payerName,  // 對應模板中的 {{to_name}}
+        order_id: receiptNo, // 對應模板中的 {{order_id}}
+        amount: amount,      // 對應模板中的 {{amount}}
+        receipt_link: publicUrl // 對應模板中的 {{receipt_link}}
+      };
+
+      const emailResponse = await emailjs.send(
+        EMAIL_CONFIG.SERVICE_ID,
+        EMAIL_CONFIG.RECEIPT_TEMPLATE_ID,
+        templateParams,
+        EMAIL_CONFIG.PUBLIC_KEY
+      );
+
+      if (emailResponse.status !== 200) {
+        throw new Error(`EmailJS 寄送失敗: ${emailResponse.text}`);
+      }
+
+      // 自動儲存收據到資料庫
+      const saved = await performSave(true);
+
+      if (saved) {
+        alert('收據已成功寄出並儲存！');
+      } else {
+        alert('收據已寄出，但儲存到資料庫時失敗 (可能是收據編號重複或網路問題)。');
+      }
+    } catch (err: any) {
+      console.error('Email receipt error:', err);
+      let errorMsg = '';
+      
+      if (err instanceof Error) {
+        errorMsg = err.message;
+      } else if (typeof err === 'string') {
+        errorMsg = err;
+      } else if (err && typeof err === 'object') {
+        errorMsg = err.text || err.message || JSON.stringify(err);
+      }
+      
+      if (!errorMsg || errorMsg === 'undefined' || errorMsg === '{}') {
+        errorMsg = '請檢查網路連線、EmailJS 模板設定 (template_receipt) 或 Supabase 儲存空間權限。';
+      }
+      
+      alert('寄送失敗: ' + errorMsg);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const success = await performSave();
+    if (success) {
+      alert('收據儲存成功！');
+    }
+    setIsSaving(false);
   };
 
   return (
@@ -254,7 +350,15 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         
         {/* Header - Hidden in print */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b print:hidden gap-4">
-          <h2 className="text-2xl font-bold">開立收據</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold">開立收據</h2>
+            {isCheckingDuplicate && <Loader2 size={18} className="animate-spin text-blue-500" />}
+            {duplicateReceipt && (
+              <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded font-bold animate-pulse">
+                警告：此訂單已開立過收據 ({duplicateReceipt.receipt_no})
+              </span>
+            )}
+          </div>
           
           <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
             <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border flex-grow md:flex-grow-0">

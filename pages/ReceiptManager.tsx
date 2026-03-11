@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { Receipt } from '../types';
-import { Loader2, Search, Printer, Trash2, RefreshCcw, FileText } from 'lucide-react';
+import { Loader2, Search, Printer, Trash2, RefreshCcw, FileText, Plus } from 'lucide-react';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 
 const translateFeeType = (type: string) => {
@@ -87,6 +87,15 @@ const ReceiptManager: React.FC = () => {
     });
   };
 
+  const handleManualCreate = () => {
+    setSelectedReceipt({
+      payerName: '',
+      amount: 0,
+      feeType: 'donation',
+      paymentMethod: '現金'
+    });
+  };
+
   const filteredReceipts = receipts.filter(r => 
     r.receipt_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.payer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -100,9 +109,14 @@ const ReceiptManager: React.FC = () => {
           <h2 className="text-2xl font-bold">收據管理</h2>
           <p className="text-gray-500 text-sm mt-1">檢視與管理所有已開立的收據紀錄。</p>
         </div>
-        <button onClick={fetchReceipts} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
-          <RefreshCcw size={18} /> 重新整理
-        </button>
+        <div className="flex items-center gap-4">
+          <button onClick={handleManualCreate} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-100">
+            <Plus size={18} /> 手動新增收據
+          </button>
+          <button onClick={fetchReceipts} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
+            <RefreshCcw size={18} /> 重新整理
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
@@ -191,7 +205,10 @@ const ReceiptManager: React.FC = () => {
       {selectedReceipt && (
         <ReceiptModal
           isOpen={!!selectedReceipt}
-          onClose={() => setSelectedReceipt(null)}
+          onClose={() => {
+            setSelectedReceipt(null);
+            fetchReceipts(); // Refresh list after closing modal (in case of save)
+          }}
           initialData={selectedReceipt}
         />
       )}
