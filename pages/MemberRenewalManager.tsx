@@ -51,7 +51,8 @@ const MemberRenewalManager: React.FC = () => {
           member:members (
             name,
             member_no,
-            email
+            email,
+            tax_id
           )
         `)
         .order('created_at', { ascending: false });
@@ -62,7 +63,8 @@ const MemberRenewalManager: React.FC = () => {
         ...item,
         member_name: item.member?.name || '未知會員',
         member_no: item.member?.member_no || '---',
-        member_email: item.member?.email
+        member_email: item.member?.email,
+        member_tax_id: item.member?.tax_id || ''
       }));
 
       setRenewals(formattedData);

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Printer, Save, Loader2, Download, Send, Mail } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import html2pdf from 'html2pdf.js';
@@ -75,6 +75,48 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
   };
 
   const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen && !initialData.receiptNo) {
+      const generateReceiptNo = async () => {
+        try {
+          // Get today's date in YYYYMMDD format
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          const datePrefix = `${year}${month}${day}`;
+
+          // Query the latest receipt for today
+          const { data, error } = await supabase
+            .from('receipts')
+            .select('receipt_no')
+            .like('receipt_no', `${datePrefix}%`)
+            .order('receipt_no', { ascending: false })
+            .limit(1);
+
+          if (error) throw error;
+
+          let nextSeq = 1;
+          if (data && data.length > 0) {
+            const lastNo = data[0].receipt_no;
+            const lastSeqStr = lastNo.substring(8);
+            const lastSeq = parseInt(lastSeqStr, 10);
+            if (!isNaN(lastSeq)) {
+              nextSeq = lastSeq + 1;
+            }
+          }
+
+          const newReceiptNo = `${datePrefix}${String(nextSeq).padStart(3, '0')}`;
+          setReceiptNo(newReceiptNo);
+        } catch (err) {
+          console.error('Error generating receipt number:', err);
+        }
+      };
+
+      generateReceiptNo();
+    }
+  }, [isOpen, initialData.receiptNo]);
 
   if (!isOpen) return null;
 
