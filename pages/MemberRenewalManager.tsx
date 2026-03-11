@@ -11,6 +11,8 @@ interface MemberRenewal {
   member_id: string;
   member_name: string; // Joined
   member_no: string;   // Joined
+  member_email?: string; // Joined
+  member_tax_id?: string; // Joined
   renewal_date: string;
   amount: number;
   payment_status: string;
@@ -52,7 +54,9 @@ const MemberRenewalManager: React.FC = () => {
             name,
             member_no,
             email,
-            tax_id
+            tax_id,
+            brand_name,
+            company_title
           )
         `)
         .order('created_at', { ascending: false });
@@ -64,7 +68,8 @@ const MemberRenewalManager: React.FC = () => {
         member_name: item.member?.name || '未知會員',
         member_no: item.member?.member_no || '---',
         member_email: item.member?.email,
-        member_tax_id: item.member?.tax_id || ''
+        member_tax_id: item.member?.tax_id || '',
+        member_company: item.member?.brand_name || item.member?.company_title || ''
       }));
 
       setRenewals(formattedData);
@@ -289,6 +294,8 @@ const MemberRenewalManager: React.FC = () => {
                     <button
                       onClick={() => setReceiptData({
                         payerName: renewal.member_name,
+                        companyName: (renewal as any).member_company,
+                        taxId: renewal.member_tax_id,
                         amount: renewal.amount || 5000,
                         paymentMethod: translatePaymentMethod(renewal.payment_method),
                         feeType: 'annual',

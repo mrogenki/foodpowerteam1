@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Menu, X, Loader2, UserPlus, MessageCircle } from 'lucide-react';
+import { Menu, X, Loader2, UserPlus, MessageCircle, XCircle } from 'lucide-react';
 import Home from './pages/Home';
 import ActivitiesPage from './pages/Activities';
 import ActivityDetail from './pages/ActivityDetail';
@@ -297,7 +297,17 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // 安全機制：如果 15 秒後還在載入，強制停止轉圈圈並顯示錯誤
+    const timer = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setDbError("連線逾時，請檢查網路或資料庫設定。");
+      }
+    }, 15000);
+
     fetchData(true);
+    
+    return () => clearTimeout(timer);
   }, [currentUser?.id, currentUser?.role]); // 當使用者登入狀態改變時，重新抓取資料 (確保取得管理員可見的資料)
 
   const handleLogout = async () => {
@@ -548,7 +558,26 @@ const App: React.FC = () => {
     } catch (error: any) { alert('刪除失敗：' + error.message); } finally { setLoading(false); }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-red-600" size={56} /></div>;
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
+      <Loader2 className="animate-spin text-red-600" size={56} />
+      {dbError && <p className="text-red-500 font-medium">{dbError}</p>}
+    </div>
+  );
+
+  if (dbError && activities.length === 0) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 text-center">
+      <XCircle className="text-red-500 mb-4" size={64} />
+      <h2 className="text-2xl font-bold mb-2">系統連線錯誤</h2>
+      <p className="text-gray-600 mb-6">{dbError}</p>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="bg-red-600 text-white px-6 py-2 rounded-full font-bold hover:bg-red-700 transition-colors"
+      >
+        重新整理
+      </button>
+    </div>
+  );
 
   return (
     <Router>

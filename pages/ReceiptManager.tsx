@@ -63,21 +63,21 @@ const ReceiptManager: React.FC = () => {
   };
 
   const handlePrint = (receipt: Receipt) => {
-    // Convert YYYY-MM-DD to Taiwan year format
-    let twDate = receipt.issue_date;
+    // Convert YYYY-MM-DD to Gregorian year format
+    let formattedDate = receipt.issue_date;
     try {
       const dateObj = new Date(receipt.issue_date);
-      const twYear = dateObj.getFullYear() - 1911;
+      const year = dateObj.getFullYear();
       const month = String(dateObj.getMonth() + 1).padStart(2, '0');
       const day = String(dateObj.getDate()).padStart(2, '0');
-      twDate = `${twYear}年${month}月${day}日`;
+      formattedDate = `${year}年${month}月${day}日`;
     } catch (e) {
       // Ignore
     }
 
     setSelectedReceipt({
       receiptNo: receipt.receipt_no,
-      issueDate: twDate,
+      issueDate: formattedDate,
       handlerName: receipt.handler_name,
       payerName: receipt.payer_name,
       taxId: receipt.tax_id || '',

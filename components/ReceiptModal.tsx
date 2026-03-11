@@ -10,6 +10,7 @@ export interface ReceiptData {
   issueDate?: string;
   handlerName?: string;
   payerName: string;
+  companyName?: string;
   taxId?: string;
   amount: number;
   paymentMethod?: string;
@@ -26,28 +27,28 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialData }) => {
-  // Convert current date to Taiwan year format (e.g., 115年03月05日)
-  const getTaiwanDate = () => {
+  // Convert current date to Gregorian year format (e.g., 2026年03月05日)
+  const getFormattedDate = () => {
     const date = new Date();
-    const twYear = date.getFullYear() - 1911;
+    const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${twYear}年${month}月${day}日`;
+    return `${year}年${month}月${day}日`;
   };
 
-  const [date, setDate] = useState(initialData.issueDate || getTaiwanDate());
+  const [date, setDate] = useState(initialData.issueDate || getFormattedDate());
   const [receiptNo, setReceiptNo] = useState(initialData.receiptNo || '');
-  const [payerName, setPayerName] = useState(initialData.payerName);
+  const [payerName, setPayerName] = useState(() => {
+    if (initialData.companyName && !initialData.payerName.includes(initialData.companyName)) {
+      return `${initialData.payerName}（${initialData.companyName}）`;
+    }
+    return initialData.payerName;
+  });
   const [taxId, setTaxId] = useState(initialData.taxId || '');
   const [amount, setAmount] = useState(initialData.amount);
   const [paymentMethod, setPaymentMethod] = useState(initialData.paymentMethod || '信用卡');
   
-  const [initiationFee, setInitiationFee] = useState(initialData.feeType === 'initiation' ? initialData.amount : '');
-  const [annualFee, setAnnualFee] = useState(initialData.feeType === 'annual' ? initialData.amount : '');
-  const [activityFee, setActivityFee] = useState(initialData.feeType === 'activity' ? initialData.amount : '');
-  const [donation, setDonation] = useState(initialData.feeType === 'donation' ? initialData.amount : '');
-  const [sponsorship, setSponsorship] = useState(initialData.feeType === 'sponsorship' ? initialData.amount : '');
-  const [otherFee, setOtherFee] = useState(initialData.feeType === 'other' ? initialData.amount : '');
+  const [selectedFeeType, setSelectedFeeType] = useState(initialData.feeType);
   
   const [orderNo, setOrderNo] = useState(initialData.orderNo || '');
   const [remarks, setRemarks] = useState(initialData.remarks || '');
@@ -128,9 +129,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
       const opt = {
         margin:       10,
         filename:     `收據_${receiptNo || '未命名'}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
+        image:        { type: 'jpeg' as const, quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
       };
       await html2pdf().set(opt).from(element).save();
     } catch (err) {
@@ -158,9 +159,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
       const opt = {
         margin:       10,
         filename:     `收據_${receiptNo}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
+        image:        { type: 'jpeg' as const, quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
       };
       
       const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
@@ -211,11 +212,11 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
 
     setIsSaving(true);
     try {
-      // 轉換民國年為西元年儲存
+      // 轉換為西元年儲存
       const match = date.match(/(\d+)年(\d+)月(\d+)日/);
       let issueDate = new Date().toISOString().split('T')[0];
       if (match) {
-        const year = parseInt(match[1]) + 1911;
+        const year = match[1];
         const month = match[2].padStart(2, '0');
         const day = match[3].padStart(2, '0');
         issueDate = `${year}-${month}-${day}`;
@@ -227,7 +228,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         tax_id: taxId || null,
         amount: amount,
         payment_method: paymentMethod,
-        fee_type: initialData.feeType,
+        fee_type: selectedFeeType,
         order_no: orderNo || null,
         issue_date: issueDate,
         handler_name: handler,
@@ -300,7 +301,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         </div>
 
         {/* Printable Area */}
-        <div ref={printRef} className="p-8 print:p-0 bg-white text-black" style={{ fontFamily: '"MingLiU", "PMingLiU", serif' }}>
+        <div ref={printRef} className="p-8 print:p-0 bg-white text-black" style={{ fontFamily: "'Noto Sans TC', sans-serif" }}>
           
           {/* Receipt Header */}
           <div className="text-center mb-6">
@@ -309,47 +310,47 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           </div>
 
           {/* Top Info */}
-          <div className="flex justify-between items-end mb-2 text-sm">
-            <div>
+          <div className="mb-2 text-xl space-y-2">
+            <div className="flex justify-between items-center">
               <p>立案字號：台內團字第1130012253號</p>
-              <p>扣繳單位統一編號：00509918</p>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
+              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]">
                 <span>日期：</span>
-                <input type="text" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none outline-none w-28 text-right print:appearance-none" />
+                <input type="text" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-left print:appearance-none font-bold" />
               </div>
-              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
-                <span>收據編號：</span>
-                <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} className="bg-transparent border-none outline-none w-20 text-red-600 font-bold print:appearance-none" placeholder="00000" />
+            </div>
+            <div className="flex justify-between items-center">
+              <p>扣繳單位統一編號：00509918</p>
+              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]">
+                <span>編號：</span>
+                <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-red-600 font-bold print:appearance-none" placeholder="00000" />
               </div>
             </div>
           </div>
 
           {/* Main Table */}
-          <table className="w-full border-collapse border border-black text-sm text-center">
+          <table className="w-full border-collapse border border-black text-xl text-center">
             <tbody>
               {/* Row 1 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-2 w-[15%] text-lg">茲收到</td>
-                <td className="border border-black py-2 w-[55%] text-left px-4 text-lg" colSpan={3}>
-                  <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)} className="w-full outline-none print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3 w-[12%]">茲收到</td>
+                <td className="border border-black py-3 w-[58%] text-left px-4" colSpan={3}>
+                  <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)} className="w-full outline-none print:appearance-none font-bold" />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-2 w-[15%]">統一編號：</td>
-                <td className="border border-black py-2 w-[15%]">
-                  <input type="text" value={taxId} onChange={e => setTaxId(e.target.value)} className="w-full outline-none text-center print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3 w-[15%]">統一編號</td>
+                <td className="border border-black py-3 w-[15%]">
+                  <input type="text" value={taxId} onChange={e => setTaxId(e.target.value)} className="w-full outline-none text-center print:appearance-none font-bold" />
                 </td>
               </tr>
               
               {/* Row 2 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-2 text-lg">NT$</td>
-                <td className="border border-black py-2 text-left px-4 text-lg" colSpan={3}>
-                  <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full outline-none print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3">NT$</td>
+                <td className="border border-black py-3 text-left px-4" colSpan={3}>
+                  <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full outline-none print:appearance-none font-bold" />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-2">支付方式：</td>
-                <td className="border border-black py-2">
-                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full outline-none text-center bg-transparent print:appearance-none">
+                <td className="border border-black bg-gray-100 font-bold py-3">支付方式</td>
+                <td className="border border-black py-3">
+                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full outline-none text-center bg-transparent print:appearance-none font-bold">
                     <option value="信用卡">信用卡</option>
                     <option value="匯款">匯款</option>
                     <option value="現金">現金</option>
@@ -360,62 +361,62 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
 
               {/* Row 3 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-2">入會費：</td>
-                <td className="border border-black py-2 w-[18.33%]">
-                  <input type="text" value={initiationFee} onChange={e => setInitiationFee(e.target.value)} className="w-full outline-none text-center print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3">入會費</td>
+                <td className="border border-black py-3 w-[18%]">
+                  <input type="checkbox" checked={selectedFeeType === 'initiation'} onChange={() => setSelectedFeeType('initiation')} className="w-6 h-6 cursor-pointer" />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-2 w-[15%]">活動費：</td>
-                <td className="border border-black py-2 w-[18.33%]">
-                  <input type="text" value={activityFee} onChange={e => setActivityFee(e.target.value)} className="w-full outline-none text-center print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3 w-[14%]">活動費</td>
+                <td className="border border-black py-3 w-[18%]">
+                  <input type="checkbox" checked={selectedFeeType === 'activity'} onChange={() => setSelectedFeeType('activity')} className="w-6 h-6 cursor-pointer" />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-2">捐款：</td>
-                <td className="border border-black py-2">
-                  <input type="text" value={donation} onChange={e => setDonation(e.target.value)} className="w-full outline-none text-center print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3">捐款</td>
+                <td className="border border-black py-3">
+                  <input type="checkbox" checked={selectedFeeType === 'donation'} onChange={() => setSelectedFeeType('donation')} className="w-6 h-6 cursor-pointer" />
                 </td>
               </tr>
 
               {/* Row 4 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-2">年費：</td>
-                <td className="border border-black py-2">
-                  <input type="text" value={annualFee} onChange={e => setAnnualFee(e.target.value)} className="w-full outline-none text-center print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3">年費</td>
+                <td className="border border-black py-3">
+                  <input type="checkbox" checked={selectedFeeType === 'annual'} onChange={() => setSelectedFeeType('annual')} className="w-6 h-6 cursor-pointer" />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-2">贊助費：</td>
-                <td className="border border-black py-2">
-                  <input type="text" value={sponsorship} onChange={e => setSponsorship(e.target.value)} className="w-full outline-none text-center print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3">贊助費</td>
+                <td className="border border-black py-3">
+                  <input type="checkbox" checked={selectedFeeType === 'sponsorship'} onChange={() => setSelectedFeeType('sponsorship')} className="w-6 h-6 cursor-pointer" />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-2">其他：</td>
-                <td className="border border-black py-2">
-                  <input type="text" value={otherFee} onChange={e => setOtherFee(e.target.value)} className="w-full outline-none text-center print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3">其他</td>
+                <td className="border border-black py-3">
+                  <input type="checkbox" checked={selectedFeeType === 'other'} onChange={() => setSelectedFeeType('other')} className="w-6 h-6 cursor-pointer" />
                 </td>
               </tr>
 
               {/* Row 5 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-2">訂單編號：</td>
-                <td className="border border-black py-2 text-left px-4" colSpan={3}>
-                  <input type="text" value={orderNo} onChange={e => setOrderNo(e.target.value)} className="w-full outline-none print:appearance-none" />
+                <td className="border border-black bg-gray-100 font-bold py-3">訂單編號</td>
+                <td className="border border-black py-3 text-left px-4" colSpan={3}>
+                  <input type="text" value={orderNo} onChange={e => setOrderNo(e.target.value)} className="w-full outline-none print:appearance-none font-bold" />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-2" colSpan={2}>協會簽章</td>
+                <td className="border border-black bg-gray-100 font-bold py-3" colSpan={2}>協會簽章</td>
               </tr>
 
               {/* Row 6 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-2 h-32 align-top pt-4">備註：</td>
-                <td className="border border-black py-2 text-left px-4 align-top pt-4" colSpan={3}>
-                  <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-full outline-none resize-none print:appearance-none" rows={4} />
+                <td className="border border-black bg-gray-100 font-bold py-3 h-36 align-top pt-4">備註</td>
+                <td className="border border-black py-3 text-left px-4 align-top pt-4" colSpan={3}>
+                  <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-full outline-none resize-none print:appearance-none font-bold" rows={4} />
                 </td>
-                <td className="border border-black py-2 relative group" colSpan={2}>
+                <td className="border border-black py-3 relative group" colSpan={2}>
                   <div className="absolute inset-0 flex items-center justify-center p-2">
                     {sealImage ? (
                       <img 
                         src={sealImage} 
                         alt="協會簽章" 
                         className="max-h-full max-w-full object-contain opacity-90" 
-                        style={{ height: '100px' }}
+                        style={{ height: '110px' }}
                       />
                     ) : (
-                      <div className="text-gray-400 text-sm flex flex-col items-center">
+                      <div className="text-gray-400 text-xl flex flex-col items-center">
                         <span className="mb-1">尚未設定印章</span>
                       </div>
                     )}
@@ -430,12 +431,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           </table>
 
           {/* Footer Info */}
-          <div className="flex justify-between items-center mt-4 text-sm font-bold">
+          <div className="flex justify-between items-center mt-4 text-xl font-bold">
             <div>理事長：<span className="ml-2">許淳凱</span></div>
             <div>會計：<span className="ml-2">張曉萍</span></div>
             <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
               <span>經手人：</span>
-              <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none">
+              <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none font-bold">
                 <option value="許暐梃">許暐梃</option>
                 <option value="許淳凱">許淳凱</option>
                 <option value="張曉萍">張曉萍</option>
@@ -443,7 +444,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
             </div>
           </div>
 
-          <div className="mt-4 text-red-600 font-bold text-sm flex gap-6">
+          <div className="mt-4 text-red-600 font-bold text-xl flex gap-6">
             <span>台北富邦-古亭分行</span>
             <span>戶名：食在力量美食產業交流協會</span>
             <span>帳號：82120000168305</span>
@@ -489,6 +490,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
             background-image: none;
           }
           input, textarea, select {
+            font-family: 'Noto Sans TC', sans-serif !important;
             color: black !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
