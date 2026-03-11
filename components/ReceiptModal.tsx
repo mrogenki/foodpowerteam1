@@ -347,40 +347,15 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                   <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-full outline-none resize-none print:appearance-none" rows={4} />
                 </td>
                 <td className="border border-black py-2 relative" colSpan={2}>
-                  <div className="absolute inset-0 flex items-center justify-center p-2 gap-4">
-                    {/* 大章：協會章 */}
-                    <div className="h-full flex items-center justify-center">
-                      <img 
-                        src="https://storage.googleapis.com/aistudio-user-uploads-prod/user-1741699711674-1254-20260311134831-image.jpeg" 
-                        alt="協會簽章" 
-                        className="max-h-full max-w-full object-contain opacity-90" 
-                        style={{ width: '90px', height: '90px' }}
-                      />
-                    </div>
-                    
-                    {/* 小章：理事長章 */}
-                    <div 
-                      className="border-[2px] border-[#b30000] text-[#b30000] p-0.5 flex items-center justify-center opacity-90"
-                      style={{ 
-                        width: '36px', 
-                        height: '36px',
-                        borderRadius: '2px',
-                        marginTop: '30px'
-                      }}
-                    >
-                      <div 
-                        className="w-full h-full flex justify-between items-center font-bold"
-                        style={{ 
-                          writingMode: 'vertical-rl', 
-                          fontFamily: '"DFKai-SB", "BiauKai", "KaiTi", "MingLiU", serif',
-                          fontSize: '14px',
-                          letterSpacing: '1px'
-                        }}
-                      >
-                        <span className="h-full flex items-center justify-center">許</span>
-                        <span className="h-full flex items-center justify-center">淳凱</span>
-                      </div>
-                    </div>
+                  <div className="absolute inset-0 flex items-center justify-center p-2">
+                    <img 
+                      src="https://storage.googleapis.com/aistudio-user-uploads-prod/user-1741699711674-1254-20260311135108-image.jpeg" 
+                      alt="協會簽章" 
+                      className="max-h-full max-w-full object-contain opacity-90" 
+                      style={{ height: '100px' }}
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
                 </td>
               </tr>
