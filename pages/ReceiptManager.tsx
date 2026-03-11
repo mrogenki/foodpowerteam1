@@ -1,0 +1,204 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../utils/supabaseClient';
+import { Receipt } from '../types';
+import { Loader2, Search, Printer, Trash2, RefreshCcw, FileText } from 'lucide-react';
+import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
+
+const translateFeeType = (type: string) => {
+  const map: Record<string, string> = {
+    'initiation': '入會費',
+    'annual': '年費',
+    'activity': '活動費',
+    'donation': '捐款',
+    'sponsorship': '贊助費',
+    'other': '其他'
+  };
+  return map[type] || type;
+};
+
+const ReceiptManager: React.FC = () => {
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
+
+  const fetchReceipts = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('receipts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setReceipts(data || []);
+    } catch (err) {
+      console.error('Error fetching receipts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReceipts();
+  }, []);
+
+  const handleDelete = async (id: string, receiptNo: string) => {
+    if (!confirm(`確定要刪除收據編號 ${receiptNo} 的紀錄嗎？此操作無法復原。`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('receipts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      alert('已刪除收據紀錄');
+      fetchReceipts();
+    } catch (err: any) {
+      console.error('Error deleting receipt:', err);
+      alert('刪除失敗: ' + err.message);
+    }
+  };
+
+  const handlePrint = (receipt: Receipt) => {
+    // Convert YYYY-MM-DD to Taiwan year format
+    let twDate = receipt.issue_date;
+    try {
+      const dateObj = new Date(receipt.issue_date);
+      const twYear = dateObj.getFullYear() - 1911;
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      twDate = `${twYear}年${month}月${day}日`;
+    } catch (e) {
+      // Ignore
+    }
+
+    setSelectedReceipt({
+      receiptNo: receipt.receipt_no,
+      issueDate: twDate,
+      handlerName: receipt.handler_name,
+      payerName: receipt.payer_name,
+      taxId: receipt.tax_id || '',
+      amount: receipt.amount,
+      paymentMethod: receipt.payment_method,
+      feeType: receipt.fee_type as any,
+      orderNo: receipt.order_no || '',
+      remarks: receipt.note || ''
+    });
+  };
+
+  const filteredReceipts = receipts.filter(r => 
+    r.receipt_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.payer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.order_no && r.order_no.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">收據管理</h2>
+          <p className="text-gray-500 text-sm mt-1">檢視與管理所有已開立的收據紀錄。</p>
+        </div>
+        <button onClick={fetchReceipts} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
+          <RefreshCcw size={18} /> 重新整理
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="搜尋收據編號、付款人或訂單編號..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto" /></div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                <tr>
+                  <th className="p-4">開立日期</th>
+                  <th className="p-4">收據編號</th>
+                  <th className="p-4">付款人 / 統編</th>
+                  <th className="p-4">費用項目</th>
+                  <th className="p-4">金額 / 支付方式</th>
+                  <th className="p-4">經手人</th>
+                  <th className="p-4 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredReceipts.map(receipt => (
+                  <tr key={receipt.id} className="hover:bg-gray-50">
+                    <td className="p-4 text-sm text-gray-500">{receipt.issue_date}</td>
+                    <td className="p-4 font-mono font-bold text-red-600">{receipt.receipt_no}</td>
+                    <td className="p-4">
+                      <div className="font-bold text-gray-900">{receipt.payer_name}</div>
+                      {receipt.tax_id && <div className="text-xs text-gray-500">統編: {receipt.tax_id}</div>}
+                    </td>
+                    <td className="p-4">
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-blue-50 text-blue-700">
+                        {translateFeeType(receipt.fee_type)}
+                      </span>
+                      {receipt.order_no && <div className="text-[10px] text-gray-400 font-mono mt-1">#{receipt.order_no}</div>}
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold">NT$ {receipt.amount.toLocaleString()}</div>
+                      <div className="text-xs text-gray-500">{receipt.payment_method}</div>
+                    </td>
+                    <td className="p-4 text-sm text-gray-600">{receipt.handler_name}</td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => handlePrint(receipt)}
+                          className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-bold flex items-center gap-1"
+                        >
+                          <FileText size={14} /> 檢視
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(receipt.id, receipt.receipt_no)}
+                          className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1.5 rounded transition-colors"
+                          title="刪除紀錄"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredReceipts.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-12 text-center text-gray-400">
+                      <FileText size={48} className="mx-auto mb-4 opacity-20" />
+                      <p>目前沒有收據紀錄</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {selectedReceipt && (
+        <ReceiptModal
+          isOpen={!!selectedReceipt}
+          onClose={() => setSelectedReceipt(null)}
+          initialData={selectedReceipt}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ReceiptManager;

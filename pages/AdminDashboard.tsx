@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import emailjs from '@emailjs/browser';
 import { supabase } from '../utils/supabaseClient';
 import MemberRenewalManager from './MemberRenewalManager';
 import MemberBirthdayManager from './MemberBirthdayManager';
+import ReceiptManager from './ReceiptManager';
+import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
@@ -144,6 +146,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
                 {pendingRenewalCount > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingRenewalCount}</span>}
             </div>
           </Link>
+          <Link to="/admin/receipts" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/receipts') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><FileText size={20} /><span>收據管理</span></Link>
           <Link to="/admin/birthdays" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/birthdays') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Cake size={20} /><span>會員生日管理</span></Link>
           <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
         </>)}
@@ -402,6 +405,7 @@ const MemberApplicationManager: React.FC<{
 }> = ({ applications, onApprove, onDelete }) => {
   const [selectedApp, setSelectedApp] = useState<MemberApplication | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | number | null>(null);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
   const handleMarkAsPaid = async (app: MemberApplication) => {
     if (!confirm(`確定要將 ${app.name} 的申請狀態手動標記為「已付款」嗎？`)) return;
@@ -538,12 +542,30 @@ const MemberApplicationManager: React.FC<{
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <button 
-                      onClick={() => setSelectedApp(app)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-blue-700 transition-colors shadow-blue-200 shadow-sm"
-                    >
-                      {isApproved ? '詳細資料' : '審核 / 詳細資料'}
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      {isPaid && (
+                        <button
+                          onClick={() => setReceiptData({
+                            payerName: app.name,
+                            taxId: app.tax_id || '',
+                            amount: app.paid_amount || 5000,
+                            paymentMethod: translatePaymentMethod(app.payment_method),
+                            feeType: 'initiation',
+                            orderNo: app.merchant_order_no || '',
+                            email: app.email || ''
+                          })}
+                          className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg font-bold text-xs hover:bg-gray-200 transition-colors border border-gray-200"
+                        >
+                          開立收據
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => setSelectedApp(app)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-blue-700 transition-colors shadow-blue-200 shadow-sm"
+                      >
+                        {isApproved ? '詳細資料' : '審核 / 詳細資料'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -660,6 +682,14 @@ const MemberApplicationManager: React.FC<{
            </div>
         </div>
       )}
+
+      {receiptData && (
+        <ReceiptModal
+          isOpen={!!receiptData}
+          onClose={() => setReceiptData(null)}
+          initialData={receiptData}
+        />
+      )}
     </div>
   );
 };
@@ -704,8 +734,8 @@ const ActivityManager: React.FC<{
     
     setIsSendingTelegram(true);
     try {
-      const botToken = import.meta.env.TELEGRAM_BOT_TOKEN || import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
-      const chatId = import.meta.env.TELEGRAM_CHAT_ID || import.meta.env.VITE_TELEGRAM_CHAT_ID;
+      const botToken = (import.meta as any).env.TELEGRAM_BOT_TOKEN || (import.meta as any).env.VITE_TELEGRAM_BOT_TOKEN;
+      const chatId = (import.meta as any).env.TELEGRAM_CHAT_ID || (import.meta as any).env.VITE_TELEGRAM_CHAT_ID;
       
       if (!botToken || !chatId) {
         alert('請先在環境變數設定 TELEGRAM_BOT_TOKEN 與 TELEGRAM_CHAT_ID');
@@ -1617,6 +1647,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
+          <Route path="/receipts" element={<ReceiptManager />} />
           <Route path="/birthdays" element={<MemberBirthdayManager members={props.members} />} />
           <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} memberActivities={props.memberActivities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
           

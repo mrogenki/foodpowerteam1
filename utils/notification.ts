@@ -5,8 +5,8 @@ export const notifyAdmin = async (action: string, details: string) => {
     const message = `🔔 <b>新通知：${action}</b>\n\n${details}`;
     
     // 1. Try direct Telegram (if configured in frontend env)
-    const telegramBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
-    const telegramChatId = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+    const telegramBotToken = (import.meta as any).env.VITE_TELEGRAM_BOT_TOKEN;
+    const telegramChatId = (import.meta as any).env.VITE_TELEGRAM_CHAT_ID;
     
     if (telegramBotToken && telegramChatId) {
       await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
@@ -21,7 +21,7 @@ export const notifyAdmin = async (action: string, details: string) => {
     }
 
     // 2. Try direct Webhook (if configured in frontend env)
-    const webhookUrl = import.meta.env.VITE_ADMIN_WEBHOOK_URL;
+    const webhookUrl = (import.meta as any).env.VITE_ADMIN_WEBHOOK_URL;
     if (webhookUrl) {
       await fetch(webhookUrl, {
         method: 'POST',

@@ -203,3 +203,18 @@ export interface Coupon {
   created_at: string;
   used_at?: string;
 }
+
+export interface Receipt {
+  id: string;
+  receipt_no: string;
+  payer_name: string;
+  tax_id?: string;
+  amount: number;
+  payment_method: string;
+  fee_type: string;
+  order_no?: string;
+  issue_date: string;
+  handler_name: string;
+  note?: string;
+  created_at: string;
+}

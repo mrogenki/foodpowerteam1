@@ -4,6 +4,7 @@ import { Member, PaymentStatus } from '../types';
 import { Loader2, Search, CheckCircle, XCircle, Send, RefreshCcw, Ban, CreditCard } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { EMAIL_CONFIG } from '../constants';
+import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 
 interface MemberRenewal {
   id: string;
@@ -38,6 +39,7 @@ const MemberRenewalManager: React.FC = () => {
   const [renewals, setRenewals] = useState<MemberRenewal[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState<string[]>([]);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
   const fetchRenewals = async () => {
     setLoading(true);
@@ -280,7 +282,22 @@ const MemberRenewalManager: React.FC = () => {
                     {translatePaymentMethod(renewal.payment_method)}
                   </span>
                 </td>
-                <td className="p-4 flex gap-2">
+                <td className="p-4 flex gap-2 flex-wrap">
+                  {(renewal.payment_status === 'paid' || renewal.payment_status === 'processed') && (
+                    <button
+                      onClick={() => setReceiptData({
+                        payerName: renewal.member_name,
+                        amount: renewal.amount || 5000,
+                        paymentMethod: translatePaymentMethod(renewal.payment_method),
+                        feeType: 'annual',
+                        orderNo: renewal.merchant_order_no || '',
+                        email: renewal.member_email || ''
+                      })}
+                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 font-bold border border-gray-200"
+                    >
+                      開立收據
+                    </button>
+                  )}
                   {!isProcessed && renewal.payment_status !== 'paid' && (
                     <>
                       <button 
@@ -343,6 +360,14 @@ const MemberRenewalManager: React.FC = () => {
 
       {renderTable(pendingRenewals, false)}
       {renderTable(processedRenewals, true)}
+
+      {receiptData && (
+        <ReceiptModal
+          isOpen={!!receiptData}
+          onClose={() => setReceiptData(null)}
+          initialData={receiptData}
+        />
+      )}
     </div>
   );
 };

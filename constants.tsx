@@ -9,6 +9,7 @@ export const EMAIL_CONFIG = {
   TEMPLATE_ID: 'template_ih0plai', // 一般活動報名用的模板
   MEMBER_JOIN_TEMPLATE_ID: 'template_gu7mwvm', // 新增：會員申請專用的模板
   RENEWAL_TEMPLATE_ID: 'template_3bgk8ts', // 新增：會員續約通知模板 (45天前)
+  RECEIPT_TEMPLATE_ID: 'template_receipt', // 新增：收據寄送模板 (需在 EmailJS 後台建立)
   PUBLIC_KEY: 'ajJknYqtnk3p1_WmI'
 };
 
