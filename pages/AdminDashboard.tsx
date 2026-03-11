@@ -712,6 +712,7 @@ const ActivityManager: React.FC<{
   const [formData, setFormData] = useState<any>({});
   const [regSearch, setRegSearch] = useState('');
   const [isSendingTelegram, setIsSendingTelegram] = useState(false);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
   const currentActivity = activities.find(a => a.id === editingId);
   const currentRegistrations = registrations.filter(r => String(r.activityId) === String(editingId));
@@ -877,7 +878,29 @@ const ActivityManager: React.FC<{
                       </span>
                     </td>
                     <td className="p-4"><PaidAmountInput value={reg.paid_amount} onSave={(val) => onUpdateReg({...reg, paid_amount: val})} /></td>
-                    <td className="p-4 text-right"><button onClick={() => { if(confirm('確定刪除此報名資料？')) onDeleteReg(reg.id); }} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={16} /></button></td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        {reg.payment_status === PaymentStatus.PAID && (
+                          <button
+                            onClick={() => setReceiptData({
+                              payerName: name,
+                              companyName: company,
+                              taxId: reg.tax_id || member?.tax_id || '',
+                              amount: reg.paid_amount || 0,
+                              paymentMethod: translatePaymentMethod(reg.payment_method),
+                              feeType: 'activity_fee',
+                              orderNo: reg.merchant_order_no || '',
+                              email: reg.email || member?.email || '',
+                              remarks: `活動：${currentActivity?.title || ''}`
+                            })}
+                            className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-200 transition-colors border border-gray-200"
+                          >
+                            開立收據
+                          </button>
+                        )}
+                        <button onClick={() => { if(confirm('確定刪除此報名資料？')) onDeleteReg(reg.id); }} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
                   </tr>
                 );
                 })}
@@ -885,6 +908,13 @@ const ActivityManager: React.FC<{
             </table>
           </div>
         </div>
+        {receiptData && (
+          <ReceiptModal
+            isOpen={!!receiptData}
+            onClose={() => setReceiptData(null)}
+            initialData={receiptData}
+          />
+        )}
       </div>
     );
   }
@@ -929,6 +959,7 @@ const ActivityCheckInManager: React.FC<{
   const [selectedActivityId, setSelectedActivityId] = useState<string | number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sendingEmail, setSendingEmail] = useState<string[]>([]);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
   const handleResendPaymentLink = async (reg: any) => {
     if (!confirm(`確定要重新發送付款連結給 ${reg.name || reg.member_name}？`)) return;
@@ -1010,7 +1041,26 @@ const ActivityCheckInManager: React.FC<{
         const company = reg.company || member?.brand_name || member?.company || '';
         const title = reg.title || member?.job_title || '';
         
-        return (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{phone}</div>{(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}</td><td className="p-4"><div className="text-xs text-gray-600 max-w-[150px] space-y-1">{reg.referrer && <div><span className="font-bold text-gray-400">引薦:</span> {reg.referrer}</div>}{reg.notes && <div><span className="font-bold text-gray-400">備註:</span> {reg.notes}</div>}{!reg.referrer && !reg.notes && <span className="text-gray-300">-</span>}</div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><div className="flex flex-col gap-2 items-start"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button>{(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (<button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">{sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結</button>)}</div></td><td className="p-4"><span className="text-xs text-gray-500">{translatePaymentMethod(reg.payment_method)}</span></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td></tr>)
+        return (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{phone}</div>{(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}</td><td className="p-4"><div className="text-xs text-gray-600 max-w-[150px] space-y-1">{reg.referrer && <div><span className="font-bold text-gray-400">引薦:</span> {reg.referrer}</div>}{reg.notes && <div><span className="font-bold text-gray-400">備註:</span> {reg.notes}</div>}{!reg.referrer && !reg.notes && <span className="text-gray-300">-</span>}</div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><div className="flex flex-col gap-2 items-start"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button>{(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (<button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">{sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結</button>)}</div></td><td className="p-4"><span className="text-xs text-gray-500">{translatePaymentMethod(reg.payment_method)}</span></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td><td className="p-4 text-right">
+          {reg.payment_status === PaymentStatus.PAID && (
+            <button
+              onClick={() => setReceiptData({
+                payerName: name,
+                companyName: company,
+                taxId: reg.tax_id || member?.tax_id || '',
+                amount: reg.paid_amount || 0,
+                paymentMethod: translatePaymentMethod(reg.payment_method),
+                feeType: 'activity_fee',
+                orderNo: reg.merchant_order_no || '',
+                email: reg.email || member?.email || '',
+                remarks: `活動：${currentActivity?.title || ''}`
+              })}
+              className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-200 transition-colors border border-gray-200"
+            >
+              開立收據
+            </button>
+          )}
+        </td></tr>)
         })}{filteredRegs.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">查無資料，請嘗試其他關鍵字</td></tr>}</tbody></table></div></div>
     </div>
   );

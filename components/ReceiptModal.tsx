@@ -14,7 +14,7 @@ export interface ReceiptData {
   taxId?: string;
   amount: number;
   paymentMethod?: string;
-  feeType: 'initiation' | 'annual' | 'donation' | 'goods_donation';
+  feeType: 'initiation' | 'annual' | 'donation' | 'goods_donation' | 'activity_fee';
   orderNo?: string;
   remarks?: string;
   email?: string;
@@ -457,6 +457,10 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                       <span>年費</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedFeeType === 'activity_fee'} onChange={() => setSelectedFeeType('activity_fee')} className="w-6 h-6 cursor-pointer" />
+                      <span>活動費</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={selectedFeeType === 'donation'} onChange={() => setSelectedFeeType('donation')} className="w-6 h-6 cursor-pointer" />
                       <span>捐款</span>
                     </label>
@@ -511,6 +515,13 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           {/* Footer Info */}
           <div className="flex justify-between items-center mt-4 text-xl font-bold">
             <div>理事長：<span className="ml-2">許淳凱</span></div>
+            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
+              <span>經手人：</span>
+              <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none font-bold">
+                <option value="許暐梃">許暐梃</option>
+                <option value="許淳凱">許淳凱</option>
+              </select>
+            </div>
           </div>
 
           <div className="mt-4 text-red-600 font-bold text-xl flex gap-6">
