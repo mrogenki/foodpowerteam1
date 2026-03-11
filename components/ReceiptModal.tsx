@@ -56,6 +56,23 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  
+  const [sealImage, setSealImage] = useState<string | null>(() => {
+    return localStorage.getItem('receipt_seal_image') || null;
+  });
+
+  const handleSealUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setSealImage(base64String);
+        localStorage.setItem('receipt_seal_image', base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -346,17 +363,25 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 <td className="border border-black py-2 text-left px-4 align-top pt-4" colSpan={3}>
                   <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-full outline-none resize-none print:appearance-none" rows={4} />
                 </td>
-                <td className="border border-black py-2 relative" colSpan={2}>
+                <td className="border border-black py-2 relative group" colSpan={2}>
                   <div className="absolute inset-0 flex items-center justify-center p-2">
-                    <img 
-                      src="https://storage.googleapis.com/aistudio-user-uploads-prod/user-1741699711674-1254-20260311135108-image.jpeg" 
-                      alt="協會簽章" 
-                      className="max-h-full max-w-full object-contain opacity-90" 
-                      style={{ height: '100px' }}
-                      crossOrigin="anonymous"
-                      referrerPolicy="no-referrer"
-                    />
+                    {sealImage ? (
+                      <img 
+                        src={sealImage} 
+                        alt="協會簽章" 
+                        className="max-h-full max-w-full object-contain opacity-90" 
+                        style={{ height: '100px' }}
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-sm flex flex-col items-center">
+                        <span className="mb-1">尚未設定印章</span>
+                      </div>
+                    )}
                   </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer print:hidden">
+                    <span className="text-sm font-bold">{sealImage ? '更換印章' : '上傳印章'}</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleSealUpload} />
+                  </label>
                 </td>
               </tr>
             </tbody>
