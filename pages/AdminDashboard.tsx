@@ -406,6 +406,27 @@ const MemberApplicationManager: React.FC<{
   const [selectedApp, setSelectedApp] = useState<MemberApplication | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | number | null>(null);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptMap, setReceiptMap] = useState<Record<string, string>>({});
+
+  const fetchReceipts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('receipts')
+        .select('order_no, status');
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      data?.forEach((r: any) => {
+        if (r.order_no) map[r.order_no] = r.status;
+      });
+      setReceiptMap(map);
+    } catch (err) {
+      console.error('Error fetching receipts:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReceipts();
+  }, []);
 
   const handleMarkAsPaid = async (app: MemberApplication) => {
     if (!confirm(`確定要將 ${app.name} 的申請狀態手動標記為「已付款」嗎？`)) return;
@@ -555,9 +576,14 @@ const MemberApplicationManager: React.FC<{
                             orderNo: app.merchant_order_no || '',
                             email: app.email || ''
                           })}
-                          className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg font-bold text-xs hover:bg-gray-200 transition-colors border border-gray-200"
+                          disabled={app.merchant_order_no ? receiptMap[app.merchant_order_no] === 'sent' : false}
+                          className={`px-3 py-2 rounded-lg font-bold text-xs transition-colors border ${
+                            app.merchant_order_no && receiptMap[app.merchant_order_no] === 'sent'
+                              ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
+                              : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                          }`}
                         >
-                          開立收據
+                          {app.merchant_order_no && receiptMap[app.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
                         </button>
                       )}
                       <button 
@@ -687,7 +713,10 @@ const MemberApplicationManager: React.FC<{
       {receiptData && (
         <ReceiptModal
           isOpen={!!receiptData}
-          onClose={() => setReceiptData(null)}
+          onClose={() => {
+            setReceiptData(null);
+            fetchReceipts();
+          }}
           initialData={receiptData}
         />
       )}
@@ -713,6 +742,27 @@ const ActivityManager: React.FC<{
   const [regSearch, setRegSearch] = useState('');
   const [isSendingTelegram, setIsSendingTelegram] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptMap, setReceiptMap] = useState<Record<string, string>>({});
+
+  const fetchReceipts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('receipts')
+        .select('order_no, status');
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      data?.forEach((r: any) => {
+        if (r.order_no) map[r.order_no] = r.status;
+      });
+      setReceiptMap(map);
+    } catch (err) {
+      console.error('Error fetching receipts:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReceipts();
+  }, []);
 
   const currentActivity = activities.find(a => a.id === editingId);
   const currentRegistrations = registrations.filter(r => String(r.activityId) === String(editingId));
@@ -888,14 +938,19 @@ const ActivityManager: React.FC<{
                               taxId: reg.tax_id || member?.tax_id || '',
                               amount: reg.paid_amount || 0,
                               paymentMethod: translatePaymentMethod(reg.payment_method),
-                              feeType: 'activity_fee',
+                              feeType: 'donation',
                               orderNo: reg.merchant_order_no || '',
                               email: reg.email || member?.email || '',
                               remarks: `活動：${currentActivity?.title || ''}`
                             })}
-                            className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-200 transition-colors border border-gray-200"
+                            disabled={reg.merchant_order_no ? receiptMap[reg.merchant_order_no] === 'sent' : false}
+                            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors border ${
+                              reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent'
+                                ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
+                                : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                            }`}
                           >
-                            開立收據
+                            {reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
                           </button>
                         )}
                         <button onClick={() => { if(confirm('確定刪除此報名資料？')) onDeleteReg(reg.id); }} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={16} /></button>
@@ -911,7 +966,10 @@ const ActivityManager: React.FC<{
         {receiptData && (
           <ReceiptModal
             isOpen={!!receiptData}
-            onClose={() => setReceiptData(null)}
+            onClose={() => {
+              setReceiptData(null);
+              fetchReceipts();
+            }}
             initialData={receiptData}
           />
         )}
@@ -960,6 +1018,27 @@ const ActivityCheckInManager: React.FC<{
   const [searchTerm, setSearchTerm] = useState('');
   const [sendingEmail, setSendingEmail] = useState<string[]>([]);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptMap, setReceiptMap] = useState<Record<string, string>>({});
+
+  const fetchReceipts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('receipts')
+        .select('order_no, status');
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      data?.forEach((r: any) => {
+        if (r.order_no) map[r.order_no] = r.status;
+      });
+      setReceiptMap(map);
+    } catch (err) {
+      console.error('Error fetching receipts:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReceipts();
+  }, []);
 
   const handleResendPaymentLink = async (reg: any) => {
     if (!confirm(`確定要重新發送付款連結給 ${reg.name || reg.member_name}？`)) return;
@@ -1050,18 +1129,33 @@ const ActivityCheckInManager: React.FC<{
                 taxId: reg.tax_id || member?.tax_id || '',
                 amount: reg.paid_amount || 0,
                 paymentMethod: translatePaymentMethod(reg.payment_method),
-                feeType: 'activity_fee',
+                feeType: 'donation',
                 orderNo: reg.merchant_order_no || '',
                 email: reg.email || member?.email || '',
                 remarks: `活動：${currentActivity?.title || ''}`
               })}
-              className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-200 transition-colors border border-gray-200"
+              disabled={reg.merchant_order_no ? receiptMap[reg.merchant_order_no] === 'sent' : false}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors border ${
+                reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent'
+                  ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
+                  : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+              }`}
             >
-              開立收據
+              {reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
             </button>
           )}
         </td></tr>)
         })}{filteredRegs.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">查無資料，請嘗試其他關鍵字</td></tr>}</tbody></table></div></div>
+        {receiptData && (
+          <ReceiptModal
+            isOpen={!!receiptData}
+            onClose={() => {
+              setReceiptData(null);
+              fetchReceipts();
+            }}
+            initialData={receiptData}
+          />
+        )}
     </div>
   );
 };

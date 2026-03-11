@@ -14,7 +14,7 @@ export interface ReceiptData {
   taxId?: string;
   amount: number;
   paymentMethod?: string;
-  feeType: 'initiation' | 'annual' | 'donation' | 'goods_donation' | 'activity_fee';
+  feeType: 'initiation' | 'annual' | 'donation' | 'goods_donation';
   orderNo?: string;
   remarks?: string;
   email?: string;
@@ -455,10 +455,6 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={selectedFeeType === 'annual'} onChange={() => setSelectedFeeType('annual')} className="w-6 h-6 cursor-pointer" />
                       <span>年費</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={selectedFeeType === 'activity_fee'} onChange={() => setSelectedFeeType('activity_fee')} className="w-6 h-6 cursor-pointer" />
-                      <span>活動費</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={selectedFeeType === 'donation'} onChange={() => setSelectedFeeType('donation')} className="w-6 h-6 cursor-pointer" />

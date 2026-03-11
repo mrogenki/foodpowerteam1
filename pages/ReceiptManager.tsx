@@ -114,7 +114,6 @@ const ReceiptManager: React.FC = () => {
       '金額': r.amount,
       '支付方式': r.payment_method,
       '狀態': r.status === 'sent' ? '已開立寄出' : '已開立',
-      '經手人': r.handler_name,
       '備註': r.note || ''
     }));
 
