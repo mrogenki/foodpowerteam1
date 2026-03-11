@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS receipts (
   issue_date DATE NOT NULL,
   handler_name TEXT NOT NULL,
   note TEXT,
+  status TEXT DEFAULT 'issued',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

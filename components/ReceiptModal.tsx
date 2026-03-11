@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Printer, Save, Loader2, Download, Send, Mail } from 'lucide-react';
+import { X, Printer, Save, Loader2, Send, Mail } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import html2pdf from 'html2pdf.js';
 import emailjs from '@emailjs/browser';
@@ -18,6 +18,7 @@ export interface ReceiptData {
   orderNo?: string;
   remarks?: string;
   email?: string;
+  status?: string;
 }
 
 interface ReceiptModalProps {
@@ -54,8 +55,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
   const [remarks, setRemarks] = useState(initialData.remarks || '');
   const [handler, setHandler] = useState(initialData.handlerName || '許暐梃');
   const [email, setEmail] = useState(initialData.email || '');
+  const [status, setStatus] = useState(initialData.status || 'issued');
   const [isSaving, setIsSaving] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [duplicateReceipt, setDuplicateReceipt] = useState<any>(null);
@@ -156,28 +157,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
 
   if (!isOpen) return null;
 
-  const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
-    setIsDownloading(true);
-    try {
-      const element = printRef.current;
-      const opt = {
-        margin:       10,
-        filename:     `收據_${receiptNo || '未命名'}.pdf`,
-        image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
-      };
-      await html2pdf().set(opt).from(element).save();
-    } catch (err) {
-      console.error('Download PDF error:', err);
-      alert('下載 PDF 失敗');
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const performSave = async (silent = false) => {
+  const performSave = async (silent = false, newStatus?: string) => {
+    const finalStatus = newStatus || status;
     if (!receiptNo) {
       if (!silent) alert('請輸入收據編號');
       return false;
@@ -223,10 +204,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         order_no: orderNo || null,
         issue_date: issueDate,
         handler_name: handler,
-        note: remarks || null
+        note: remarks || null,
+        status: finalStatus
       }, { onConflict: 'receipt_no' });
 
       if (error) throw error;
+      if (newStatus) setStatus(newStatus);
       return true;
     } catch (err: any) {
       console.error('Error saving receipt:', err);
@@ -310,8 +293,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         throw new Error(`EmailJS 寄送失敗: ${emailResponse.text}`);
       }
 
-      // 自動儲存收據到資料庫
-      const saved = await performSave(true);
+      // 自動儲存收據到資料庫，並標記為已寄出
+      const saved = await performSave(true, 'sent');
 
       if (saved) {
         alert('收據已成功寄出並儲存！');
@@ -385,14 +368,6 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
               >
                 {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} 
                 儲存
-              </button>
-              <button 
-                onClick={handleDownloadPDF} 
-                disabled={isDownloading}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-bold disabled:opacity-50"
-              >
-                {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} 
-                下載 PDF
               </button>
               <button 
                 onClick={handleEmailReceipt} 
@@ -536,13 +511,6 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           {/* Footer Info */}
           <div className="flex justify-between items-center mt-4 text-xl font-bold">
             <div>理事長：<span className="ml-2">許淳凱</span></div>
-            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
-              <span>經手人：</span>
-              <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none font-bold">
-                <option value="許暐梃">許暐梃</option>
-                <option value="許淳凱">許淳凱</option>
-              </select>
-            </div>
           </div>
 
           <div className="mt-4 text-red-600 font-bold text-xl flex gap-6">

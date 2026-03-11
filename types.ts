@@ -216,5 +216,6 @@ export interface Receipt {
   issue_date: string;
   handler_name: string;
   note?: string;
+  status?: string;
   created_at: string;
 }

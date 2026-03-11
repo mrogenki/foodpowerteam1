@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { Receipt } from '../types';
-import { Loader2, Search, Printer, Trash2, RefreshCcw, FileText, Plus } from 'lucide-react';
+import { Loader2, Search, Printer, Trash2, RefreshCcw, FileText, Plus, Download } from 'lucide-react';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
+import * as XLSX from 'xlsx';
 
 const translateFeeType = (type: string) => {
   const map: Record<string, string> = {
@@ -83,7 +84,8 @@ const ReceiptManager: React.FC = () => {
       paymentMethod: receipt.payment_method,
       feeType: receipt.fee_type as any,
       orderNo: receipt.order_no || '',
-      remarks: receipt.note || ''
+      remarks: receipt.note || '',
+      status: receipt.status
     });
   };
 
@@ -94,6 +96,42 @@ const ReceiptManager: React.FC = () => {
       feeType: 'donation',
       paymentMethod: '現金'
     });
+  };
+
+  const handleExportExcel = () => {
+    if (filteredReceipts.length === 0) {
+      alert('沒有資料可匯出');
+      return;
+    }
+
+    const exportData = filteredReceipts.map(r => ({
+      '開立日期': r.issue_date,
+      '收據編號': r.receipt_no,
+      '付款人': r.payer_name,
+      '統一編號': r.tax_id || '',
+      '費用項目': translateFeeType(r.fee_type),
+      '訂單編號': r.order_no || '',
+      '金額': r.amount,
+      '支付方式': r.payment_method,
+      '狀態': r.status === 'sent' ? '已開立寄出' : '已開立',
+      '經手人': r.handler_name,
+      '備註': r.note || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, '收據清單');
+    
+    // Auto-size columns
+    const maxWidths = Object.keys(exportData[0]).map(key => {
+      return Math.max(
+        key.length * 2,
+        ...exportData.map(row => String(row[key as keyof typeof row]).length * 1.5)
+      );
+    });
+    worksheet['!cols'] = maxWidths.map(w => ({ wch: w }));
+
+    XLSX.writeFile(workbook, `收據清單_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const filteredReceipts = receipts.filter(r => 
@@ -110,6 +148,9 @@ const ReceiptManager: React.FC = () => {
           <p className="text-gray-500 text-sm mt-1">檢視與管理所有已開立的收據紀錄。</p>
         </div>
         <div className="flex items-center gap-4">
+          <button onClick={handleExportExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold shadow-lg shadow-green-100">
+            <Download size={18} /> 匯出 Excel
+          </button>
           <button onClick={handleManualCreate} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-100">
             <Plus size={18} /> 手動新增收據
           </button>
@@ -145,7 +186,7 @@ const ReceiptManager: React.FC = () => {
                   <th className="p-4">付款人 / 統編</th>
                   <th className="p-4">費用項目</th>
                   <th className="p-4">金額 / 支付方式</th>
-                  <th className="p-4">經手人</th>
+                  <th className="p-4">狀態</th>
                   <th className="p-4 text-right">操作</th>
                 </tr>
               </thead>
@@ -168,7 +209,17 @@ const ReceiptManager: React.FC = () => {
                       <div className="font-bold">NT$ {receipt.amount.toLocaleString()}</div>
                       <div className="text-xs text-gray-500">{receipt.payment_method}</div>
                     </td>
-                    <td className="p-4 text-sm text-gray-600">{receipt.handler_name}</td>
+                    <td className="p-4">
+                      {receipt.status === 'sent' ? (
+                        <span className="px-2 py-1 rounded text-xs font-bold bg-green-50 text-green-700">
+                          已開立寄出
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded text-xs font-bold bg-gray-50 text-gray-500">
+                          已開立
+                        </span>
+                      )}
+                    </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button 
@@ -190,7 +241,7 @@ const ReceiptManager: React.FC = () => {
                 ))}
                 {filteredReceipts.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-12 text-center text-gray-400">
+                    <td colSpan={6} className="p-12 text-center text-gray-400">
                       <FileText size={48} className="mx-auto mb-4 opacity-20" />
                       <p>目前沒有收據紀錄</p>
                     </td>

@@ -19,6 +19,7 @@ interface MemberRenewal {
   merchant_order_no: string;
   created_at: string;
   payment_method?: string;
+  receipt_status?: string;
 }
 
 const translatePaymentMethod = (method?: string) => {
@@ -63,13 +64,26 @@ const MemberRenewalManager: React.FC = () => {
 
       if (error) throw error;
 
+      // Fetch receipts to check status
+      const { data: receiptsData } = await supabase
+        .from('receipts')
+        .select('order_no, status');
+
+      const receiptMap: Record<string, string> = {};
+      if (receiptsData) {
+        receiptsData.forEach((r: any) => {
+          if (r.order_no) receiptMap[r.order_no] = r.status;
+        });
+      }
+
       const formattedData = data.map((item: any) => ({
         ...item,
         member_name: item.member?.name || '未知會員',
         member_no: item.member?.member_no || '---',
         member_email: item.member?.email,
         member_tax_id: item.member?.tax_id || '',
-        member_company: item.member?.company_title || item.member?.brand_name || ''
+        member_company: item.member?.company_title || item.member?.brand_name || '',
+        receipt_status: item.merchant_order_no ? receiptMap[item.merchant_order_no] : undefined
       }));
 
       setRenewals(formattedData);
@@ -243,8 +257,8 @@ const MemberRenewalManager: React.FC = () => {
 
   if (loading) return <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto" /></div>;
 
-  const pendingRenewals = renewals.filter(r => r.payment_status !== 'processed');
-  const processedRenewals = renewals.filter(r => r.payment_status === 'processed');
+  const pendingRenewals = renewals.filter(r => r.payment_status !== 'processed' && r.receipt_status !== 'sent');
+  const processedRenewals = renewals.filter(r => r.payment_status === 'processed' || r.receipt_status === 'sent');
 
   const renderTable = (items: MemberRenewal[], isProcessed: boolean) => (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mb-8">
@@ -302,12 +316,17 @@ const MemberRenewalManager: React.FC = () => {
                         orderNo: renewal.merchant_order_no || '',
                         email: renewal.member_email || ''
                       })}
-                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 font-bold border border-gray-200"
+                      disabled={renewal.receipt_status === 'sent'}
+                      className={`text-xs px-2 py-1 rounded font-bold border ${
+                        renewal.receipt_status === 'sent' 
+                          ? 'bg-green-50 text-green-700 border-green-200 cursor-default' 
+                          : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                      }`}
                     >
-                      開立收據
+                      {renewal.receipt_status === 'sent' ? '已開立' : '開立收據'}
                     </button>
                   )}
-                  {!isProcessed && renewal.payment_status !== 'paid' && (
+                  {!isProcessed && renewal.payment_status !== 'paid' && renewal.receipt_status !== 'sent' && (
                     <>
                       <button 
                         onClick={() => handleMarkAsPaid(renewal)}
@@ -325,16 +344,10 @@ const MemberRenewalManager: React.FC = () => {
                       </button>
                     </>
                   )}
-                  {!isProcessed && renewal.payment_status === 'paid' && (
-                    <button 
-                      onClick={() => handleMarkAsProcessed(renewal)}
-                      className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 font-bold shadow-sm flex items-center gap-1"
-                    >
-                      <CheckCircle size={12}/> 確認已處理
-                    </button>
-                  )}
                   {isProcessed && (
-                    <span className="text-xs text-gray-400 flex items-center gap-1"><CheckCircle size={12}/> 完成</span>
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <CheckCircle size={12}/> {renewal.receipt_status === 'sent' ? '已開立寄出' : '完成'}
+                    </span>
                   )}
                   <button 
                     onClick={() => handleDelete(renewal.id)}
@@ -373,7 +386,10 @@ const MemberRenewalManager: React.FC = () => {
       {receiptData && (
         <ReceiptModal
           isOpen={!!receiptData}
-          onClose={() => setReceiptData(null)}
+          onClose={() => {
+            setReceiptData(null);
+            fetchRenewals();
+          }}
           initialData={receiptData}
         />
       )}
