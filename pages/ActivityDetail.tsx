@@ -132,7 +132,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       name: member.name,
       phone: member.phone || '',
       email: member.email || '',
-      company: member.brand_name || member.company_title || '',
+      company: member.company_title || member.brand_name || '',
       title: member.job_title || '',
       referrer: member.referrer || '',
       notes: '',
@@ -436,7 +436,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
                                           {m.name}
                                           {!active && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><AlertCircle size={10} /> 會籍已過期</span>}
                                         </div>
-                                        <div className="text-xs text-gray-400">{m.member_no} | {m.brand_name || m.company}</div>
+                                        <div className="text-xs text-gray-400">{m.member_no} | {m.company_title || m.company || m.brand_name}</div>
                                      </div>
                                      {active && <ChevronDown size={14} className="text-gray-300 -rotate-90" />}
                                    </button>

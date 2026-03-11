@@ -76,7 +76,7 @@ const MemberBirthdayManager: React.FC<MemberBirthdayManagerProps> = ({ members }
       '狀態': isMemberActive(m) ? '有效' : '已過期',
       '手機': m.phone || '',
       '信箱': m.email || '',
-      '公司名稱': m.brand_name || m.company_title || '',
+      '公司名稱': m.company_title || m.brand_name || '',
       '職稱': m.job_title || ''
     }));
 
@@ -204,7 +204,7 @@ const MemberBirthdayManager: React.FC<MemberBirthdayManagerProps> = ({ members }
                       </td>
                       <td className="p-4 text-sm text-gray-600">
                         <div className="flex flex-col">
-                          <span className="font-medium">{member.brand_name || member.company_title || '-'}</span>
+                          <span className="font-medium">{member.company_title || member.brand_name || '-'}</span>
                           <span className="text-xs text-gray-500">{member.job_title || ''}</span>
                         </div>
                       </td>

@@ -547,7 +547,7 @@ const MemberApplicationManager: React.FC<{
                         <button
                           onClick={() => setReceiptData({
                             payerName: app.name,
-                            companyName: app.brand_name || app.company_title,
+                            companyName: app.company_title || app.brand_name || '',
                             taxId: app.tax_id || '',
                             amount: app.paid_amount || 5000,
                             paymentMethod: translatePaymentMethod(app.payment_method),

@@ -90,7 +90,7 @@ ${memberData.notes || '(無)'}
         reply_to: memberData.email,
         
         phone: memberData.phone,
-        company: memberData.brand_name || memberData.company_title,
+        company: memberData.company_title || memberData.brand_name,
         job_title: memberData.job_title,
         
         // 專為會員申請設定的標題與資訊

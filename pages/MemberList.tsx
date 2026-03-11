@@ -136,10 +136,10 @@ const MemberList: React.FC<MemberListProps> = ({ members }) => {
                       <span className="font-mono text-xs text-gray-400 font-bold opacity-60">#{(member.member_no || '').toString().padStart(5, '0')}</span>
                     </div>
                     <h3 className={`text-xl font-bold text-gray-900 mb-1 transition-colors ${style.hoverText}`}>
-                      {member.brand_name || member.company || '未填寫品牌'}
+                      {member.company_title || member.company || member.brand_name || '未填寫公司'}
                     </h3>
-                    {member.company_title && member.company_title !== member.brand_name && (
-                      <p className="text-xs text-gray-400">{member.company_title}</p>
+                    {member.brand_name && member.brand_name !== member.company_title && (
+                      <p className="text-xs text-gray-400">{member.brand_name}</p>
                     )}
                   </div>
                   

@@ -14,7 +14,7 @@ export interface ReceiptData {
   taxId?: string;
   amount: number;
   paymentMethod?: string;
-  feeType: 'initiation' | 'annual' | 'activity' | 'donation' | 'sponsorship' | 'other';
+  feeType: 'initiation' | 'annual' | 'donation' | 'goods_donation';
   orderNo?: string;
   remarks?: string;
   email?: string;
@@ -319,7 +319,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <p>扣繳單位統一編號：00509918</p>
+              <p>統一編號：00509918</p>
               <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]">
                 <span>編號：</span>
                 <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-red-600 font-bold print:appearance-none" placeholder="00000" />
@@ -359,35 +359,29 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 </td>
               </tr>
 
-              {/* Row 3 */}
+              {/* Row 3 - Combined Income Types */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3">入會費</td>
-                <td className="border border-black py-3 w-[18%]">
-                  <input type="checkbox" checked={selectedFeeType === 'initiation'} onChange={() => setSelectedFeeType('initiation')} className="w-6 h-6 cursor-pointer" />
-                </td>
-                <td className="border border-black bg-gray-100 font-bold py-3 w-[14%]">活動費</td>
-                <td className="border border-black py-3 w-[18%]">
-                  <input type="checkbox" checked={selectedFeeType === 'activity'} onChange={() => setSelectedFeeType('activity')} className="w-6 h-6 cursor-pointer" />
-                </td>
-                <td className="border border-black bg-gray-100 font-bold py-3">捐款</td>
-                <td className="border border-black py-3">
-                  <input type="checkbox" checked={selectedFeeType === 'donation'} onChange={() => setSelectedFeeType('donation')} className="w-6 h-6 cursor-pointer" />
-                </td>
-              </tr>
-
-              {/* Row 4 */}
-              <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3">年費</td>
-                <td className="border border-black py-3">
-                  <input type="checkbox" checked={selectedFeeType === 'annual'} onChange={() => setSelectedFeeType('annual')} className="w-6 h-6 cursor-pointer" />
-                </td>
-                <td className="border border-black bg-gray-100 font-bold py-3">贊助費</td>
-                <td className="border border-black py-3">
-                  <input type="checkbox" checked={selectedFeeType === 'sponsorship'} onChange={() => setSelectedFeeType('sponsorship')} className="w-6 h-6 cursor-pointer" />
-                </td>
-                <td className="border border-black bg-gray-100 font-bold py-3">其他</td>
-                <td className="border border-black py-3">
-                  <input type="checkbox" checked={selectedFeeType === 'other'} onChange={() => setSelectedFeeType('other')} className="w-6 h-6 cursor-pointer" />
+                <td className="border border-black bg-gray-100 font-bold py-3">款項項目</td>
+                <td className="border border-black py-3 px-4" colSpan={5}>
+                  <div className="flex flex-wrap items-center justify-around gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedFeeType === 'initiation'} onChange={() => setSelectedFeeType('initiation')} className="w-6 h-6 cursor-pointer" />
+                      <span>入會費</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedFeeType === 'annual'} onChange={() => setSelectedFeeType('annual')} className="w-6 h-6 cursor-pointer" />
+                      <span>年費</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedFeeType === 'donation'} onChange={() => setSelectedFeeType('donation')} className="w-6 h-6 cursor-pointer" />
+                      <span>捐款</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedFeeType === 'goods_donation'} onChange={() => setSelectedFeeType('goods_donation')} className="w-6 h-6 cursor-pointer" />
+                      <span>捐物</span>
+                      <span className="text-gray-400 text-sm font-normal ml-1">(若為捐物請於備註說明品項)</span>
+                    </label>
+                  </div>
                 </td>
               </tr>
 
@@ -433,13 +427,11 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           {/* Footer Info */}
           <div className="flex justify-between items-center mt-4 text-xl font-bold">
             <div>理事長：<span className="ml-2">許淳凱</span></div>
-            <div>會計：<span className="ml-2">張曉萍</span></div>
             <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
               <span>經手人：</span>
               <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none font-bold">
                 <option value="許暐梃">許暐梃</option>
                 <option value="許淳凱">許淳凱</option>
-                <option value="張曉萍">張曉萍</option>
               </select>
             </div>
           </div>

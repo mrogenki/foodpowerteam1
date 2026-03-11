@@ -69,7 +69,7 @@ const MemberRenewalManager: React.FC = () => {
         member_no: item.member?.member_no || '---',
         member_email: item.member?.email,
         member_tax_id: item.member?.tax_id || '',
-        member_company: item.member?.brand_name || item.member?.company_title || ''
+        member_company: item.member?.company_title || item.member?.brand_name || ''
       }));
 
       setRenewals(formattedData);

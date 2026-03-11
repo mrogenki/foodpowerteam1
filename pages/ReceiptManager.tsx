@@ -8,10 +8,8 @@ const translateFeeType = (type: string) => {
   const map: Record<string, string> = {
     'initiation': '入會費',
     'annual': '年費',
-    'activity': '活動費',
     'donation': '捐款',
-    'sponsorship': '贊助費',
-    'other': '其他'
+    'goods_donation': '捐物'
   };
   return map[type] || type;
 };
