@@ -87,13 +87,33 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
   useEffect(() => {
     const fetchPendingRenewals = async () => {
       try {
-        const { count, error } = await supabase
+        // Fetch renewals that are not marked as processed
+        const { data: renewals, error: renewalError } = await supabase
           .from('member_renewals')
-          .select('*', { count: 'exact', head: true })
+          .select('merchant_order_no')
           .neq('payment_status', 'processed');
         
-        if (!error && count !== null) {
-          setPendingRenewalCount(count);
+        if (!renewalError && renewals) {
+          const orderNos = renewals.map(r => r.merchant_order_no).filter(Boolean);
+          if (orderNos.length > 0) {
+            // Check which of these have receipts sent
+            const { data: receipts, error: receiptError } = await supabase
+              .from('receipts')
+              .select('order_no')
+              .in('order_no', orderNos)
+              .eq('status', 'sent');
+            
+            if (!receiptError && receipts) {
+              const receiptOrderNos = new Set(receipts.map(r => r.order_no));
+              // A renewal is pending if it's not processed AND has no receipt sent
+              const actualPendingCount = renewals.filter(r => !r.merchant_order_no || !receiptOrderNos.has(r.merchant_order_no)).length;
+              setPendingRenewalCount(actualPendingCount);
+            } else {
+              setPendingRenewalCount(renewals.length);
+            }
+          } else {
+            setPendingRenewalCount(renewals.length);
+          }
         }
       } catch (err) {
         console.error('Error fetching pending renewals:', err);

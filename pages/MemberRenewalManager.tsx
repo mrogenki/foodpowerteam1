@@ -231,6 +231,27 @@ const MemberRenewalManager: React.FC = () => {
     }
   };
 
+  const handleBatchMarkAsProcessed = async () => {
+    const toProcess = processedRenewals.filter(r => r.payment_status !== 'processed');
+    if (toProcess.length === 0) return;
+    
+    if (!confirm(`確定要將這 ${toProcess.length} 筆已開立收據的紀錄全部標記為「已處理」嗎？\n這將會清除側邊欄的紅色數字提醒。`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('member_renewals')
+        .update({ payment_status: 'processed' })
+        .in('id', toProcess.map(r => r.id));
+
+      if (error) throw error;
+      fetchRenewals();
+      alert('已全部標記為已處理');
+    } catch (err: any) {
+      console.error('Error batch marking as processed:', err);
+      alert('更新失敗: ' + err.message);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('確定要永久刪除這筆續約紀錄嗎？此操作無法復原。')) return;
 
@@ -262,8 +283,16 @@ const MemberRenewalManager: React.FC = () => {
 
   const renderTable = (items: MemberRenewal[], isProcessed: boolean) => (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mb-8">
-      <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+      <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
         <h2 className="text-lg font-bold text-gray-800">{isProcessed ? '已處理續約' : '待處理續約'} <span className="text-sm font-normal text-gray-500 ml-2">共 {items.length} 筆</span></h2>
+        {isProcessed && items.some(r => r.payment_status !== 'processed') && (
+          <button 
+            onClick={handleBatchMarkAsProcessed}
+            className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 font-bold"
+          >
+            一鍵歸檔所有已開立收據
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
@@ -345,9 +374,20 @@ const MemberRenewalManager: React.FC = () => {
                     </>
                   )}
                   {isProcessed && (
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <CheckCircle size={12}/> {renewal.receipt_status === 'sent' ? '已開立寄出' : '完成'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <CheckCircle size={12}/> {renewal.receipt_status === 'sent' ? '已開立寄出' : '完成'}
+                      </span>
+                      {renewal.payment_status !== 'processed' && (
+                        <button 
+                          onClick={() => handleMarkAsProcessed(renewal)}
+                          className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded hover:bg-blue-100 font-bold"
+                          title="將此紀錄狀態改為「已處理」以從待辦清單中移除"
+                        >
+                          標記為已處理
+                        </button>
+                      )}
+                    </div>
                   )}
                   <button 
                     onClick={() => handleDelete(renewal.id)}
