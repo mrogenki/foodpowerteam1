@@ -53,7 +53,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
   
   const [orderNo, setOrderNo] = useState(initialData.orderNo || '');
   const [remarks, setRemarks] = useState(initialData.remarks || '');
-  const [handler, setHandler] = useState(initialData.handlerName || '許暐梃');
+  const [handler, setHandler] = useState(initialData.handlerName || '許暐脡');
   const [email, setEmail] = useState(initialData.email || '');
   const [status, setStatus] = useState(initialData.status || 'issued');
   const [isSaving, setIsSaving] = useState(false);
@@ -514,7 +514,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
             <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
               <span>經手人：</span>
               <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none font-bold">
-                <option value="許暐梃">許暐梃</option>
+                <option value="許暐脡">許暐脡</option>
                 <option value="許淳凱">許淳凱</option>
               </select>
             </div>
