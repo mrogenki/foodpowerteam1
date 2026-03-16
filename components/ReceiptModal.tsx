@@ -53,7 +53,10 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
   
   const [orderNo, setOrderNo] = useState(initialData.orderNo || '');
   const [remarks, setRemarks] = useState(initialData.remarks || '');
-  const [handler, setHandler] = useState(initialData.handlerName || '許暐脡');
+  const [handler, setHandler] = useState(() => {
+    if (initialData.handlerName === '許暐梃') return '許暐脡';
+    return initialData.handlerName || '許暐脡';
+  });
   const [email, setEmail] = useState(initialData.email || '');
   const [status, setStatus] = useState(initialData.status || 'issued');
   const [isSaving, setIsSaving] = useState(false);
@@ -205,7 +208,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         issue_date: issueDate,
         handler_name: handler,
         note: remarks || null,
-        status: finalStatus
+        status: finalStatus,
+        email: email || null
       }, { onConflict: 'receipt_no' });
 
       if (error) throw error;

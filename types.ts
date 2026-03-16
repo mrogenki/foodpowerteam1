@@ -217,5 +217,6 @@ export interface Receipt {
   handler_name: string;
   note?: string;
   status?: string;
+  email?: string;
   created_at: string;
 }

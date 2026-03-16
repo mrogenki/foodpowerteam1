@@ -6,6 +6,7 @@ import emailjs from '@emailjs/browser';
 import { Activity, MemberActivity, Registration, MemberRegistration, Member, PaymentStatus } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 import { submitNewebPayForm, NEWEB_CONFIG } from '../utils/newebpay';
+import BlockRenderer from '../components/BlockRenderer';
 
 interface ActivityDetailProps {
   type: 'general' | 'member';
@@ -361,7 +362,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
             <div className="prose prose-red max-w-none mb-10">
               <h3 className="text-xl font-bold mb-4">活動介紹</h3>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-line">{activity.description}</p>
+              <BlockRenderer value={activity.description} />
             </div>
 
             <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">

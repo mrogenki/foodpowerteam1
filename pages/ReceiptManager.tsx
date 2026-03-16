@@ -85,7 +85,8 @@ const ReceiptManager: React.FC = () => {
       feeType: receipt.fee_type as any,
       orderNo: receipt.order_no || '',
       remarks: receipt.note || '',
-      status: receipt.status
+      status: receipt.status,
+      email: receipt.email || ''
     });
   };
 

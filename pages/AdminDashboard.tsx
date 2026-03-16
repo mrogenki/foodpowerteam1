@@ -8,6 +8,7 @@ import MemberRenewalManager from './MemberRenewalManager';
 import MemberBirthdayManager from './MemberBirthdayManager';
 import ReceiptManager from './ReceiptManager';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
+import BlockEditor from '../components/BlockEditor';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
@@ -1010,7 +1011,14 @@ const ActivityManager: React.FC<{
                <div><label className="block text-sm font-bold text-gray-700 mb-2">地點</label><input required type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-red-500"/></div>
                <div><label className="block text-sm font-bold text-gray-700 mb-2">費用</label><input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-red-500"/></div>
                <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-2">活動封面圖片</label><div className="flex items-center gap-4"><img src={formData.picture} alt="Preview" className="w-32 h-20 object-cover rounded-lg border bg-gray-50"/><label className="cursor-pointer bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-200 flex items-center gap-2"><UploadCloud size={18} /> 上傳圖片<input type="file" className="hidden" accept="image/*" onChange={handleImageChange} /></label></div></div>
-               <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-2">活動描述</label><textarea required rows={5} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-red-500"></textarea></div>
+               <div className="md:col-span-2">
+                 <label className="block text-sm font-bold text-gray-700 mb-2">活動描述 (區塊編輯器)</label>
+                 <BlockEditor 
+                   value={formData.description} 
+                   onChange={val => setFormData({...formData, description: val})} 
+                   onUploadImage={onUploadImage}
+                 />
+               </div>
                <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-2">狀態</label><select value={formData.status || 'active'} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-red-500"><option value="active">開啟報名 (Active)</option><option value="closed">結束報名 (Closed)</option></select></div>
             </div>
             <div className="flex justify-end pt-6 border-t"><button type="submit" className="bg-red-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-red-700">儲存活動</button></div>

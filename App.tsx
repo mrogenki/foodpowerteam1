@@ -15,6 +15,7 @@ import ActivityPayment from './pages/ActivityPayment';
 import MemberRenewal from './pages/MemberRenewal';
 import RenewalPayment from './pages/RenewalPayment';
 import AboutUs from './pages/AboutUs';
+import 'react-quill-new/dist/quill.snow.css';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
