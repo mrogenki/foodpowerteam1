@@ -240,9 +240,11 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
     const calculateActivityStats = (act: Activity | MemberActivity, regs: Registration[] | MemberRegistration[]) => {
        const actRegs = regs.filter(r => String(r.activityId) === String(act.id));
        const regCount = actRegs.length;
+       const paidRegs = actRegs.filter(r => r.payment_status === PaymentStatus.PAID || r.payment_status === PaymentStatus.PROCESSED);
+       const paidCount = paidRegs.length;
        const checkInCount = actRegs.filter(r => r.check_in_status).length;
-       const revenue = actRegs.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
-       return { id: act.id, title: act.title, date: act.date, status: act.status || 'active', regCount, checkInCount, revenue };
+       const revenue = paidRegs.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
+       return { id: act.id, title: act.title, date: act.date, status: act.status || 'active', regCount, paidCount, checkInCount, revenue };
     };
 
     const generalStats = activitiesThisMonth.map(a => ({...calculateActivityStats(a, registrations), category: '一般'}));
@@ -369,7 +371,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
                  <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                     <th className="p-4">活動名稱 / 日期</th>
                     <th className="p-4">類別</th>
-                    <th className="p-4 text-center">報名人數</th>
+                    <th className="p-4 text-center">報名 / 已付款</th>
                     <th className="p-4 text-center">出席人數</th>
                     {!isStaff && <th className="p-4 text-right">累積營收</th>}
                     <th className="p-4 text-center">狀態</th>
@@ -388,7 +390,9 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
                           </span>
                        </td>
                        <td className="p-4 text-center font-medium">
-                          {act.regCount} 人
+                          <span className="text-gray-900">{act.regCount}</span>
+                          <span className="text-gray-400 mx-1">/</span>
+                          <span className="text-blue-600 font-bold">{act.paidCount}</span>
                        </td>
                        <td className="p-4 text-center">
                           <span className={`font-bold ${act.checkInCount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
