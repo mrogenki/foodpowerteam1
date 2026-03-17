@@ -16,7 +16,7 @@ import MemberRenewal from './pages/MemberRenewal';
 import RenewalPayment from './pages/RenewalPayment';
 import AboutUs from './pages/AboutUs';
 import 'react-quill-new/dist/quill.snow.css';
-import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole } from './types';
+import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
 import { supabase } from './utils/supabaseClient';
@@ -130,6 +130,7 @@ const App: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [memberApplications, setMemberApplications] = useState<MemberApplication[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [clubActivities, setClubActivities] = useState<ClubActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
   
@@ -235,7 +236,8 @@ const App: React.FC = () => {
         { data: userData },
         { data: memberData },
         { data: couponData },
-        { data: applicationData }
+        { data: applicationData },
+        { data: clubData }
       ] = await Promise.all([
         supabase.from('activities').select('*').order('date', { ascending: true }),
         supabase.from('member_activities').select('*').order('date', { ascending: true }),
@@ -244,7 +246,8 @@ const App: React.FC = () => {
         supabase.from('admins').select('*'),
         supabase.from('members').select('*'),
         supabase.from('coupons').select('*').order('created_at', { ascending: false }),
-        supabase.from('member_applications').select('*').order('created_at', { ascending: false })
+        supabase.from('member_applications').select('*').order('created_at', { ascending: false }),
+        supabase.from('club_activities').select('*').order('date', { ascending: true })
       ]);
 
       if (actData && actData.length > 0) {
@@ -284,6 +287,7 @@ const App: React.FC = () => {
 
       if (couponData) setCoupons(couponData as Coupon[]);
       if (applicationData) setMemberApplications(applicationData as MemberApplication[]);
+      if (clubData) setClubActivities(clubData as ClubActivity[]);
 
     } catch (err: any) {
       console.error('Fetch error:', err);
@@ -387,6 +391,25 @@ const App: React.FC = () => {
     if (!supabase) return;
     await supabase.from('member_registrations').delete().eq('activityId', id);
     const { error } = await supabase.from('member_activities').delete().eq('id', id);
+    if (error) fetchData();
+  };
+
+  const handleUpdateClubActivity = async (updated: ClubActivity) => {
+    setClubActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
+    if (!supabase) return;
+    const { error } = await supabase.from('club_activities').update(updated).eq('id', updated.id);
+    if (error) fetchData();
+  };
+  const handleAddClubActivity = async (newAct: ClubActivity) => {
+    if (!supabase) return;
+    const activityToInsert = { ...newAct, id: newAct.id || crypto.randomUUID() };
+    const { error } = await supabase.from('club_activities').insert([activityToInsert]);
+    if (!error) fetchData(); else alert('新增俱樂部活動失敗: ' + error.message);
+  };
+  const handleDeleteClubActivity = async (id: string | number) => {
+    setClubActivities(prev => prev.filter(a => a.id !== id));
+    if (!supabase) return;
+    const { error } = await supabase.from('club_activities').delete().eq('id', id);
     if (error) fetchData();
   };
 
@@ -586,7 +609,7 @@ const App: React.FC = () => {
         <Header />
         <main className="flex-grow bg-gray-50/30">
           <Routes>
-            <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} />} />
+            <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} clubActivities={clubActivities} />} />
             <Route path="/activities" element={<ActivitiesPage activities={activities} memberActivities={memberActivities} />} />
             <Route path="/about" element={<AboutUs />} />
             <Route path="/members" element={<MemberList members={members} />} />
@@ -608,6 +631,7 @@ const App: React.FC = () => {
                   onLogout={handleLogout}
                   activities={activities} 
                   memberActivities={memberActivities}
+                  clubActivities={clubActivities}
                   registrations={registrations}
                   memberRegistrations={memberRegistrations}
                   users={users}
@@ -620,6 +644,9 @@ const App: React.FC = () => {
                   onUpdateMemberActivity={handleUpdateMemberActivity}
                   onAddMemberActivity={handleAddMemberActivity}
                   onDeleteMemberActivity={handleDeleteMemberActivity}
+                  onUpdateClubActivity={handleUpdateClubActivity}
+                  onAddClubActivity={handleAddClubActivity}
+                  onDeleteClubActivity={handleDeleteClubActivity}
                   onUpdateRegistration={handleUpdateRegistration}
                   onDeleteRegistration={handleDeleteRegistration}
                   onUpdateMemberRegistration={handleUpdateMemberRegistration}

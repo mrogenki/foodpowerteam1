@@ -45,6 +45,18 @@ export interface MemberActivity extends Activity {
   // 未來可擴充專屬欄位，目前結構相同
 }
 
+// 俱樂部活動 (用於首頁輪播)
+export interface ClubActivity {
+  id: string | number;
+  title: string;
+  date: string;
+  picture: string;
+  link?: string; // 點擊跳轉連結 (選填)
+  description?: string;
+  status?: 'active' | 'closed';
+  created_at?: string;
+}
+
 // 一般報名
 export interface Registration {
   id: string | number;

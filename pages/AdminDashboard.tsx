@@ -9,7 +9,7 @@ import MemberBirthdayManager from './MemberBirthdayManager';
 import ReceiptManager from './ReceiptManager';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 import BlockEditor from '../components/BlockEditor';
-import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication } from '../types';
+import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
 interface AdminDashboardProps {
@@ -23,12 +23,16 @@ interface AdminDashboardProps {
   members: Member[];
   memberApplications: MemberApplication[]; // 新增：會員申請列表
   coupons: Coupon[];
+  clubActivities: ClubActivity[];
   onUpdateActivity: (act: Activity) => void;
   onAddActivity: (act: Activity) => void;
   onDeleteActivity: (id: string | number) => void;
   onUpdateMemberActivity: (act: MemberActivity) => void;
   onAddMemberActivity: (act: MemberActivity) => void;
   onDeleteMemberActivity: (id: string | number) => void;
+  onUpdateClubActivity: (act: ClubActivity) => void;
+  onAddClubActivity: (act: ClubActivity) => void;
+  onDeleteClubActivity: (id: string | number) => void;
   onUpdateRegistration: (reg: Registration) => void;
   onDeleteRegistration: (id: string | number) => void;
   onUpdateMemberRegistration: (reg: MemberRegistration) => void;
@@ -150,6 +154,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">活動管理</div>
           <Link to="/admin/activities" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/activities') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Calendar size={20} /><span>一般活動管理</span></Link>
           <Link to="/admin/member-activities" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-activities') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Calendar size={20} /><span>會員活動管理</span></Link>
+          <Link to="/admin/club" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/club') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>俱樂部管理</span></Link>
 
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">會員/營運</div>
           <Link to="/admin/members" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/members') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Building2 size={20} /><span>會員資料庫</span></Link>
@@ -191,6 +196,129 @@ interface DashboardHomeProps {
   memberRegistrations: MemberRegistration[];
   memberApplications: MemberApplication[];
 }
+
+const ClubManager: React.FC<{
+  activities: ClubActivity[];
+  onUpdate: (act: ClubActivity) => void;
+  onAdd: (act: ClubActivity) => void;
+  onDelete: (id: string | number) => void;
+  onUploadImage: (file: File) => Promise<string>;
+}> = ({ activities, onUpdate, onAdd, onDelete, onUploadImage }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentAct, setCurrentAct] = useState<Partial<ClubActivity>>({});
+  const [search, setSearch] = useState('');
+
+  const filtered = activities.filter(a => a.title.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSave = () => {
+    if (!currentAct.title || !currentAct.date || !currentAct.picture) {
+      alert('請填寫完整資訊');
+      return;
+    }
+    if (currentAct.id) {
+      onUpdate(currentAct as ClubActivity);
+    } else {
+      onAdd(currentAct as ClubActivity);
+    }
+    setIsEditing(false);
+    setCurrentAct({});
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-900">俱樂部活動管理</h2>
+        <button onClick={() => { setIsEditing(true); setCurrentAct({ status: 'active' }); }} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-all">
+          <Plus size={18} /> 新增活動
+        </button>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
+        <Search className="text-gray-400" size={20} />
+        <input type="text" placeholder="搜尋活動名稱..." className="flex-grow outline-none text-gray-700" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map(act => (
+          <div key={act.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group">
+            <div className="relative aspect-video">
+              <img src={act.picture} alt={act.title} className="w-full h-full object-cover" />
+              <div className="absolute top-2 right-2 flex gap-2">
+                <button onClick={() => { setIsEditing(true); setCurrentAct(act); }} className="p-2 bg-white/90 backdrop-blur rounded-lg text-gray-600 hover:text-blue-600 shadow-sm transition-all"><Edit size={16} /></button>
+                <button onClick={() => confirm('確定刪除？') && onDelete(act.id)} className="p-2 bg-white/90 backdrop-blur rounded-lg text-gray-600 hover:text-red-600 shadow-sm transition-all"><Trash2 size={16} /></button>
+              </div>
+              <div className={`absolute bottom-2 left-2 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${act.status === 'active' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
+                {act.status === 'active' ? '進行中' : '已結束'}
+              </div>
+            </div>
+            <div className="p-4">
+              <h3 className="font-bold text-gray-900 mb-1">{act.title}</h3>
+              <p className="text-xs text-gray-500 flex items-center gap-1"><Calendar size={12} /> {act.date}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-xl font-bold text-gray-900">{currentAct.id ? '編輯活動' : '新增活動'}</h3>
+              <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">活動名稱</label>
+                <input type="text" className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-red-500" value={currentAct.title || ''} onChange={(e) => setCurrentAct({ ...currentAct, title: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">日期</label>
+                  <input type="date" className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-red-500" value={currentAct.date || ''} onChange={(e) => setCurrentAct({ ...currentAct, date: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">狀態</label>
+                  <select className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-red-500" value={currentAct.status || 'active'} onChange={(e) => setCurrentAct({ ...currentAct, status: e.target.value as any })}>
+                    <option value="active">進行中</option>
+                    <option value="closed">已結束</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">跳轉連結 (選填)</label>
+                <input type="text" className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-red-500" value={currentAct.link || ''} onChange={(e) => setCurrentAct({ ...currentAct, link: e.target.value })} placeholder="https://..." />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">活動封面</label>
+                <div className="flex items-center gap-4">
+                  {currentAct.picture && <img src={currentAct.picture} className="w-20 h-20 object-cover rounded-lg border" />}
+                  <label className="flex-grow flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-6 cursor-pointer hover:bg-gray-50 transition-all">
+                    <UploadCloud size={24} className="text-gray-400" />
+                    <span className="text-sm text-gray-500 font-bold">點擊上傳圖片</span>
+                    <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                      if (e.target.files?.[0]) {
+                        const url = await onUploadImage(e.target.files[0]);
+                        setCurrentAct({ ...currentAct, picture: url });
+                      }
+                    }} />
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">簡短說明</label>
+                <textarea className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-red-500" rows={3} value={currentAct.description || ''} onChange={(e) => setCurrentAct({ ...currentAct, description: e.target.value })} />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex gap-3">
+              <button onClick={() => setIsEditing(false)} className="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-white transition-all">取消</button>
+              <button onClick={handleSave} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-100 transition-all">儲存活動</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // 儀表板首頁元件
 const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, activities, memberActivities, registrations, memberRegistrations, memberApplications }) => {
@@ -1821,7 +1949,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <Route path="/member-activities" element={<ActivityManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUpdateReg={props.onUpdateMemberRegistration} onDeleteReg={props.onDeleteMemberRegistration} onUploadImage={props.onUploadImage} members={props.members} />} />
           
           <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
-          
+          <Route path="/club" element={<ClubManager activities={props.clubActivities} onUpdate={props.onUpdateClubActivity} onAdd={props.onAddClubActivity} onDelete={props.onDeleteClubActivity} onUploadImage={props.onUploadImage} />} />
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
           <Route path="/receipts" element={<ReceiptManager />} />
