@@ -133,6 +133,8 @@ const App: React.FC = () => {
   const [clubActivities, setClubActivities] = useState<ClubActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [authResolved, setAuthResolved] = useState(false);
+  const isFetching = React.useRef(false);
   
   // Supabase Auth Session
   const [session, setSession] = useState<any>(null);
@@ -216,43 +218,50 @@ const App: React.FC = () => {
       } else {
         setCurrentUser(null);
       }
+      setAuthResolved(true);
     };
 
     fetchAdminRole();
   }, [session?.user?.id, session?.user?.email]);
 
-  const fetchData = async (isInitialLoad = false) => {
-    if (isInitialLoad && activities.length === 0) setLoading(true);
+  const fetchData = React.useCallback(async (isInitialLoad = false) => {
+    if (isFetching.current) return;
+    isFetching.current = true;
+
+    if (isInitialLoad) setLoading(true);
     setDbError(null);
+    
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
 
-      // Promise.all 並行載入
-      const [
-        { data: actData },
-        { data: memActData },
-        { data: regData },
-        { data: memRegData },
-        { data: userData },
-        { data: memberData },
-        { data: couponData },
-        { data: applicationData },
-        { data: clubData }
-      ] = await Promise.all([
+      // 分離公開與管理員資料，優化非管理員的載入速度
+      const publicQueries = [
         supabase.from('activities').select('*').order('date', { ascending: true }),
         supabase.from('member_activities').select('*').order('date', { ascending: true }),
+        supabase.from('club_activities').select('*').order('date', { ascending: true }),
+        supabase.from('members').select('*'),
+      ];
+
+      const adminQueries = currentUser ? [
         supabase.from('registrations').select('*').order('created_at', { ascending: false }),
         supabase.from('member_registrations').select('*').order('created_at', { ascending: false }),
         supabase.from('admins').select('*'),
-        supabase.from('members').select('*'),
         supabase.from('coupons').select('*').order('created_at', { ascending: false }),
         supabase.from('member_applications').select('*').order('created_at', { ascending: false }),
-        supabase.from('club_activities').select('*').order('date', { ascending: true })
-      ]);
+      ] : [];
 
+      const results = await Promise.all([...publicQueries, ...adminQueries]);
+      
+      const actData = results[0].data;
+      const memActData = results[1].data;
+      const clubData = results[2].data;
+      const memberData = results[3].data;
+
+      // 處理公開資料
       if (actData && actData.length > 0) {
         setActivities(actData.map((a: any) => ({ ...a, status: a.status || 'active' })));
-      } else {
+      } else if (currentUser?.role === UserRole.SUPER_ADMIN) {
+         // 只有超級管理員才嘗試初始化資料，避免匿名使用者觸發 RLS 錯誤
          const { data: hasAny } = await supabase.from('activities').select('id').limit(1);
          if (!hasAny || hasAny.length === 0) {
             await supabase.from('activities').insert(INITIAL_ACTIVITIES);
@@ -262,13 +271,7 @@ const App: React.FC = () => {
       }
 
       if (memActData) setMemberActivities(memActData.map((a: any) => ({ ...a, status: a.status || 'active' })));
-      
-      // 注意：由於 RLS 限制，匿名使用者讀取 registrations 可能會是空的，這是正常的
-      if (regData) setRegistrations(regData);
-      if (memRegData) setMemberRegistrations(memRegData);
-      
-      // 注意：admins table 只作為唯讀參考，不再用於登入
-      if (userData && userData.length > 0) setUsers(userData);
+      if (clubData) setClubActivities(clubData as ClubActivity[]);
       
       if (memberData && memberData.length > 0) {
         const sortedMembers = memberData.sort((a: any, b: any) => {
@@ -280,40 +283,52 @@ const App: React.FC = () => {
           return valA.localeCompare(valB, undefined, { numeric: true });
         });
         setMembers(sortedMembers);
-      } else {
+      } else if (currentUser?.role === UserRole.SUPER_ADMIN) {
          const { data: inserted } = await supabase.from('members').insert(INITIAL_MEMBERS).select();
          if (inserted) setMembers(inserted);
       }
 
-      if (couponData) setCoupons(couponData as Coupon[]);
-      if (applicationData) setMemberApplications(applicationData as MemberApplication[]);
-      if (clubData) setClubActivities(clubData as ClubActivity[]);
+      // 處理管理員資料
+      if (currentUser) {
+        const regData = results[4]?.data;
+        const memRegData = results[5]?.data;
+        const userData = results[6]?.data;
+        const couponData = results[7]?.data;
+        const applicationData = results[8]?.data;
+
+        if (regData) setRegistrations(regData);
+        if (memRegData) setMemberRegistrations(memRegData);
+        if (userData) setUsers(userData);
+        if (couponData) setCoupons(couponData as Coupon[]);
+        if (applicationData) setMemberApplications(applicationData as MemberApplication[]);
+      }
 
     } catch (err: any) {
       console.error('Fetch error:', err);
-      // RLS 錯誤不應顯示給一般使用者，除非是管理員
       if (isInitialLoad) {
-        // 如果是初始化且沒資料，可能是因為 RLS 阻擋了 Anon 讀取某些表 (正常)
-        // 這裡不設定錯誤，讓頁面繼續渲染
+        setDbError("連線不穩定，請檢查網路或稍後再試。");
       }
     } finally {
       if (isInitialLoad) setLoading(false);
+      isFetching.current = false;
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
-    // 安全機制：如果 15 秒後還在載入，強制停止轉圈圈並顯示錯誤
+    if (!authResolved) return;
+
+    // 安全機制：如果 30 秒後還在載入，強制停止轉圈圈並顯示錯誤
     const timer = setTimeout(() => {
       if (loading) {
         setLoading(false);
         setDbError("連線逾時，請檢查網路或資料庫設定。");
       }
-    }, 15000);
+    }, 30000);
 
     fetchData(true);
     
     return () => clearTimeout(timer);
-  }, [currentUser?.id, currentUser?.role]); // 當使用者登入狀態改變時，重新抓取資料 (確保取得管理員可見的資料)
+  }, [authResolved, currentUser?.id, currentUser?.role, fetchData]);
 
   const handleLogout = async () => {
     if (supabase) {
