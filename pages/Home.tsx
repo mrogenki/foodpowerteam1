@@ -218,7 +218,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities, clubActivitie
                     </div>
                   )}
                 </div>
-                <div className="relative aspect-square lg:aspect-auto overflow-hidden">
+                <div className="relative aspect-video overflow-hidden">
                   <AnimatePresence mode="wait">
                     <motion.img
                       key={clubActivities[clubSlide].id}
