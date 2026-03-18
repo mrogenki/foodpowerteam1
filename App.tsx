@@ -225,16 +225,14 @@ const App: React.FC = () => {
   }, [session?.user?.id, session?.user?.email]);
 
   const fetchData = React.useCallback(async (isInitialLoad = false) => {
-    if (isFetching.current) return;
-    isFetching.current = true;
-
+    // 移除 isFetching.current 的阻擋，改用更靈活的狀態管理
     if (isInitialLoad) setLoading(true);
     setDbError(null);
     
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
 
-      // 分離公開與管理員資料，優化非管理員的載入速度
+      // 分離公開與管理員資料
       const publicQueries = [
         supabase.from('activities').select('*').order('date', { ascending: true }),
         supabase.from('member_activities').select('*').order('date', { ascending: true }),
@@ -242,6 +240,7 @@ const App: React.FC = () => {
         supabase.from('members').select('*'),
       ];
 
+      // 只有在確定有 currentUser 時才加入管理員查詢
       const adminQueries = currentUser ? [
         supabase.from('registrations').select('*').order('created_at', { ascending: false }),
         supabase.from('member_registrations').select('*').order('created_at', { ascending: false }),
@@ -261,7 +260,6 @@ const App: React.FC = () => {
       if (actData && actData.length > 0) {
         setActivities(actData.map((a: any) => ({ ...a, status: a.status || 'active' })));
       } else if (currentUser?.role === UserRole.SUPER_ADMIN) {
-         // 只有超級管理員才嘗試初始化資料，避免匿名使用者觸發 RLS 錯誤
          const { data: hasAny } = await supabase.from('activities').select('id').limit(1);
          if (!hasAny || hasAny.length === 0) {
             await supabase.from('activities').insert(INITIAL_ACTIVITIES);
@@ -288,8 +286,8 @@ const App: React.FC = () => {
          if (inserted) setMembers(inserted);
       }
 
-      // 處理管理員資料
-      if (currentUser) {
+      // 處理管理員資料 (索引從 4 開始)
+      if (currentUser && results.length > 4) {
         const regData = results[4]?.data;
         const memRegData = results[5]?.data;
         const userData = results[6]?.data;
@@ -310,7 +308,6 @@ const App: React.FC = () => {
       }
     } finally {
       if (isInitialLoad) setLoading(false);
-      isFetching.current = false;
     }
   }, [currentUser]);
 
