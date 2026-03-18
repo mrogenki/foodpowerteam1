@@ -16,6 +16,16 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities, clubActivitie
   const [clubSlide, setClubSlide] = useState(0);
   const now = new Date();
 
+  const optimizeImageUrl = (url: string, width = 1200) => {
+    if (!url) return '';
+    if (url.includes('unsplash.com')) {
+      // Remove existing width/quality params if any
+      const baseUrl = url.split('?')[0];
+      return `${baseUrl}?w=${width}&q=80&auto=format&fit=crop`;
+    }
+    return url;
+  };
+
   // 篩選出即將到來的活動，並排序取前 5 筆
   const isUpcoming = (a: Activity | MemberActivity) => {
     const activityFullDate = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`);
@@ -91,7 +101,13 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities, clubActivitie
               className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
             >
               <div className="absolute inset-0 bg-black/50 z-10"></div>
-              <img src={activity.picture} alt={activity.title} className="w-full h-full object-cover" />
+              <img 
+                src={optimizeImageUrl(activity.picture)} 
+                alt={activity.title} 
+                className="w-full h-full object-cover" 
+                loading={index === 0 ? "eager" : "lazy"}
+                referrerPolicy="no-referrer"
+              />
               <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
                 <div className="flex items-center gap-2 md:gap-3 lg:gap-4 mb-4 md:mb-6">
                   <span className={`${getTypeColor(activity.type)} text-white px-3 py-1 md:px-5 md:py-1.5 lg:px-6 lg:py-2 rounded-full text-sm md:text-lg lg:text-xl font-bold flex items-center gap-1`}>
@@ -222,13 +238,15 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities, clubActivitie
                   <AnimatePresence mode="wait">
                     <motion.img
                       key={clubActivities[clubSlide].id}
-                      src={clubActivities[clubSlide].picture}
+                      src={optimizeImageUrl(clubActivities[clubSlide].picture, 800)}
                       alt={clubActivities[clubSlide].title}
                       initial={{ opacity: 0, scale: 1.1 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.7 }}
                       className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
                     />
                   </AnimatePresence>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent lg:bg-gradient-to-r lg:from-white lg:to-transparent pointer-events-none" />

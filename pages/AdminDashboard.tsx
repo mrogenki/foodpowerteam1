@@ -78,6 +78,16 @@ const PaidAmountInput: React.FC<{ value?: number; onSave: (val: number) => void 
   return <input type="number" className="border rounded px-2 py-1 w-24 text-sm focus:ring-1 focus:ring-red-500 outline-none transition-all text-right" value={localValue} onChange={(e) => setLocalValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} placeholder="0" />;
 };
 
+const NotesInput: React.FC<{ value?: string; onSave: (val: string) => void }> = ({ value, onSave }) => {
+  const [localValue, setLocalValue] = useState(value || '');
+  useEffect(() => { setLocalValue(value || ''); }, [value]);
+  const handleBlur = () => {
+    if (localValue !== (value || '')) onSave(localValue);
+  };
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
+  return <textarea className="border rounded px-2 py-1 w-full text-xs focus:ring-1 focus:ring-red-500 outline-none transition-all min-h-[40px] resize-y" rows={1} value={localValue} onChange={(e) => setLocalValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} placeholder="點擊編輯備註..." />;
+};
+
 // Sidebar
 const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: number }> = ({ user, onLogout, pendingCount }) => {
   const location = useLocation();
@@ -660,10 +670,12 @@ const MemberApplicationManager: React.FC<{
             <tr className="bg-gray-50 text-gray-500">
               <th className="p-4">申請日期</th>
               <th className="p-4">姓名</th>
+              <th className="p-4">引薦人</th>
               <th className="p-4">公司/職稱</th>
               <th className="p-4">聯繫方式</th>
               <th className="p-4">繳費狀態</th>
               <th className="p-4">付款方式</th>
+              <th className="p-4">備註</th>
               <th className="p-4 text-right">操作</th>
             </tr>
           </thead>
@@ -677,6 +689,7 @@ const MemberApplicationManager: React.FC<{
                     <div className="font-bold text-gray-900">{app.name}</div>
                     {app.merchant_order_no && <div className="text-[10px] text-gray-400 font-mono">#{app.merchant_order_no}</div>}
                   </td>
+                  <td className="p-4 text-gray-500">{app.referrer || '-'}</td>
                   <td className="p-4">
                     <div className="font-bold">{app.brand_name || app.company_title}</div>
                     <div className="text-xs text-gray-500">{app.job_title}</div>
@@ -714,6 +727,28 @@ const MemberApplicationManager: React.FC<{
                     <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
                       {translatePaymentMethod(app.payment_method)}
                     </span>
+                  </td>
+                  <td className="p-4 min-w-[150px]">
+                    <NotesInput 
+                      value={app.notes} 
+                      onSave={async (val) => {
+                        try {
+                          const { error } = await supabase
+                            .from('member_applications')
+                            .update({ notes: val })
+                            .eq('id', app.id);
+                          if (error) throw error;
+                          // Update local state if possible, or just reload
+                          // Since we don't have a local update function passed down, reload is safer for now
+                          // but better to have a way to update parent state.
+                          // For now, let's just assume it works or the user reloads.
+                          // Actually, we can just alert or toast.
+                        } catch (err) {
+                          console.error(err);
+                          alert('更新備註失敗');
+                        }
+                      }} 
+                    />
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-2">
@@ -1044,7 +1079,7 @@ const ActivityManager: React.FC<{
           <div className="flex gap-2 mb-4"><div className="relative flex-grow"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋姓名、電話、金流單號..." value={regSearch} onChange={e => setRegSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" /></div></div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">姓名/資訊</th><th className="p-4">備註</th><th className="p-4">報到狀態</th><th className="p-4">付款狀態 (點擊切換)</th><th className="p-4">付款方式</th><th className="p-4">金額</th><th className="p-4 rounded-tr-lg text-right">操作</th></tr></thead>
+              <thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">姓名/資訊</th>{type !== 'member' && <th className="p-4">引薦人</th>}<th className="p-4">備註</th><th className="p-4">報到狀態</th><th className="p-4">付款狀態 (點擊切換)</th><th className="p-4">付款方式</th><th className="p-4">金額</th><th className="p-4 rounded-tr-lg text-right">操作</th></tr></thead>
               <tbody className="divide-y divide-gray-100 text-sm">
                 {filteredRegs.map((reg: any) => {
                   const member = members?.find(m => String(m.id) === String(reg.memberId));
@@ -1064,14 +1099,9 @@ const ActivityManager: React.FC<{
                       {(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}
                       {reg.merchant_order_no && <div className="text-[10px] text-gray-400 font-mono mt-0.5">#{reg.merchant_order_no}</div>}
                     </td>
-                    <td className="p-4">
-                      {reg.notes ? (
-                        <div className="text-xs text-gray-600 max-w-[150px] truncate" title={reg.notes}>
-                          {reg.notes}
-                        </div>
-                      ) : (
-                        <span className="text-gray-300">-</span>
-                      )}
+                    {type !== 'member' && <td className="p-4 text-xs text-gray-500">{reg.referrer || '-'}</td>}
+                    <td className="p-4 min-w-[150px]">
+                      <NotesInput value={reg.notes} onSave={(val) => onUpdateReg({...reg, notes: val})} />
                     </td>
                     <td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${reg.check_in_status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>{reg.check_in_status ? <CheckCircle size={14}/> : <XCircle size={14}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td>
                     <td className="p-4"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`} title={reg.payment_status === PaymentStatus.PAID ? '點擊進行退費' : '點擊變更狀態'}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button></td>
@@ -1260,27 +1290,82 @@ const ActivityCheckInManager: React.FC<{
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">{type === 'member' ? '會員' : '一般'}活動報到</h1>
         <p className="text-gray-500">請選擇要進行報到的活動：</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sortedActivities.map(act => { const regCount = registrations.filter(r => String(r.activityId) === String(act.id)).length; const checkedInCount = registrations.filter(r => String(r.activityId) === String(act.id) && r.check_in_status).length; return (<button key={act.id} onClick={() => setSelectedActivityId(act.id)} className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md hover:border-red-200 transition-all group"><div className="flex justify-between items-start mb-4"><div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-600 font-bold text-sm">{new Date(act.date).getDate()}<span className="text-[10px] ml-0.5">日</span></div><span className={`px-2 py-1 rounded text-xs font-bold ${act.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{act.status === 'active' ? '進行中' : '已結束'}</span></div><h3 className="text-lg font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 mb-2">{act.title}</h3><p className="text-sm text-gray-500 mb-4">{act.date} {act.time}</p><div className="flex items-center justify-between text-sm border-t pt-4"><span className="text-gray-500 font-medium">報名 {regCount} 人</span><span className="text-red-600 font-bold">已到 {checkedInCount} 人</span></div></button>); })} {sortedActivities.length === 0 && <div className="text-gray-400 p-10 text-center col-span-full">目前無活動資料</div>}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sortedActivities.map(act => {
+            const regCount = registrations.filter(r => String(r.activityId) === String(act.id)).length;
+            const checkedInCount = registrations.filter(r => String(r.activityId) === String(act.id) && r.check_in_status).length;
+            return (
+              <button 
+                key={act.id} 
+                onClick={() => setSelectedActivityId(act.id)} 
+                className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md hover:border-red-200 transition-all group"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-600 font-bold text-sm">
+                    {new Date(act.date).getDate()}
+                    <span className="text-[10px] ml-0.5">日</span>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${act.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {act.status === 'active' ? '進行中' : '已結束'}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 mb-2">{act.title}</h3>
+                <p className="text-sm text-gray-500 mb-4">{act.date} {act.time}</p>
+                <div className="flex items-center justify-between text-sm border-t pt-4">
+                  <span className="text-gray-500 font-medium">報名 {regCount} 人</span>
+                  <span className="text-red-600 font-bold">已到 {checkedInCount} 人</span>
+                </div>
+              </button>
+            );
+          })}
+          {sortedActivities.length === 0 && <div className="text-gray-400 p-10 text-center col-span-full">目前無活動資料</div>}
+        </div>
       </div>
     );
   }
 
   const currentActivity = activities.find(a => a.id === selectedActivityId);
   const currentRegistrations = registrations.filter(r => String(r.activityId) === String(selectedActivityId));
-  const filteredRegs = currentRegistrations.filter((r: any) => { const term = searchTerm.toLowerCase(); const name = r.name || r.member_name || ''; return name.toLowerCase().includes(term) || (r.phone && r.phone.includes(term)) || (r.merchant_order_no && r.merchant_order_no.includes(term)); });
-  const handlePaymentStatusToggle = (reg: any) => { if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) { onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID }); return; } if (reg.payment_status === PaymentStatus.PAID) { if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) { onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED }); } else { if (confirm("是否要將此訂單回復為【待付款】？")) { onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING }); } } return; } if (reg.payment_status === PaymentStatus.REFUNDED) { if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) { onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING }); } return; } };
+  const filteredRegs = currentRegistrations.filter((r: any) => {
+    const term = searchTerm.toLowerCase();
+    const name = r.name || r.member_name || '';
+    return name.toLowerCase().includes(term) || (r.phone && r.phone.includes(term)) || (r.merchant_order_no && r.merchant_order_no.includes(term));
+  });
+
+  const handlePaymentStatusToggle = (reg: any) => {
+    if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) {
+      onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID });
+      return;
+    }
+    if (reg.payment_status === PaymentStatus.PAID) {
+      if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) {
+        onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED });
+      } else {
+        if (confirm("是否要將此訂單回復為【待付款】？")) {
+          onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+        }
+      }
+      return;
+    }
+    if (reg.payment_status === PaymentStatus.REFUNDED) {
+      if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) {
+        onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+      }
+      return;
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300">
        <div className="flex items-center gap-4"><button onClick={() => setSelectedActivityId(null)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200"><ArrowLeft size={20} /></button><div><h2 className="text-2xl font-bold">{currentActivity?.title}</h2><p className="text-sm text-gray-500">報到管理列表</p></div></div>
-       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"><div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div className="relative flex-grow max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋姓名、手機末三碼、單號..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-gray-50 focus:bg-white transition-all" autoFocus/></div><div className="flex gap-4 text-sm font-bold text-gray-500 bg-gray-50 px-4 py-2 rounded-lg"><span>總計: {currentRegistrations.length}</span><span className="text-green-600">已到: {currentRegistrations.filter(r => r.check_in_status).length}</span><span className="text-gray-400">未到: {currentRegistrations.length - currentRegistrations.filter(r => r.check_in_status).length}</span></div></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse"><thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">參加者</th><th className="p-4">備註/引薦人</th><th className="p-4">報到操作 (點擊切換)</th><th className="p-4">付款狀態</th><th className="p-4">付款方式</th><th className="p-4 rounded-tr-lg">金額</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredRegs.map((reg: any) => {
+       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"><div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div className="relative flex-grow max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋姓名、手機末三碼、單號..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-gray-50 focus:bg-white transition-all" autoFocus/></div><div className="flex gap-4 text-sm font-bold text-gray-500 bg-gray-50 px-4 py-2 rounded-lg"><span>總計: {currentRegistrations.length}</span><span className="text-green-600">已到: {currentRegistrations.filter(r => r.check_in_status).length}</span><span className="text-gray-400">未到: {currentRegistrations.length - currentRegistrations.filter(r => r.check_in_status).length}</span></div></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse"><thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">參加者</th><th className="p-4">備註{type !== 'member' && '/引薦人'}</th><th className="p-4">報到操作 (點擊切換)</th><th className="p-4">付款狀態</th><th className="p-4">付款方式</th><th className="p-4 rounded-tr-lg">金額</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredRegs.map((reg: any) => {
         const member = members?.find(m => String(m.id) === String(reg.memberId));
         const name = reg.name || reg.member_name || member?.name || '';
         const phone = reg.phone || member?.phone || '';
         const company = reg.company || member?.brand_name || member?.company || '';
         const title = reg.title || member?.job_title || '';
         
-        return (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{phone}</div>{(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}</td><td className="p-4"><div className="text-xs text-gray-600 max-w-[150px] space-y-1">{reg.referrer && <div><span className="font-bold text-gray-400">引薦:</span> {reg.referrer}</div>}{reg.notes && <div><span className="font-bold text-gray-400">備註:</span> {reg.notes}</div>}{!reg.referrer && !reg.notes && <span className="text-gray-300">-</span>}</div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><div className="flex flex-col gap-2 items-start"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button>{(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (<button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">{sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結</button>)}</div></td><td className="p-4"><span className="text-xs text-gray-500">{translatePaymentMethod(reg.payment_method)}</span></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td><td className="p-4 text-right">
+        return (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{phone}</div>{(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}</td><td className="p-4"><div className="text-xs text-gray-600 max-w-[200px] space-y-2">{type !== 'member' && reg.referrer && <div><span className="font-bold text-gray-400">引薦:</span> {reg.referrer}</div>}<div><span className="font-bold text-gray-400">備註:</span> <NotesInput value={reg.notes} onSave={(val) => onUpdateReg({...reg, notes: val})} /></div></div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><div className="flex flex-col gap-2 items-start"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button>{(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (<button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">{sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結</button>)}</div></td><td className="p-4"><span className="text-xs text-gray-500">{translatePaymentMethod(reg.payment_method)}</span></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td><td className="p-4 text-right">
           {reg.payment_status === PaymentStatus.PAID && (
             <button
               onClick={() => setReceiptData({

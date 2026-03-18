@@ -1,25 +1,36 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Menu, X, Loader2, UserPlus, MessageCircle, XCircle } from 'lucide-react';
-import Home from './pages/Home';
-import ActivitiesPage from './pages/Activities';
-import ActivityDetail from './pages/ActivityDetail';
-import AdminDashboard from './pages/AdminDashboard';
-import LoginPage from './pages/LoginPage';
-import MemberList from './pages/MemberList';
-import MemberJoin from './pages/MemberJoin';
-import PaymentResult from './pages/PaymentResult';
-import ApplicationPayment from './pages/ApplicationPayment';
-import ActivityPayment from './pages/ActivityPayment';
-import MemberRenewal from './pages/MemberRenewal';
-import RenewalPayment from './pages/RenewalPayment';
-import AboutUs from './pages/AboutUs';
+
+// 使用 React.lazy 進行程式碼分割，減少初始載入體積
+const Home = lazy(() => import('./pages/Home'));
+const ActivitiesPage = lazy(() => import('./pages/Activities'));
+const ActivityDetail = lazy(() => import('./pages/ActivityDetail'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const MemberList = lazy(() => import('./pages/MemberList'));
+const MemberJoin = lazy(() => import('./pages/MemberJoin'));
+const PaymentResult = lazy(() => import('./pages/PaymentResult'));
+const ApplicationPayment = lazy(() => import('./pages/ApplicationPayment'));
+const ActivityPayment = lazy(() => import('./pages/ActivityPayment'));
+const MemberRenewal = lazy(() => import('./pages/MemberRenewal'));
+const RenewalPayment = lazy(() => import('./pages/RenewalPayment'));
+const AboutUs = lazy(() => import('./pages/AboutUs'));
+
 import 'react-quill-new/dist/quill.snow.css';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
 import { supabase } from './utils/supabaseClient';
+
+// 載入中元件
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+    <Loader2 className="animate-spin text-red-600" size={40} />
+    <p className="text-gray-500 font-medium">頁面載入中...</p>
+  </div>
+);
 
 // 定義系統擁有者 (白名單)，確保即使資料庫設定錯誤也能登入
 const SYSTEM_OWNERS = ['mr.ogenki@gmail.com'];
@@ -134,6 +145,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const isFetching = React.useRef(false);
   
   // Supabase Auth Session
@@ -150,23 +162,23 @@ const App: React.FC = () => {
       if (error) {
         console.warn("Session check failed:", error.message);
         if (error.message.includes("Refresh Token")) {
-          // Token 失效，強制登出清除狀態
           supabase.auth.signOut();
           setSession(null);
         }
       } else {
         setSession(session);
       }
+      setSessionChecked(true);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      // 處理 Token 重新整理失敗的情況
       if (event === 'TOKEN_REFRESHED' && !session) {
          console.warn('Token refresh failed');
       }
       setSession(session);
+      setSessionChecked(true);
     });
 
     return () => subscription.unsubscribe();
@@ -175,30 +187,30 @@ const App: React.FC = () => {
   // 2. 當 Session 存在時，查詢 admins 表格確認權限
   useEffect(() => {
     const fetchAdminRole = async () => {
+      if (!sessionChecked) return;
+
       if (session?.user?.email) {
         try {
           const { data: adminData, error } = await supabase!
             .from('admins')
             .select('*')
-            .ilike('email', session.user.email) // 使用 ilike 忽略大小寫
+            .ilike('email', session.user.email)
             .single();
 
           if (adminData) {
             setCurrentUser({
               id: adminData.id,
               name: adminData.name,
-              role: adminData.role as UserRole, // 嚴格使用資料庫中的角色
+              role: adminData.role as UserRole,
               phone: adminData.phone,
               password: ''
             });
           } else {
-            // [Rescue Logic] 救援機制：如果資料庫查不到，但 Email 在系統擁有者名單中，強制給予總管理員權限
             const isSystemOwner = SYSTEM_OWNERS.some(email => 
               email.toLowerCase() === session.user.email.toLowerCase()
             );
 
             if (isSystemOwner) {
-               console.warn('System Owner recognized via whitelist (DB record missing or mismatched)');
                setCurrentUser({
                  id: session.user.id,
                  name: '總管理員 (System)',
@@ -206,8 +218,6 @@ const App: React.FC = () => {
                  phone: '',
                });
             } else {
-               console.warn('User logged in but not found in admins table');
-               // 雖然登入 Supabase Auth，但不在 admins 名單中，視為無權限
                setCurrentUser(null);
             }
           }
@@ -222,7 +232,7 @@ const App: React.FC = () => {
     };
 
     fetchAdminRole();
-  }, [session?.user?.id, session?.user?.email]);
+  }, [sessionChecked, session?.user?.id, session?.user?.email]);
 
   const fetchData = React.useCallback(async (isInitialLoad = false) => {
     // 移除 isFetching.current 的阻擋，改用更靈活的狀態管理
@@ -322,10 +332,12 @@ const App: React.FC = () => {
       }
     }, 30000);
 
+    // 每次 authResolved 或 currentUser 改變時都重新抓取資料
+    // 確保管理員權限生效後能抓到管理員專屬資料
     fetchData(true);
     
     return () => clearTimeout(timer);
-  }, [authResolved, currentUser?.id, currentUser?.role, fetchData]);
+  }, [authResolved, currentUser, fetchData]);
 
   const handleLogout = async () => {
     if (supabase) {
@@ -620,65 +632,71 @@ const App: React.FC = () => {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-grow bg-gray-50/30">
-          <Routes>
-            <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} clubActivities={clubActivities} />} />
-            <Route path="/activities" element={<ActivitiesPage activities={activities} memberActivities={memberActivities} />} />
-            <Route path="/about" element={<AboutUs />} />
-            <Route path="/members" element={<MemberList members={members} />} />
-            <Route path="/join" element={<MemberJoin />} />
-            <Route path="/renew" element={<MemberRenewal />} />
-            <Route path="/activity/:id" element={<ActivityDetail type="general" activities={activities} onRegister={handleRegister} registrations={registrations} validateCoupon={validateCoupon} />} />
-            <Route path="/member-activity/:id" element={<ActivityDetail type="member" activities={memberActivities} members={members} onMemberRegister={handleMemberRegister} memberRegistrations={memberRegistrations} validateCoupon={validateCoupon} />} />
-            <Route path="/pay-application/:id" element={<ApplicationPayment />} />
-            <Route path="/pay-renewal/:id" element={<RenewalPayment />} />
-            <Route path="/pay-activity/:id" element={<ActivityPayment />} />
-            <Route path="/payment-result" element={<PaymentResult />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} clubActivities={clubActivities} />} />
+              <Route path="/activities" element={<ActivitiesPage activities={activities} memberActivities={memberActivities} />} />
+              <Route path="/about" element={<AboutUs />} />
+              <Route path="/members" element={<MemberList members={members} />} />
+              <Route path="/join" element={<MemberJoin />} />
+              <Route path="/renew" element={<MemberRenewal />} />
+              <Route path="/activity/:id" element={<ActivityDetail type="general" activities={activities} onRegister={handleRegister} registrations={registrations} validateCoupon={validateCoupon} />} />
+              <Route path="/member-activity/:id" element={<ActivityDetail type="member" activities={memberActivities} members={members} onMemberRegister={handleMemberRegister} memberRegistrations={memberRegistrations} validateCoupon={validateCoupon} />} />
+              <Route path="/pay-application/:id" element={<ApplicationPayment />} />
+              <Route path="/pay-renewal/:id" element={<RenewalPayment />} />
+              <Route path="/pay-activity/:id" element={<ActivityPayment />} />
+              <Route path="/payment-result" element={<PaymentResult />} />
 
-            <Route path="/admin/login" element={currentUser ? <Navigate to="/admin" /> : <LoginPage />} />
-            
-            <Route path="/admin/*" element={
-              currentUser ? (
-                <AdminDashboard 
-                  currentUser={currentUser}
-                  onLogout={handleLogout}
-                  activities={activities} 
-                  memberActivities={memberActivities}
-                  clubActivities={clubActivities}
-                  registrations={registrations}
-                  memberRegistrations={memberRegistrations}
-                  users={users}
-                  members={members}
-                  memberApplications={memberApplications}
-                  coupons={coupons}
-                  onUpdateActivity={handleUpdateActivity}
-                  onAddActivity={handleAddActivity}
-                  onDeleteActivity={handleDeleteActivity}
-                  onUpdateMemberActivity={handleUpdateMemberActivity}
-                  onAddMemberActivity={handleAddMemberActivity}
-                  onDeleteMemberActivity={handleDeleteMemberActivity}
-                  onUpdateClubActivity={handleUpdateClubActivity}
-                  onAddClubActivity={handleAddClubActivity}
-                  onDeleteClubActivity={handleDeleteClubActivity}
-                  onUpdateRegistration={handleUpdateRegistration}
-                  onDeleteRegistration={handleDeleteRegistration}
-                  onUpdateMemberRegistration={handleUpdateMemberRegistration}
-                  onDeleteMemberRegistration={handleDeleteMemberRegistration}
-                  onAddUser={handleAddUser}
-                  onDeleteUser={handleDeleteUser}
-                  onAddMember={handleAddMember}
-                  onAddMembers={handleAddMembers}
-                  onUpdateMember={handleUpdateMember}
-                  onDeleteMember={handleDeleteMember}
-                  onUploadImage={handleUploadImage}
-                  onGenerateCoupons={handleGenerateCoupons}
-                  onApproveMemberApplication={handleApproveMemberApplication}
-                  onDeleteMemberApplication={handleDeleteMemberApplication}
-                />
-              ) : (
-                <Navigate to="/admin/login" />
-              )
-            } />
-          </Routes>
+              <Route path="/admin/login" element={currentUser ? <Navigate to="/admin" /> : <LoginPage />} />
+              
+              <Route path="/admin/*" element={
+                !authResolved ? (
+                  <div className="min-h-screen flex items-center justify-center bg-white">
+                    <Loader2 className="animate-spin text-red-600" size={48} />
+                  </div>
+                ) : currentUser ? (
+                  <AdminDashboard 
+                    currentUser={currentUser}
+                    onLogout={handleLogout}
+                    activities={activities} 
+                    memberActivities={memberActivities}
+                    clubActivities={clubActivities}
+                    registrations={registrations}
+                    memberRegistrations={memberRegistrations}
+                    users={users}
+                    members={members}
+                    memberApplications={memberApplications}
+                    coupons={coupons}
+                    onUpdateActivity={handleUpdateActivity}
+                    onAddActivity={handleAddActivity}
+                    onDeleteActivity={handleDeleteActivity}
+                    onUpdateMemberActivity={handleUpdateMemberActivity}
+                    onAddMemberActivity={handleAddMemberActivity}
+                    onDeleteMemberActivity={handleDeleteMemberActivity}
+                    onUpdateClubActivity={handleUpdateClubActivity}
+                    onAddClubActivity={handleAddClubActivity}
+                    onDeleteClubActivity={handleDeleteClubActivity}
+                    onUpdateRegistration={handleUpdateRegistration}
+                    onDeleteRegistration={handleDeleteRegistration}
+                    onUpdateMemberRegistration={handleUpdateMemberRegistration}
+                    onDeleteMemberRegistration={handleDeleteMemberRegistration}
+                    onAddUser={handleAddUser}
+                    onDeleteUser={handleDeleteUser}
+                    onAddMember={handleAddMember}
+                    onAddMembers={handleAddMembers}
+                    onUpdateMember={handleUpdateMember}
+                    onDeleteMember={handleDeleteMember}
+                    onUploadImage={handleUploadImage}
+                    onGenerateCoupons={handleGenerateCoupons}
+                    onApproveMemberApplication={handleApproveMemberApplication}
+                    onDeleteMemberApplication={handleDeleteMemberApplication}
+                  />
+                ) : (
+                  <Navigate to="/admin/login" />
+                )
+              } />
+            </Routes>
+          </Suspense>
         </main>
         <Footer />
       </div>
