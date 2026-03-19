@@ -8,12 +8,10 @@ import { motion, AnimatePresence } from 'motion/react';
 interface HomeProps {
   activities: Activity[];
   memberActivities: MemberActivity[];
-  clubActivities: ClubActivity[];
 }
 
-const Home: React.FC<HomeProps> = ({ activities, memberActivities, clubActivities }) => {
+const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [clubSlide, setClubSlide] = useState(0);
   const now = new Date();
 
   const optimizeImageUrl = (url: string, width = 1200) => {
@@ -64,18 +62,6 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities, clubActivitie
     }
   };
 
-  useEffect(() => {
-    if (clubActivities.length <= 1) return;
-    const timer = setInterval(() => {
-      setClubSlide(prev => (prev + 1) % clubActivities.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [clubActivities.length]);
-
-  const nextClubSlide = () => setClubSlide(prev => (prev + 1) % clubActivities.length);
-  const prevClubSlide = () => setClubSlide(prev => (prev - 1 + clubActivities.length) % clubActivities.length);
-
-  // 重設 Meta Tags 為網站預設值
   useEffect(() => {
     document.title = `食在力量`;
     
@@ -167,94 +153,6 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities, clubActivitie
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
         <div className="space-y-8">
           
-          {/* 食在力量俱樂部區塊 (Club Carousel) */}
-          {clubActivities.length > 0 && (
-            <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl shadow-gray-200/50 border border-gray-100">
-              <div className="grid grid-cols-1 lg:grid-cols-2">
-                <div className="p-8 md:p-12 lg:p-16 flex flex-col justify-center">
-                  <div className="inline-flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-full text-sm font-bold mb-6">
-                    <Crown size={16} />
-                    食在力量俱樂部
-                  </div>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={clubActivities[clubSlide].id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.5 }}
-                      className="space-y-6"
-                    >
-                      <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 leading-tight">
-                        {clubActivities[clubSlide].title}
-                      </h2>
-                      <p className="text-gray-500 text-lg leading-relaxed">
-                        {clubActivities[clubSlide].description || '加入食在力量俱樂部，與產業菁英一同探索更多可能。'}
-                      </p>
-                      <div className="flex items-center gap-4 text-gray-400 font-medium">
-                        <Calendar size={20} />
-                        <span>{clubActivities[clubSlide].date}</span>
-                      </div>
-                      <div className="pt-4">
-                        {clubActivities[clubSlide].link ? (
-                          <a 
-                            href={clubActivities[clubSlide].link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-all shadow-xl shadow-gray-200"
-                          >
-                            了解更多活動詳情
-                          </a>
-                        ) : (
-                          <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-400 px-8 py-4 rounded-2xl font-bold text-lg cursor-not-allowed">
-                            即將開放報名
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {clubActivities.length > 1 && (
-                    <div className="flex items-center gap-4 mt-12">
-                      <button onClick={prevClubSlide} className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:border-gray-900 transition-all">
-                        <ChevronLeft size={24} />
-                      </button>
-                      <div className="flex gap-2">
-                        {clubActivities.map((_, i) => (
-                          <button 
-                            key={i} 
-                            onClick={() => setClubSlide(i)}
-                            className={`h-1.5 rounded-full transition-all ${i === clubSlide ? 'w-8 bg-red-600' : 'w-2 bg-gray-200'}`}
-                          />
-                        ))}
-                      </div>
-                      <button onClick={nextClubSlide} className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:border-gray-900 transition-all">
-                        <ChevronRight size={24} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="relative aspect-video overflow-hidden">
-                  <AnimatePresence mode="wait">
-                    <motion.img
-                      key={clubActivities[clubSlide].id}
-                      src={optimizeImageUrl(clubActivities[clubSlide].picture, 800)}
-                      alt={clubActivities[clubSlide].title}
-                      initial={{ opacity: 0, scale: 1.1 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.7 }}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                    />
-                  </AnimatePresence>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent lg:bg-gradient-to-r lg:from-white lg:to-transparent pointer-events-none" />
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* 協會活動 CTA */}
           <div className="bg-white border border-gray-100 rounded-3xl p-8 md:p-12 shadow-xl relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="relative z-10 max-w-2xl">

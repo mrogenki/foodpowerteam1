@@ -246,8 +246,6 @@ const App: React.FC = () => {
       const publicQueries = [
         supabase.from('activities').select('*').order('date', { ascending: true }),
         supabase.from('member_activities').select('*').order('date', { ascending: true }),
-        supabase.from('club_activities').select('*').order('date', { ascending: true }),
-        supabase.from('members').select('*'),
       ];
 
       // 只有在確定有 currentUser 時才加入管理員查詢
@@ -257,14 +255,14 @@ const App: React.FC = () => {
         supabase.from('admins').select('*'),
         supabase.from('coupons').select('*').order('created_at', { ascending: false }),
         supabase.from('member_applications').select('*').order('created_at', { ascending: false }),
+        supabase.from('club_activities').select('*').order('date', { ascending: true }),
+        supabase.from('members').select('*'),
       ] : [];
 
       const results = await Promise.all([...publicQueries, ...adminQueries]);
       
       const actData = results[0].data;
       const memActData = results[1].data;
-      const clubData = results[2].data;
-      const memberData = results[3].data;
 
       // 處理公開資料
       if (actData && actData.length > 0) {
@@ -279,36 +277,52 @@ const App: React.FC = () => {
       }
 
       if (memActData) setMemberActivities(memActData.map((a: any) => ({ ...a, status: a.status || 'active' })));
-      if (clubData) setClubActivities(clubData as ClubActivity[]);
       
-      if (memberData && memberData.length > 0) {
-        const sortedMembers = memberData.sort((a: any, b: any) => {
-          const valA = String(a.member_no || '');
-          const valB = String(b.member_no || '');
-          if (!valA && !valB) return 0;
-          if (!valA) return 1;
-          if (!valB) return -1;
-          return valA.localeCompare(valB, undefined, { numeric: true });
-        });
-        setMembers(sortedMembers);
-      } else if (currentUser?.role === UserRole.SUPER_ADMIN) {
-         const { data: inserted } = await supabase.from('members').insert(INITIAL_MEMBERS).select();
-         if (inserted) setMembers(inserted);
-      }
-
-      // 處理管理員資料 (索引從 4 開始)
-      if (currentUser && results.length > 4) {
-        const regData = results[4]?.data;
-        const memRegData = results[5]?.data;
-        const userData = results[6]?.data;
-        const couponData = results[7]?.data;
-        const applicationData = results[8]?.data;
+      // 處理管理員資料 (索引從 2 開始)
+      if (currentUser && results.length > 2) {
+        const regData = results[2]?.data;
+        const memRegData = results[3]?.data;
+        const userData = results[4]?.data;
+        const couponData = results[5]?.data;
+        const applicationData = results[6]?.data;
+        const clubData = results[7]?.data;
+        const memberData = results[8]?.data;
 
         if (regData) setRegistrations(regData);
         if (memRegData) setMemberRegistrations(memRegData);
         if (userData) setUsers(userData);
         if (couponData) setCoupons(couponData as Coupon[]);
         if (applicationData) setMemberApplications(applicationData as MemberApplication[]);
+        if (clubData) setClubActivities(clubData as ClubActivity[]);
+        
+        if (memberData && memberData.length > 0) {
+          const sortedMembers = memberData.sort((a: any, b: any) => {
+            const valA = String(a.member_no || '');
+            const valB = String(b.member_no || '');
+            if (!valA && !valB) return 0;
+            if (!valA) return 1;
+            if (!valB) return -1;
+            return valA.localeCompare(valB, undefined, { numeric: true });
+          });
+          setMembers(sortedMembers);
+        }
+      }
+
+      // 非管理員時，背景載入會員名單 (用於會員頁面)
+      if (!currentUser) {
+        supabase.from('members').select('*').then(({ data }) => {
+          if (data && data.length > 0) {
+            const sortedMembers = data.sort((a: any, b: any) => {
+              const valA = String(a.member_no || '');
+              const valB = String(b.member_no || '');
+              if (!valA && !valB) return 0;
+              if (!valA) return 1;
+              if (!valB) return -1;
+              return valA.localeCompare(valB, undefined, { numeric: true });
+            });
+            setMembers(sortedMembers);
+          }
+        });
       }
 
     } catch (err: any) {
@@ -634,7 +648,7 @@ const App: React.FC = () => {
         <main className="flex-grow bg-gray-50/30">
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} clubActivities={clubActivities} />} />
+              <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} />} />
               <Route path="/activities" element={<ActivitiesPage activities={activities} memberActivities={memberActivities} />} />
               <Route path="/about" element={<AboutUs />} />
               <Route path="/members" element={<MemberList members={members} />} />
