@@ -176,7 +176,6 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
           <Link to="/admin/member-activities" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-activities') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Calendar size={20} /><span>會員活動管理</span></Link>
           <Link to="/admin/club" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/club') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>俱樂部管理</span></Link>
           <Link to="/admin/milestones" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/milestones') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><History size={20} /><span>大事記管理</span></Link>
-          <Link to="/admin/finances" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/finances') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><DollarSign size={20} /><span>收支管理</span></Link>
 
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">會員/營運</div>
           <Link to="/admin/members" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/members') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Building2 size={20} /><span>會員資料庫</span></Link>
@@ -197,6 +196,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
           <Link to="/admin/receipts" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/receipts') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><FileText size={20} /><span>收據管理</span></Link>
           <Link to="/admin/birthdays" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/birthdays') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Cake size={20} /><span>會員生日管理</span></Link>
           <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
+          <Link to="/admin/finances" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/finances') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><DollarSign size={20} /><span>收支管理</span></Link>
         </>)}
 
         {isSuperAdmin && (<>
