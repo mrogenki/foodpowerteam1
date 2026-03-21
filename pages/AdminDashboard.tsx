@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History, FileText } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Edit2, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import emailjs from '@emailjs/browser';
 import { supabase } from '../utils/supabaseClient';
@@ -1182,9 +1182,11 @@ const ActivityManager: React.FC<{
                    onUploadImage={onUploadImage}
                  />
                </div>
-               <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-2">狀態</label><select value={formData.status || 'active'} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-red-500"><option value="active">開啟報名 (Active)</option><option value="closed">結束報名 (Closed)</option></select></div>
+               <div className="md:col-span-2 flex justify-end gap-4 pt-6 border-t">
+                  <button type="button" onClick={() => setView('list')} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">取消</button>
+                  <button type="submit" className="px-8 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-200">儲存活動</button>
+               </div>
             </div>
-            <div className="flex justify-end pt-6 border-t"><button type="submit" className="bg-red-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-red-700">儲存活動</button></div>
          </form>
       </div>
     );
@@ -1192,8 +1194,43 @@ const ActivityManager: React.FC<{
 
   return (
     <div className="space-y-6">
-       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold text-gray-900">{type === 'member' ? '會員' : '一般'}活動管理</h1><button onClick={handleCreate} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2 shadow-lg shadow-red-200"><Plus size={18} /> 新增活動</button></div>
-       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{activities.map(act => (<div key={act.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group"><div className="h-40 overflow-hidden relative"><img src={act.picture} alt={act.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/><div className={`absolute top-4 right-4 px-2 py-1 rounded text-xs font-bold ${act.status === 'closed' ? 'bg-gray-800 text-white' : 'bg-green-500 text-white'}`}>{act.status === 'closed' ? '已結束' : '報名中'}</div></div><div className="p-5"><div className="mb-4"><span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded">{act.type}</span><h3 className="text-lg font-bold mt-2 line-clamp-1">{act.title}</h3><p className="text-sm text-gray-500 mt-1">{act.date} | {act.location}</p></div><div className="flex justify-between items-center pt-4 border-t border-gray-50"><button onClick={() => { setEditingId(act.id); setView('registrations'); }} className="text-sm font-bold text-gray-600 hover:text-red-600 flex items-center gap-1"><Users size={16}/> 名單 ({registrations.filter(r => String(r.activityId) === String(act.id)).length})</button><div className="flex gap-2"><button onClick={() => handleEdit(act)} className="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-lg hover:bg-blue-50"><Edit size={16} /></button><button onClick={() => { if(confirm('確定刪除？')) onDelete(act.id); }} className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={16} /></button></div></div></div></div>))}</div>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">{type === 'general' ? '一般活動管理' : '會員活動管理'}</h2>
+        <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold transition-colors shadow-lg shadow-red-200"><Plus size={20} /> 新增活動</button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {activities.map(act => (
+          <div key={act.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+            <div className="relative h-48">
+              <img src={act.picture} alt={act.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute top-4 right-4 flex gap-2">
+                <button onClick={() => handleEdit(act)} className="p-2 bg-white/90 backdrop-blur rounded-lg shadow-sm hover:bg-white transition-colors text-gray-600"><Edit2 size={18} /></button>
+                <button onClick={() => onDelete(act.id)} className="p-2 bg-white/90 backdrop-blur rounded-lg shadow-sm hover:bg-white transition-colors text-red-500"><Trash2 size={18} /></button>
+              </div>
+              <div className="absolute bottom-4 left-4"><span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-bold text-gray-700 shadow-sm">{act.type}</span></div>
+            </div>
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-2 line-clamp-1">{act.title}</h3>
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center gap-2 text-sm text-gray-500"><Calendar size={16} /> {act.date} {act.time}</div>
+                <div className="flex items-center gap-2 text-sm text-gray-500"><MapPin size={16} /> {act.location}</div>
+                <div className="flex items-center gap-2 text-sm text-gray-500"><Users size={16} /> {registrations.filter(r => String(r.activityId) === String(act.id)).length} 人已報名</div>
+              </div>
+              <button onClick={() => { setEditingId(act.id); setView('registrations'); }} className="w-full py-3 bg-gray-50 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">管理報名名單 <ChevronRight size={18} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {receiptData && (
+        <ReceiptModal
+          isOpen={!!receiptData}
+          onClose={() => {
+            setReceiptData(null);
+            fetchReceipts();
+          }}
+          initialData={receiptData}
+        />
+      )}
     </div>
   );
 };
@@ -1210,6 +1247,9 @@ const ActivityCheckInManager: React.FC<{
   const [sendingEmail, setSendingEmail] = useState<string[]>([]);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [receiptMap, setReceiptMap] = useState<Record<string, string>>({});
+  const [selectedRegIds, setSelectedRegIds] = useState<string[]>([]);
+  const [isBatchIssuing, setIsBatchIssuing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
   const fetchReceipts = async () => {
     try {
@@ -1235,7 +1275,6 @@ const ActivityCheckInManager: React.FC<{
     if (!confirm(`確定要重新發送付款連結給 ${reg.name || reg.member_name}？`)) return;
     
     let email = reg.email;
-    // 如果是會員活動報名，嘗試從 members 列表查找 email
     if (type === 'member' && !email && members) {
        const member = members.find(m => String(m.id) === String(reg.memberId));
        if (member) email = member.email;
@@ -1257,21 +1296,19 @@ const ActivityCheckInManager: React.FC<{
     setSendingEmail(prev => [...prev, String(reg.id)]);
 
     try {
-      // 使用一般活動報名模板，但將地點欄位加上付款連結 (權宜之計)
-      // 理想狀況是建立專用的 "補繳費通知" 模板
       await emailjs.send(
         EMAIL_CONFIG.SERVICE_ID,
         EMAIL_CONFIG.TEMPLATE_ID,
         {
             to_name: reg.name || reg.member_name,
             email: email,
-            phone: reg.phone || '', // Member registration might not have phone in reg object
+            phone: reg.phone || '',
             activity_title: activity.title,
             activity_date: activity.date,
             activity_time: activity.time,
             activity_location: `${activity.location} (請點擊此連結完成繳費: ${paymentLink})`,
             activity_price: reg.paid_amount || activity.price,
-            payment_link: paymentLink // 嘗試傳遞獨立參數，若模板有支援則會顯示
+            payment_link: paymentLink
         },
         EMAIL_CONFIG.PUBLIC_KEY
       );
@@ -1283,6 +1320,138 @@ const ActivityCheckInManager: React.FC<{
     } finally {
       setSendingEmail(prev => prev.filter(id => id !== String(reg.id)));
     }
+  };
+
+  const currentActivity = activities.find(a => a.id === selectedActivityId);
+  const currentRegistrations = registrations.filter(r => String(r.activityId) === String(selectedActivityId));
+  const filteredRegs = currentRegistrations.filter((r: any) => {
+    const term = searchTerm.toLowerCase();
+    const name = r.name || r.member_name || '';
+    return name.toLowerCase().includes(term) || (r.phone && r.phone.includes(term)) || (r.merchant_order_no && r.merchant_order_no.includes(term));
+  });
+
+  const handlePaymentStatusToggle = (reg: any) => {
+    if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) {
+      onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID });
+      return;
+    }
+    if (reg.payment_status === PaymentStatus.PAID) {
+      if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) {
+        onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED });
+      } else {
+        if (confirm("是否要將此訂單回復為【待付款】？")) {
+          onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+        }
+      }
+      return;
+    }
+    if (reg.payment_status === PaymentStatus.REFUNDED) {
+      if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) {
+        onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
+      }
+      return;
+    }
+  };
+
+  const handleBatchIssueReceipts = async () => {
+    const regsToIssue = filteredRegs.filter(r => 
+      selectedRegIds.includes(String(r.id)) && 
+      r.payment_status === PaymentStatus.PAID &&
+      (!r.merchant_order_no || receiptMap[r.merchant_order_no] !== 'sent')
+    );
+
+    if (regsToIssue.length === 0) {
+      alert('請選擇已付款且尚未開立收據的報名者。');
+      return;
+    }
+
+    if (!confirm(`確定要批量開立 ${regsToIssue.length} 份收據嗎？\n這將會自動產生收據編號並儲存紀錄。`)) return;
+
+    setIsBatchIssuing(true);
+    setBatchProgress({ current: 0, total: regsToIssue.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (let i = 0; i < regsToIssue.length; i++) {
+        const reg = regsToIssue[i];
+        setBatchProgress(prev => ({ ...prev, current: i + 1 }));
+
+        const member = members?.find(m => String(m.id) === String(reg.memberId));
+        const name = reg.name || reg.member_name || member?.name || '';
+        const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
+        const email = reg.email || member?.email || '';
+
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const datePrefix = `${year}${month}${day}`;
+
+        const { data: latestData } = await supabase
+          .from('receipts')
+          .select('receipt_no')
+          .like('receipt_no', `${datePrefix}%`)
+          .order('receipt_no', { ascending: false })
+          .limit(1);
+
+        let nextSeq = 1;
+        if (latestData && latestData.length > 0) {
+          const lastNo = latestData[0].receipt_no;
+          const lastSeq = parseInt(lastNo.substring(8), 10);
+          if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+        }
+        const receiptNo = `${datePrefix}${String(nextSeq).padStart(3, '0')}`;
+
+        const { error } = await supabase.from('receipts').insert({
+          receipt_no: receiptNo,
+          payer_name: company ? `${name}（${company}）` : name,
+          tax_id: reg.tax_id || member?.tax_id || null,
+          amount: reg.paid_amount || 0,
+          payment_method: translatePaymentMethod(reg.payment_method),
+          fee_type: 'donation',
+          order_no: reg.merchant_order_no || null,
+          issue_date: today.toISOString().split('T')[0],
+          handler_name: '許暐脡',
+          note: `活動：${currentActivity?.title || ''}`,
+          status: 'issued',
+          email: email || null
+        });
+
+        if (error) {
+          console.error(`Error issuing receipt for ${name}:`, error);
+          failCount++;
+        } else {
+          successCount++;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      alert(`批量開立完成！\n成功：${successCount} 份\n失敗：${failCount} 份\n\n提示：批量開立僅會產生收據紀錄，如需寄出電子收據，請至「收據管理」或個別點擊「檢視」進行寄送。`);
+      fetchReceipts();
+      setSelectedRegIds([]);
+    } catch (err) {
+      console.error('Batch issue error:', err);
+      alert('批量處理過程中發生錯誤');
+    } finally {
+      setIsBatchIssuing(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRegIds.length === filteredRegs.length && filteredRegs.length > 0) {
+      setSelectedRegIds([]);
+    } else {
+      setSelectedRegIds(filteredRegs.map(r => String(r.id)));
+    }
+  };
+
+  const toggleSelectReg = (id: string) => {
+    setSelectedRegIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   if (!selectedActivityId) {
@@ -1325,83 +1494,176 @@ const ActivityCheckInManager: React.FC<{
     );
   }
 
-  const currentActivity = activities.find(a => a.id === selectedActivityId);
-  const currentRegistrations = registrations.filter(r => String(r.activityId) === String(selectedActivityId));
-  const filteredRegs = currentRegistrations.filter((r: any) => {
-    const term = searchTerm.toLowerCase();
-    const name = r.name || r.member_name || '';
-    return name.toLowerCase().includes(term) || (r.phone && r.phone.includes(term)) || (r.merchant_order_no && r.merchant_order_no.includes(term));
-  });
-
-  const handlePaymentStatusToggle = (reg: any) => {
-    if (reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) {
-      onUpdateReg({ ...reg, payment_status: PaymentStatus.PAID });
-      return;
-    }
-    if (reg.payment_status === PaymentStatus.PAID) {
-      if (confirm("【已付款】訂單操作：\n\n按「確定」將狀態標記為【已退費】\n按「取消」詢問是否回復為【待付款】")) {
-        onUpdateReg({ ...reg, payment_status: PaymentStatus.REFUNDED });
-      } else {
-        if (confirm("是否要將此訂單回復為【待付款】？")) {
-          onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
-        }
-      }
-      return;
-    }
-    if (reg.payment_status === PaymentStatus.REFUNDED) {
-      if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) {
-        onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING });
-      }
-      return;
-    }
-  };
-
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300">
-       <div className="flex items-center gap-4"><button onClick={() => setSelectedActivityId(null)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200"><ArrowLeft size={20} /></button><div><h2 className="text-2xl font-bold">{currentActivity?.title}</h2><p className="text-sm text-gray-500">報到管理列表</p></div></div>
-       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"><div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div className="relative flex-grow max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋姓名、手機末三碼、單號..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-gray-50 focus:bg-white transition-all" autoFocus/></div><div className="flex gap-4 text-sm font-bold text-gray-500 bg-gray-50 px-4 py-2 rounded-lg"><span>總計: {currentRegistrations.length}</span><span className="text-green-600">已到: {currentRegistrations.filter(r => r.check_in_status).length}</span><span className="text-gray-400">未到: {currentRegistrations.length - currentRegistrations.filter(r => r.check_in_status).length}</span></div></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse"><thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">參加者</th><th className="p-4">備註{type !== 'member' && '/引薦人'}</th><th className="p-4">報到操作 (點擊切換)</th><th className="p-4">付款狀態</th><th className="p-4">付款方式</th><th className="p-4 rounded-tr-lg">金額</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredRegs.map((reg: any) => {
-        const member = members?.find(m => String(m.id) === String(reg.memberId));
-        const name = reg.name || reg.member_name || member?.name || '';
-        const phone = reg.phone || member?.phone || '';
-        const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
-        const title = reg.title || member?.job_title || '';
-        
-        return (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{phone}</div>{(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}</td><td className="p-4"><div className="text-xs text-gray-600 max-w-[200px] space-y-2">{type !== 'member' && reg.referrer && <div><span className="font-bold text-gray-400">引薦:</span> {reg.referrer}</div>}<div><span className="font-bold text-gray-400">備註:</span> <NotesInput value={reg.notes} onSave={(val) => onUpdateReg({...reg, notes: val})} /></div></div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><div className="flex flex-col gap-2 items-start"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button>{(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (<button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">{sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結</button>)}</div></td><td className="p-4"><span className="text-xs text-gray-500">{translatePaymentMethod(reg.payment_method)}</span></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td><td className="p-4 text-right">
-          {reg.payment_status === PaymentStatus.PAID && (
-            <button
-              onClick={() => setReceiptData({
-                payerName: name,
-                companyName: company,
-                taxId: reg.tax_id || member?.tax_id || '',
-                amount: reg.paid_amount || 0,
-                paymentMethod: translatePaymentMethod(reg.payment_method),
-                feeType: 'donation',
-                orderNo: reg.merchant_order_no || '',
-                email: reg.email || member?.email || '',
-                remarks: `活動：${currentActivity?.title || ''}`
-              })}
-              disabled={reg.merchant_order_no ? receiptMap[reg.merchant_order_no] === 'sent' : false}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors border ${
-                reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent'
-                  ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
-                  : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
-              }`}
-            >
-              {reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
-            </button>
-          )}
-        </td></tr>)
-        })}{filteredRegs.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">查無資料，請嘗試其他關鍵字</td></tr>}</tbody></table></div></div>
-        {receiptData && (
-          <ReceiptModal
-            isOpen={!!receiptData}
-            onClose={() => {
-              setReceiptData(null);
-              fetchReceipts();
-            }}
-            initialData={receiptData}
-          />
-        )}
+       <div className="flex items-center gap-4">
+         <button onClick={() => { setSelectedActivityId(null); setSelectedRegIds([]); }} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200">
+           <ArrowLeft size={20} />
+         </button>
+         <div>
+           <h2 className="text-2xl font-bold">{currentActivity?.title}</h2>
+           <p className="text-sm text-gray-500">報到管理列表</p>
+         </div>
+       </div>
+       
+       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+           <div className="relative flex-grow max-w-md">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+             <input type="text" placeholder="搜尋姓名、手機末三碼、單號..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-gray-50 focus:bg-white transition-all" autoFocus/>
+           </div>
+           <div className="flex items-center gap-4">
+             {selectedRegIds.length > 0 && (
+               <button 
+                 onClick={handleBatchIssueReceipts}
+                 disabled={isBatchIssuing}
+                 className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-100 transition-all disabled:opacity-50"
+               >
+                 {isBatchIssuing ? (
+                   <>
+                     <Loader2 size={18} className="animate-spin" />
+                     處理中 ({batchProgress.current}/{batchProgress.total})
+                   </>
+                 ) : (
+                   <>
+                     <FileText size={18} />
+                     批量開立收據 ({selectedRegIds.length})
+                   </>
+                 )}
+               </button>
+             )}
+             <div className="flex gap-4 text-sm font-bold text-gray-500 bg-gray-50 px-4 py-2 rounded-lg">
+               <span>總計: {currentRegistrations.length}</span>
+               <span className="text-green-600">已到: {currentRegistrations.filter(r => r.check_in_status).length}</span>
+               <span className="text-gray-400">未到: {currentRegistrations.length - currentRegistrations.filter(r => r.check_in_status).length}</span>
+             </div>
+           </div>
+         </div>
+         
+         <div className="overflow-x-auto">
+           <table className="w-full text-left border-collapse">
+             <thead>
+               <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                 <th className="p-4 rounded-tl-lg w-10">
+                   <input 
+                     type="checkbox" 
+                     checked={selectedRegIds.length === filteredRegs.length && filteredRegs.length > 0}
+                     onChange={toggleSelectAll}
+                     className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                   />
+                 </th>
+                 <th className="p-4">參加者</th>
+                 <th className="p-4">備註{type !== 'member' && '/引薦人'}</th>
+                 <th className="p-4">報到操作 (點擊切換)</th>
+                 <th className="p-4">付款狀態</th>
+                 <th className="p-4">付款方式</th>
+                 <th className="p-4 rounded-tr-lg">金額</th>
+                 <th className="p-4"></th>
+               </tr>
+             </thead>
+             <tbody className="divide-y divide-gray-100">
+               {filteredRegs.map((reg: any) => {
+                 const member = members?.find(m => String(m.id) === String(reg.memberId));
+                 const name = reg.name || reg.member_name || member?.name || '';
+                 const phone = reg.phone || member?.phone || '';
+                 const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
+                 const title = reg.title || member?.job_title || '';
+                 
+                 return (
+                   <tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}>
+                     <td className="p-4">
+                       <input 
+                         type="checkbox" 
+                         checked={selectedRegIds.includes(String(reg.id))}
+                         onChange={() => toggleSelectReg(String(reg.id))}
+                         className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                       />
+                     </td>
+                     <td className="p-4">
+                       <div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                         {name}
+                         {reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}
+                       </div>
+                       <div className="text-sm text-gray-500">{phone}</div>
+                       {(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}
+                     </td>
+                     <td className="p-4">
+                       <div className="text-xs text-gray-600 max-w-[200px] space-y-2">
+                         {type !== 'member' && reg.referrer && <div><span className="font-bold text-gray-400">引薦:</span> {reg.referrer}</div>}
+                         <div><span className="font-bold text-gray-400">備註:</span> <NotesInput value={reg.notes} onSave={(val) => onUpdateReg({...reg, notes: val})} /></div>
+                       </div>
+                     </td>
+                     <td className="p-4">
+                       <button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
+                         {reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}
+                       </button>
+                     </td>
+                     <td className="p-4">
+                       <div className="flex flex-col gap-2 items-start">
+                         <button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>
+                           {reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}
+                           {reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}
+                           {reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}
+                         </button>
+                         {(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (
+                           <button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">
+                             {sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結
+                           </button>
+                         )}
+                       </div>
+                     </td>
+                     <td className="p-4">
+                       <span className="text-xs text-gray-500">{translatePaymentMethod(reg.payment_method)}</span>
+                     </td>
+                     <td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td>
+                     <td className="p-4 text-right">
+                       {reg.payment_status === PaymentStatus.PAID && (
+                         <button
+                           onClick={() => setReceiptData({
+                             payerName: name,
+                             companyName: company,
+                             taxId: reg.tax_id || member?.tax_id || '',
+                             amount: reg.paid_amount || 0,
+                             paymentMethod: translatePaymentMethod(reg.payment_method),
+                             feeType: 'donation',
+                             orderNo: reg.merchant_order_no || '',
+                             email: reg.email || member?.email || '',
+                             remarks: `活動：${currentActivity?.title || ''}`
+                           })}
+                           disabled={reg.merchant_order_no ? receiptMap[reg.merchant_order_no] === 'sent' : false}
+                           className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors border ${
+                             reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent'
+                               ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
+                               : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                           }`}
+                         >
+                           {reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
+                         </button>
+                       )}
+                     </td>
+                   </tr>
+                 );
+               })}
+               {filteredRegs.length === 0 && (
+                 <tr>
+                   <td colSpan={8} className="p-8 text-center text-gray-400">查無資料，請嘗試其他關鍵字</td>
+                 </tr>
+               )}
+             </tbody>
+           </table>
+         </div>
+       </div>
+       
+       {receiptData && (
+         <ReceiptModal
+           isOpen={!!receiptData}
+           onClose={() => {
+             setReceiptData(null);
+             fetchReceipts();
+           }}
+           initialData={receiptData}
+         />
+       )}
     </div>
   );
 };
