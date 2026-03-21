@@ -234,3 +234,12 @@ export interface Receipt {
   email?: string;
   created_at: string;
 }
+
+export interface Milestone {
+  id: string | number;
+  date: string;
+  title: string;
+  picture?: string;
+  description?: string;
+  created_at?: string;
+}

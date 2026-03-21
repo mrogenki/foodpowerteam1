@@ -17,9 +17,10 @@ const ActivityPayment = lazy(() => import('./pages/ActivityPayment'));
 const MemberRenewal = lazy(() => import('./pages/MemberRenewal'));
 const RenewalPayment = lazy(() => import('./pages/RenewalPayment'));
 const AboutUs = lazy(() => import('./pages/AboutUs'));
+const MilestoneTimeline = lazy(() => import('./pages/MilestoneTimeline'));
 
 import 'react-quill-new/dist/quill.snow.css';
-import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity } from './types';
+import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity, Milestone } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
 import { supabase } from './utils/supabaseClient';
@@ -55,6 +56,7 @@ const Header: React.FC = () => {
           <div className="hidden sm:flex items-center space-x-8">
             <Link to="/" className="text-gray-700 hover:text-red-600 transition-colors font-medium">首頁</Link>
             <Link to="/about" className="text-gray-700 hover:text-red-600 transition-colors font-medium">關於我們</Link>
+            <Link to="/milestones" className="text-gray-700 hover:text-red-600 transition-colors font-medium">大事記</Link>
             <Link to="/activities" className="text-gray-700 hover:text-red-600 transition-colors font-medium">協會活動</Link>
             <Link to="/members" className="text-gray-700 hover:text-red-600 transition-colors font-medium">會員列表</Link>
             <Link to="/join" className="flex items-center gap-1 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-red-700 shadow-md shadow-red-100 transition-all"><UserPlus size={16} /> 加入會員</Link>
@@ -74,6 +76,7 @@ const Header: React.FC = () => {
         <div className="sm:hidden bg-white border-t px-4 py-3 space-y-3 shadow-lg">
           <Link to="/" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">首頁</Link>
           <Link to="/about" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">關於我們</Link>
+          <Link to="/milestones" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">大事記</Link>
           <Link to="/activities" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">協會活動</Link>
           <Link to="/members" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">會員列表</Link>
           <Link to="/join" onClick={() => setIsOpen(false)} className="block text-red-600 font-bold">加入會員</Link>
@@ -152,6 +155,7 @@ const App: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [memberApplications, setMemberApplications] = useState<MemberApplication[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [clubActivities, setClubActivities] = useState<ClubActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
@@ -257,6 +261,7 @@ const App: React.FC = () => {
       const publicQueries = [
         supabase.from('activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
         supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
+        supabase.from('milestones').select('*').order('date', { ascending: false }),
       ];
 
       // 只有在確定有 currentUser 時才加入管理員查詢
@@ -274,6 +279,7 @@ const App: React.FC = () => {
       
       const actData = results[0].data;
       const memActData = results[1].data;
+      const milestoneData = results[2].data;
 
       // 處理公開資料
       if (actData && actData.length > 0) {
@@ -288,16 +294,17 @@ const App: React.FC = () => {
       }
 
       if (memActData) setMemberActivities(memActData.map((a: any) => ({ ...a, status: a.status || 'active' })));
+      if (milestoneData) setMilestones(milestoneData);
       
-      // 處理管理員資料 (索引從 2 開始)
-      if (currentUser && results.length > 2) {
-        const regData = results[2]?.data;
-        const memRegData = results[3]?.data;
-        const userData = results[4]?.data;
-        const couponData = results[5]?.data;
-        const applicationData = results[6]?.data;
-        const clubData = results[7]?.data;
-        const memberData = results[8]?.data;
+      // 處理管理員資料 (索引從 3 開始)
+      if (currentUser && results.length > 3) {
+        const regData = results[3]?.data;
+        const memRegData = results[4]?.data;
+        const userData = results[5]?.data;
+        const couponData = results[6]?.data;
+        const applicationData = results[7]?.data;
+        const clubData = results[8]?.data;
+        const memberData = results[9]?.data;
 
         if (regData) setRegistrations(regData);
         if (memRegData) setMemberRegistrations(memRegData);
@@ -521,6 +528,27 @@ const App: React.FC = () => {
     if (error) { console.error(error); fetchData(); }
   };
 
+  const handleAddMilestone = async (newMilestone: Milestone) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('milestones').insert([newMilestone]);
+    if (error) { console.error(error); alert('新增失敗'); }
+    fetchData();
+  };
+
+  const handleUpdateMilestone = async (updated: Milestone) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('milestones').update(updated).eq('id', updated.id);
+    if (error) { console.error(error); alert('更新失敗'); }
+    fetchData();
+  };
+
+  const handleDeleteMilestone = async (id: string | number) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('milestones').delete().eq('id', id);
+    if (error) { console.error(error); alert('刪除失敗'); }
+    fetchData();
+  };
+
   // User management (only for recording, not auth)
   const handleAddUser = async (newUser: AdminUser) => { if (!supabase) return; await supabase.from('admins').insert([newUser]); fetchData(); };
   const handleDeleteUser = async (id: string) => { if (!supabase) return; await supabase.from('admins').delete().eq('id', id); fetchData(); };
@@ -688,6 +716,7 @@ const App: React.FC = () => {
               <Route path="/pay-renewal/:id" element={<RenewalPayment />} />
               <Route path="/pay-activity/:id" element={<ActivityPayment />} />
               <Route path="/payment-result" element={<PaymentResult />} />
+              <Route path="/milestones" element={<MilestoneTimeline milestones={milestones} />} />
 
               <Route path="/admin/login" element={currentUser ? <Navigate to="/admin" /> : <LoginPage />} />
               
@@ -708,6 +737,7 @@ const App: React.FC = () => {
                     users={users}
                     members={members}
                     memberApplications={memberApplications}
+                    milestones={milestones}
                     coupons={coupons}
                     onUpdateActivity={handleUpdateActivity}
                     onAddActivity={handleAddActivity}
@@ -734,6 +764,9 @@ const App: React.FC = () => {
                     onGenerateCoupons={handleGenerateCoupons}
                     onApproveMemberApplication={handleApproveMemberApplication}
                     onDeleteMemberApplication={handleDeleteMemberApplication}
+                    onAddMilestone={handleAddMilestone}
+                    onUpdateMilestone={handleUpdateMilestone}
+                    onDeleteMilestone={handleDeleteMilestone}
                   />
                 ) : (
                   <Navigate to="/admin/login" />

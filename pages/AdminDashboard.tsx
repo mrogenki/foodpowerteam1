@@ -9,7 +9,7 @@ import MemberBirthdayManager from './MemberBirthdayManager';
 import ReceiptManager from './ReceiptManager';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 import BlockEditor from '../components/BlockEditor';
-import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity } from '../types';
+import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity, Milestone } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
 interface AdminDashboardProps {
@@ -22,6 +22,7 @@ interface AdminDashboardProps {
   users: AdminUser[];
   members: Member[];
   memberApplications: MemberApplication[]; // 新增：會員申請列表
+  milestones: Milestone[];
   coupons: Coupon[];
   clubActivities: ClubActivity[];
   onUpdateActivity: (act: Activity) => void;
@@ -49,6 +50,9 @@ interface AdminDashboardProps {
   onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[], sendEmail: boolean) => void;
   onApproveMemberApplication: (app: MemberApplication) => void; // 新增：核准
   onDeleteMemberApplication: (id: string | number) => void; // 新增：拒絕
+  onAddMilestone: (milestone: Milestone) => void;
+  onUpdateMilestone: (milestone: Milestone) => void;
+  onDeleteMilestone: (id: string | number) => void;
 }
 
 // 輔助函式：翻譯藍新付款方式
@@ -167,6 +171,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
           <Link to="/admin/activities" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/activities') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Calendar size={20} /><span>一般活動管理</span></Link>
           <Link to="/admin/member-activities" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-activities') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Calendar size={20} /><span>會員活動管理</span></Link>
           <Link to="/admin/club" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/club') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>俱樂部管理</span></Link>
+          <Link to="/admin/milestones" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/milestones') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><History size={20} /><span>大事記管理</span></Link>
 
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">會員/營運</div>
           <Link to="/admin/members" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/members') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Building2 size={20} /><span>會員資料庫</span></Link>
@@ -2314,6 +2319,112 @@ const CouponManager: React.FC<{
   );
 };
 
+const MilestoneManager: React.FC<{
+  milestones: Milestone[];
+  onAdd: (m: Milestone) => void;
+  onUpdate: (m: Milestone) => void;
+  onDelete: (id: string | number) => void;
+  onUploadImage: (file: File) => Promise<string>;
+}> = ({ milestones, onAdd, onUpdate, onDelete, onUploadImage }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentMilestone, setCurrentMilestone] = useState<Partial<Milestone>>({});
+  const [search, setSearch] = useState('');
+
+  const filtered = milestones.filter(m => m.title.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSave = () => {
+    if (!currentMilestone.title || !currentMilestone.date) {
+      alert('請填寫標題與日期');
+      return;
+    }
+    if (currentMilestone.id) {
+      onUpdate(currentMilestone as Milestone);
+    } else {
+      onAdd({ ...currentMilestone, id: crypto.randomUUID() } as Milestone);
+    }
+    setIsEditing(false);
+    setCurrentMilestone({});
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const url = await onUploadImage(e.target.files[0]);
+      if (url) setCurrentMilestone({ ...currentMilestone, picture: url });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-900">大事記管理</h2>
+        <button onClick={() => { setIsEditing(true); setCurrentMilestone({ date: new Date().toISOString().split('T')[0] }); }} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-all">
+          <Plus size={18} /> 新增記錄
+        </button>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
+        <Search className="text-gray-400" size={20} />
+        <input type="text" placeholder="搜尋標題..." className="flex-grow outline-none text-gray-700" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map(m => (
+          <div key={m.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+            <div className="relative h-40 bg-gray-100">
+              {m.picture ? (
+                <img src={m.picture} alt={m.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon size={40} /></div>
+              )}
+              <div className="absolute top-3 right-3 flex gap-2">
+                <button onClick={() => { setIsEditing(true); setCurrentMilestone(m); }} className="p-2 bg-white/90 backdrop-blur rounded-lg shadow-sm hover:bg-white transition-colors text-gray-600"><Edit2 size={16} /></button>
+                <button onClick={() => { if (confirm('確定刪除此記錄？')) onDelete(m.id); }} className="p-2 bg-white/90 backdrop-blur rounded-lg shadow-sm hover:bg-white transition-colors text-red-500"><Trash2 size={16} /></button>
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="flex items-center gap-2 text-red-600 font-bold text-xs mb-1"><Calendar size={14} /> {m.date}</div>
+              <h3 className="font-bold text-gray-900 line-clamp-1">{m.title}</h3>
+              {m.description && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{m.description}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-900">{currentMilestone.id ? '編輯記錄' : '新增記錄'}</h3>
+              <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div><label className="block text-sm font-bold text-gray-700 mb-1">標題</label><input type="text" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentMilestone.title || ''} onChange={e => setCurrentMilestone({ ...currentMilestone, title: e.target.value })} /></div>
+              <div><label className="block text-sm font-bold text-gray-700 mb-1">日期</label><input type="date" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentMilestone.date || ''} onChange={e => setCurrentMilestone({ ...currentMilestone, date: e.target.value })} /></div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">圖片</label>
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border">
+                    {currentMilestone.picture ? <img src={currentMilestone.picture} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon size={24} /></div>}
+                  </div>
+                  <label className="cursor-pointer bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-200 flex items-center gap-2 text-sm">
+                    <UploadCloud size={18} /> 上傳圖片
+                    <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                  </label>
+                </div>
+              </div>
+              <div><label className="block text-sm font-bold text-gray-700 mb-1">描述 (選填)</label><textarea className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500 min-h-[100px]" value={currentMilestone.description || ''} onChange={e => setCurrentMilestone({ ...currentMilestone, description: e.target.value })} /></div>
+            </div>
+            <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
+              <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-lg">取消</button>
+              <button onClick={handleSave} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow-lg shadow-red-100">儲存</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const UserManager: React.FC<{
   users: AdminUser[];
   onAdd: (u: AdminUser) => void;
@@ -2373,6 +2484,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           
           <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
           <Route path="/club" element={<ClubManager activities={props.clubActivities} onUpdate={props.onUpdateClubActivity} onAdd={props.onAddClubActivity} onDelete={props.onDeleteClubActivity} onUploadImage={props.onUploadImage} />} />
+          <Route path="/milestones" element={<MilestoneManager milestones={props.milestones} onAdd={props.onAddMilestone} onUpdate={props.onUpdateMilestone} onDelete={props.onDeleteMilestone} onUploadImage={props.onUploadImage} />} />
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
           <Route path="/receipts" element={<ReceiptManager />} />
