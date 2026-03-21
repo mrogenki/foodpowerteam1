@@ -243,3 +243,18 @@ export interface Milestone {
   description?: string;
   created_at?: string;
 }
+
+export enum FinancialType {
+  INCOME = 'income',
+  EXPENSE = 'expense',
+}
+
+export interface FinancialRecord {
+  id: string | number;
+  date: string;
+  type: FinancialType;
+  category: string;
+  amount: number;
+  description?: string;
+  created_at?: string;
+}

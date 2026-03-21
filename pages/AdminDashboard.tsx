@@ -9,7 +9,7 @@ import MemberBirthdayManager from './MemberBirthdayManager';
 import ReceiptManager from './ReceiptManager';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 import BlockEditor from '../components/BlockEditor';
-import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity, Milestone } from '../types';
+import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity, Milestone, FinancialType, FinancialRecord } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
 interface AdminDashboardProps {
@@ -53,6 +53,10 @@ interface AdminDashboardProps {
   onAddMilestone: (milestone: Milestone) => void;
   onUpdateMilestone: (milestone: Milestone) => void;
   onDeleteMilestone: (id: string | number) => void;
+  financialRecords: FinancialRecord[];
+  onAddFinancialRecord: (record: FinancialRecord) => void;
+  onUpdateFinancialRecord: (record: FinancialRecord) => void;
+  onDeleteFinancialRecord: (id: string | number) => void;
 }
 
 // 輔助函式：翻譯藍新付款方式
@@ -172,6 +176,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
           <Link to="/admin/member-activities" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-activities') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Calendar size={20} /><span>會員活動管理</span></Link>
           <Link to="/admin/club" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/club') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>俱樂部管理</span></Link>
           <Link to="/admin/milestones" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/milestones') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><History size={20} /><span>大事記管理</span></Link>
+          <Link to="/admin/finances" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/finances') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><DollarSign size={20} /><span>收支管理</span></Link>
 
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">會員/營運</div>
           <Link to="/admin/members" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/members') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Building2 size={20} /><span>會員資料庫</span></Link>
@@ -2319,6 +2324,159 @@ const CouponManager: React.FC<{
   );
 };
 
+const FinancialManager: React.FC<{
+  records: FinancialRecord[];
+  onAdd: (r: FinancialRecord) => void;
+  onUpdate: (r: FinancialRecord) => void;
+  onDelete: (id: string | number) => void;
+}> = ({ records, onAdd, onUpdate, onDelete }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentRecord, setCurrentRecord] = useState<Partial<FinancialRecord>>({});
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+
+  const filteredRecords = records.filter(r => r.date.startsWith(selectedMonth));
+
+  const monthlySummary = useMemo(() => {
+    const income = filteredRecords.filter(r => r.type === FinancialType.INCOME).reduce((sum, r) => sum + r.amount, 0);
+    const expense = filteredRecords.filter(r => r.type === FinancialType.EXPENSE).reduce((sum, r) => sum + r.amount, 0);
+    return { income, expense, profit: income - expense };
+  }, [filteredRecords]);
+
+  const handleSave = () => {
+    if (!currentRecord.date || !currentRecord.type || !currentRecord.category || !currentRecord.amount) {
+      alert('請填寫完整資訊');
+      return;
+    }
+    if (currentRecord.id) {
+      onUpdate(currentRecord as FinancialRecord);
+    } else {
+      onAdd({ ...currentRecord, id: crypto.randomUUID() } as FinancialRecord);
+    }
+    setIsEditing(false);
+    setCurrentRecord({});
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-900">收支管理</h2>
+        <div className="flex gap-4">
+          <input 
+            type="month" 
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+          />
+          <button onClick={() => { setIsEditing(true); setCurrentRecord({ date: new Date().toISOString().split('T')[0], type: FinancialType.INCOME }); }} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-all">
+            <Plus size={18} /> 新增記錄
+          </button>
+        </div>
+      </div>
+
+      {/* Monthly P&L Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-sm text-gray-500 font-bold mb-1">本月總收入</p>
+          <p className="text-2xl font-bold text-emerald-600">${monthlySummary.income.toLocaleString()}</p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-sm text-gray-500 font-bold mb-1">本月總支出</p>
+          <p className="text-2xl font-bold text-red-600">${monthlySummary.expense.toLocaleString()}</p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-sm text-gray-500 font-bold mb-1">本月淨損益</p>
+          <p className={`text-2xl font-bold ${monthlySummary.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+            ${monthlySummary.profit.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      {/* Records Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="p-4">日期</th>
+              <th className="p-4">類型</th>
+              <th className="p-4">類別</th>
+              <th className="p-4">金額</th>
+              <th className="p-4">描述</th>
+              <th className="p-4">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRecords.length === 0 ? (
+              <tr><td colSpan={6} className="p-8 text-center text-gray-400">本月尚無記錄</td></tr>
+            ) : (
+              filteredRecords.map(r => (
+                <tr key={r.id} className="border-t hover:bg-gray-50 transition-colors">
+                  <td className="p-4">{r.date}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${r.type === FinancialType.INCOME ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      {r.type === FinancialType.INCOME ? '收入' : '支出'}
+                    </span>
+                  </td>
+                  <td className="p-4">{r.category}</td>
+                  <td className="p-4 font-bold">${r.amount.toLocaleString()}</td>
+                  <td className="p-4 text-gray-500 truncate max-w-[200px]">{r.description || '-'}</td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setIsEditing(true); setCurrentRecord(r); }} className="p-1 text-gray-400 hover:text-red-600"><Edit2 size={16} /></button>
+                      <button onClick={() => { if (confirm('確定刪除此記錄？')) onDelete(r.id); }} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-900">{currentRecord.id ? '編輯收支' : '新增收支'}</h3>
+              <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">日期</label>
+                  <input type="date" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentRecord.date || ''} onChange={e => setCurrentRecord({ ...currentRecord, date: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">類型</label>
+                  <select className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentRecord.type || ''} onChange={e => setCurrentRecord({ ...currentRecord, type: e.target.value as FinancialType })}>
+                    <option value={FinancialType.INCOME}>收入</option>
+                    <option value={FinancialType.EXPENSE}>支出</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">類別</label>
+                <input type="text" placeholder="例如：會費、場地費、餐費..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentRecord.category || ''} onChange={e => setCurrentRecord({ ...currentRecord, category: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">金額</label>
+                <input type="number" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentRecord.amount || ''} onChange={e => setCurrentRecord({ ...currentRecord, amount: parseInt(e.target.value) })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">描述 (選填)</label>
+                <textarea className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500 min-h-[80px]" value={currentRecord.description || ''} onChange={e => setCurrentRecord({ ...currentRecord, description: e.target.value })} />
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
+              <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-lg">取消</button>
+              <button onClick={handleSave} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow-lg shadow-red-100">儲存</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MilestoneManager: React.FC<{
   milestones: Milestone[];
   onAdd: (m: Milestone) => void;
@@ -2485,6 +2643,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
           <Route path="/club" element={<ClubManager activities={props.clubActivities} onUpdate={props.onUpdateClubActivity} onAdd={props.onAddClubActivity} onDelete={props.onDeleteClubActivity} onUploadImage={props.onUploadImage} />} />
           <Route path="/milestones" element={<MilestoneManager milestones={props.milestones} onAdd={props.onAddMilestone} onUpdate={props.onUpdateMilestone} onDelete={props.onDeleteMilestone} onUploadImage={props.onUploadImage} />} />
+          <Route path="/finances" element={<FinancialManager records={props.financialRecords} onAdd={props.onAddFinancialRecord} onUpdate={props.onUpdateFinancialRecord} onDelete={props.onDeleteFinancialRecord} />} />
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
           <Route path="/receipts" element={<ReceiptManager />} />

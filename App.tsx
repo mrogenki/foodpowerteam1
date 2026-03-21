@@ -20,7 +20,7 @@ const AboutUs = lazy(() => import('./pages/AboutUs'));
 const MilestoneTimeline = lazy(() => import('./pages/MilestoneTimeline'));
 
 import 'react-quill-new/dist/quill.snow.css';
-import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity, Milestone } from './types';
+import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity, Milestone, FinancialRecord } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
 import { supabase } from './utils/supabaseClient';
@@ -156,6 +156,7 @@ const App: React.FC = () => {
   const [memberApplications, setMemberApplications] = useState<MemberApplication[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [clubActivities, setClubActivities] = useState<ClubActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
@@ -273,6 +274,7 @@ const App: React.FC = () => {
         supabase.from('member_applications').select('*').order('created_at', { ascending: false }),
         supabase.from('club_activities').select('*').order('date', { ascending: true }),
         supabase.from('members').select('*'),
+        supabase.from('financial_records').select('*').order('date', { ascending: false }),
       ] : [];
 
       const results = await Promise.all([...publicQueries, ...adminQueries]);
@@ -305,6 +307,7 @@ const App: React.FC = () => {
         const applicationData = results[7]?.data;
         const clubData = results[8]?.data;
         const memberData = results[9]?.data;
+        const financialData = results[10]?.data;
 
         if (regData) setRegistrations(regData);
         if (memRegData) setMemberRegistrations(memRegData);
@@ -312,6 +315,7 @@ const App: React.FC = () => {
         if (couponData) setCoupons(couponData as Coupon[]);
         if (applicationData) setMemberApplications(applicationData as MemberApplication[]);
         if (clubData) setClubActivities(clubData as ClubActivity[]);
+        if (financialData) setFinancialRecords(financialData as FinancialRecord[]);
         
         if (memberData && memberData.length > 0) {
           const sortedMembers = memberData.sort((a: any, b: any) => {
@@ -549,6 +553,27 @@ const App: React.FC = () => {
     fetchData();
   };
 
+  const handleAddFinancialRecord = async (newRecord: FinancialRecord) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('financial_records').insert([newRecord]);
+    if (error) { console.error(error); alert('新增失敗'); }
+    fetchData();
+  };
+
+  const handleUpdateFinancialRecord = async (updated: FinancialRecord) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('financial_records').update(updated).eq('id', updated.id);
+    if (error) { console.error(error); alert('更新失敗'); }
+    fetchData();
+  };
+
+  const handleDeleteFinancialRecord = async (id: string | number) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('financial_records').delete().eq('id', id);
+    if (error) { console.error(error); alert('刪除失敗'); }
+    fetchData();
+  };
+
   // User management (only for recording, not auth)
   const handleAddUser = async (newUser: AdminUser) => { if (!supabase) return; await supabase.from('admins').insert([newUser]); fetchData(); };
   const handleDeleteUser = async (id: string) => { if (!supabase) return; await supabase.from('admins').delete().eq('id', id); fetchData(); };
@@ -767,6 +792,10 @@ const App: React.FC = () => {
                     onAddMilestone={handleAddMilestone}
                     onUpdateMilestone={handleUpdateMilestone}
                     onDeleteMilestone={handleDeleteMilestone}
+                    financialRecords={financialRecords}
+                    onAddFinancialRecord={handleAddFinancialRecord}
+                    onUpdateFinancialRecord={handleUpdateFinancialRecord}
+                    onDeleteFinancialRecord={handleDeleteFinancialRecord}
                   />
                 ) : (
                   <Navigate to="/admin/login" />
