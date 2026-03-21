@@ -497,6 +497,23 @@ const App: React.FC = () => {
     const { error } = await supabase.from('member_registrations').update(updated).eq('id', updated.id);
     if (error) { console.error(error); fetchData(); alert('更新失敗'); }
   };
+
+  const handleAddRegistrations = async (newRegs: Registration[]) => {
+    if (!supabase) return;
+    setLoading(true);
+    const { error } = await supabase.from('registrations').insert(newRegs);
+    if (!error) { alert(`成功匯入 ${newRegs.length} 筆報名資料`); await fetchData(); } else alert('匯入失敗：' + error.message);
+    setLoading(false);
+  };
+
+  const handleAddMemberRegistrations = async (newRegs: MemberRegistration[]) => {
+    if (!supabase) return;
+    setLoading(true);
+    const { error } = await supabase.from('member_registrations').insert(newRegs);
+    if (!error) { alert(`成功匯入 ${newRegs.length} 筆報名資料`); await fetchData(); } else alert('匯入失敗：' + error.message);
+    setLoading(false);
+  };
+
   const handleDeleteMemberRegistration = async (id: string | number) => {
     setMemberRegistrations(prev => prev.filter(r => r.id !== id));
     if (!supabase) return;
@@ -705,6 +722,8 @@ const App: React.FC = () => {
                     onDeleteRegistration={handleDeleteRegistration}
                     onUpdateMemberRegistration={handleUpdateMemberRegistration}
                     onDeleteMemberRegistration={handleDeleteMemberRegistration}
+                    onAddRegistrations={handleAddRegistrations}
+                    onAddMemberRegistrations={handleAddMemberRegistrations}
                     onAddUser={handleAddUser}
                     onDeleteUser={handleDeleteUser}
                     onAddMember={handleAddMember}

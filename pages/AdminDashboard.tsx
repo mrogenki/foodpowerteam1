@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Edit2, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -37,6 +37,8 @@ interface AdminDashboardProps {
   onDeleteRegistration: (id: string | number) => void;
   onUpdateMemberRegistration: (reg: MemberRegistration) => void;
   onDeleteMemberRegistration: (id: string | number) => void;
+  onAddRegistrations?: (regs: Registration[]) => void;
+  onAddMemberRegistrations?: (regs: MemberRegistration[]) => void;
   onAddUser: (user: AdminUser) => void;
   onDeleteUser: (id: string) => void;
   onAddMember: (member: Member) => void;
@@ -921,14 +923,17 @@ const ActivityManager: React.FC<{
   onDelete: (id: string | number) => void;
   onUpdateReg: (reg: any) => void;
   onDeleteReg: (id: string | number) => void;
+  onAddRegs?: (regs: any[]) => void;
   onUploadImage: (file: File) => Promise<string>;
   members?: Member[];
-}> = ({ type, activities, registrations, onAdd, onUpdate, onDelete, onUpdateReg, onDeleteReg, onUploadImage, members }) => {
+}> = ({ type, activities, registrations, onAdd, onUpdate, onDelete, onUpdateReg, onDeleteReg, onAddRegs, onUploadImage, members }) => {
   const [view, setView] = useState<'list' | 'edit' | 'registrations'>('list');
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [regSearch, setRegSearch] = useState('');
   const [isSendingTelegram, setIsSendingTelegram] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [receiptMap, setReceiptMap] = useState<Record<string, string>>({});
 
@@ -1061,6 +1066,61 @@ const ActivityManager: React.FC<{
      if (reg.payment_status === PaymentStatus.REFUNDED) { if (confirm("是否將此【已退費】訂單重新開啟為【待付款】？")) { onUpdateReg({ ...reg, payment_status: PaymentStatus.PENDING }); } return; }
   };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentActivity || !onAddRegs) return;
+
+    setIsImporting(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+          if (data.length === 0) {
+            alert('檔案中沒有資料');
+            return;
+          }
+
+          const newRegs = data.map(row => ({
+            id: Date.now() + Math.random(),
+            activityId: currentActivity.id,
+            name: row['姓名'] || row['Name'] || '',
+            phone: String(row['手機號碼'] || row['電話'] || row['Phone'] || ''),
+            email: row['電子郵件'] || row['Email'] || '',
+            company: row['公司/品牌名稱'] || row['公司名稱'] || row['公司'] || row['Company'] || '',
+            company_title: row['公司抬頭 (收據用)'] || row['公司抬頭'] || '',
+            title: row['職務'] || row['職稱'] || row['Title'] || '',
+            tax_id: String(row['統一編號 (收據用)'] || row['統一編號'] || row['統編'] || row['TaxID'] || ''),
+            referrer: row['引薦人 (選填)'] || row['引薦人'] || row['Referrer'] || '',
+            payment_status: PaymentStatus.PAID, // 批量匯入預設為已付款
+            payment_method: 'manual_admin',
+            paid_amount: Number(row['報名金額'] || row['金額'] || row['Amount'] || currentActivity.price || 0),
+            notes: row['備註（選填）'] || row['備註'] || row['Notes'] || '批量匯入',
+            created_at: new Date().toISOString()
+          }));
+
+          if (confirm(`確定要匯入 ${newRegs.length} 筆報名資料嗎？`)) {
+            await onAddRegs(newRegs);
+          }
+        } catch (err: any) {
+          alert('解析檔案失敗：' + err.message);
+        } finally {
+          setIsImporting(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsBinaryString(file);
+    } catch (err: any) {
+      alert('讀取檔案失敗：' + err.message);
+      setIsImporting(false);
+    }
+  };
+
   if (view === 'registrations' && currentActivity) {
     return (
       <div className="space-y-6 animate-in slide-in-from-right duration-300">
@@ -1071,6 +1131,21 @@ const ActivityManager: React.FC<{
               {isSendingTelegram ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} 
               傳送名單至 Telegram
             </button>
+            <button onClick={() => {
+              const template = [['姓名', '手機號碼', '電子郵件', '公司/品牌名稱', '公司抬頭 (收據用)', '統一編號 (收據用)', '職務', '引薦人 (選填)', '報名金額', '備註（選填）']];
+              const ws = XLSX.utils.aoa_to_sheet(template);
+              const wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, ws, "匯入範本");
+              XLSX.writeFile(wb, "活動報名匯入範本.xlsx");
+            }} className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-bold text-sm">
+              <Download size={16} />
+              下載範本
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-sm disabled:opacity-50">
+              {isImporting ? <Loader2 size={16} className="animate-spin" /> : <FileUp size={16} />}
+              批量匯入
+            </button>
+            <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx, .xls, .csv" className="hidden" />
             <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm"><FileDown size={16} /> 匯出名單</button>
           </div>
         </div>
@@ -2293,8 +2368,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <Route path="/check-in" element={<ActivityCheckInManager type="general" activities={props.activities} registrations={props.registrations} onUpdateReg={props.onUpdateRegistration} members={props.members} />} />
           <Route path="/member-check-in" element={<ActivityCheckInManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onUpdateReg={props.onUpdateMemberRegistration} members={props.members} />} />
           
-          <Route path="/activities" element={<ActivityManager type="general" activities={props.activities} registrations={props.registrations} onAdd={props.onAddActivity} onUpdate={props.onUpdateActivity} onDelete={props.onDeleteActivity} onUpdateReg={props.onUpdateRegistration} onDeleteReg={props.onDeleteRegistration} onUploadImage={props.onUploadImage} />} />
-          <Route path="/member-activities" element={<ActivityManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUpdateReg={props.onUpdateMemberRegistration} onDeleteReg={props.onDeleteMemberRegistration} onUploadImage={props.onUploadImage} members={props.members} />} />
+          <Route path="/activities" element={<ActivityManager type="general" activities={props.activities} registrations={props.registrations} onAdd={props.onAddActivity} onUpdate={props.onUpdateActivity} onDelete={props.onDeleteActivity} onUpdateReg={props.onUpdateRegistration} onDeleteReg={props.onDeleteRegistration} onAddRegs={props.onAddRegistrations} onUploadImage={props.onUploadImage} />} />
+          <Route path="/member-activities" element={<ActivityManager type="member" activities={props.memberActivities} registrations={props.memberRegistrations} onAdd={props.onAddMemberActivity} onUpdate={props.onUpdateMemberActivity} onDelete={props.onDeleteMemberActivity} onUpdateReg={props.onUpdateMemberRegistration} onDeleteReg={props.onDeleteMemberRegistration} onAddRegs={props.onAddMemberRegistrations} onUploadImage={props.onUploadImage} members={props.members} />} />
           
           <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
           <Route path="/club" element={<ClubManager activities={props.clubActivities} onUpdate={props.onUpdateClubActivity} onAdd={props.onAddClubActivity} onDelete={props.onDeleteClubActivity} onUploadImage={props.onUploadImage} />} />
