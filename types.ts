@@ -256,6 +256,7 @@ export interface FinancialRecord {
   category: string;
   amount: number;
   invoice_no?: string;
+  party?: string;
   description?: string;
   created_at?: string;
 }
