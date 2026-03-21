@@ -636,7 +636,7 @@ const MemberApplicationManager: React.FC<{
         to_email: app.email,
         reply_to: app.email,
         phone: app.phone,
-        company: app.brand_name || app.company_title,
+        company: app.company_title || app.brand_name || '',
         job_title: app.job_title,
         activity_title: '【食在力量】會員入會繳費通知',
         activity_date: new Date().toISOString().slice(0, 10),
@@ -691,7 +691,7 @@ const MemberApplicationManager: React.FC<{
                   </td>
                   <td className="p-4 text-gray-500">{app.referrer || '-'}</td>
                   <td className="p-4">
-                    <div className="font-bold">{app.brand_name || app.company_title}</div>
+                    <div className="font-bold">{app.company_title || app.brand_name}</div>
                     <div className="text-xs text-gray-500">{app.job_title}</div>
                   </td>
                   <td className="p-4">
@@ -756,7 +756,7 @@ const MemberApplicationManager: React.FC<{
                         <button
                           onClick={() => setReceiptData({
                             payerName: app.name,
-                            companyName: app.company_title || app.brand_name || '',
+                            companyName: app.company_title || '',
                             taxId: app.tax_id || '',
                             amount: app.paid_amount || 5000,
                             paymentMethod: translatePaymentMethod(app.payment_method),
@@ -992,7 +992,7 @@ const ActivityManager: React.FC<{
       sortedRegs.forEach((r: any, index: number) => {
         const member = members?.find(m => String(m.id) === String(r.memberId));
         const name = r.name || r.member_name || member?.name || '';
-        const company = r.company || member?.brand_name || member?.company || '';
+        const company = r.company_title || r.company || member?.company_title || member?.company || '';
         const isPaid = r.payment_status === PaymentStatus.PAID;
         const statusText = isPaid ? '✅已付款' : '❌待付款';
         
@@ -1030,7 +1030,7 @@ const ActivityManager: React.FC<{
       const phone = r.phone || member?.phone || '';
       const email = r.email || member?.email || '';
       
-      const company = r.company || member?.brand_name || member?.company || '';
+      const company = r.company_title || r.company || member?.company_title || member?.company || '';
       const title = r.title || member?.job_title || '';
       const companyTitle = company && title ? `${company}/${title}` : (company || title || '');
 
@@ -1040,6 +1040,7 @@ const ActivityManager: React.FC<{
         '電話': phone,
         'Email': email,
         '單位/職稱': companyTitle,
+        '統一編號': r.tax_id || member?.tax_id || '',
         '報到狀態': r.check_in_status ? '已報到' : '未報到',
         '付款狀態': r.payment_status === PaymentStatus.PAID ? '已付款' : (r.payment_status === 'refunded' ? '已退費' : '待付款'),
         '付款金額': r.paid_amount,
@@ -1085,7 +1086,7 @@ const ActivityManager: React.FC<{
                   const member = members?.find(m => String(m.id) === String(reg.memberId));
                   const name = reg.name || reg.member_name || member?.name || '';
                   const phone = reg.phone || member?.phone || '';
-                  const company = reg.company || member?.brand_name || member?.company || '';
+                  const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
                   const title = reg.title || member?.job_title || '';
                   
                   return (
@@ -1362,7 +1363,7 @@ const ActivityCheckInManager: React.FC<{
         const member = members?.find(m => String(m.id) === String(reg.memberId));
         const name = reg.name || reg.member_name || member?.name || '';
         const phone = reg.phone || member?.phone || '';
-        const company = reg.company || member?.brand_name || member?.company || '';
+        const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
         const title = reg.title || member?.job_title || '';
         
         return (<tr key={reg.id} className={`hover:bg-gray-50 transition-colors ${reg.check_in_status ? 'bg-green-50/30' : ''} ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}><td className="p-4"><div className={`font-bold text-lg flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{name}{reg.payment_status === 'refunded' && <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">已退費</span>}</div><div className="text-sm text-gray-500">{phone}</div>{(company || title) && <div className="text-xs text-gray-500 mt-0.5">{company}{company && title ? ' / ' : ''}{title}</div>}</td><td className="p-4"><div className="text-xs text-gray-600 max-w-[200px] space-y-2">{type !== 'member' && reg.referrer && <div><span className="font-bold text-gray-400">引薦:</span> {reg.referrer}</div>}<div><span className="font-bold text-gray-400">備註:</span> <NotesInput value={reg.notes} onSave={(val) => onUpdateReg({...reg, notes: val})} /></div></div></td><td className="p-4"><button onClick={() => onUpdateReg({...reg, check_in_status: !reg.check_in_status})} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${reg.check_in_status ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{reg.check_in_status ? <CheckCircle size={20}/> : <XCircle size={20}/>} {reg.check_in_status ? '已報到' : '未報到'}</button></td><td className="p-4"><div className="flex flex-col gap-2 items-start"><button onClick={() => handlePaymentStatusToggle(reg)} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${reg.payment_status === PaymentStatus.PAID ? 'bg-green-100 text-green-700 hover:bg-green-200' : (reg.payment_status === 'refunded' ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200')}`}>{reg.payment_status === PaymentStatus.PAID ? '已付款' : (reg.payment_status === 'refunded' ? '已退費' : '待付款')}{reg.payment_status === PaymentStatus.PAID && <RefreshCcw size={10} className="ml-1 opacity-50"/>}{reg.payment_status === 'refunded' && <Ban size={10} className="ml-1 opacity-50"/>}</button>{(reg.payment_status === PaymentStatus.PENDING || !reg.payment_status) && (<button onClick={() => handleResendPaymentLink(reg)} disabled={sendingEmail.includes(String(reg.id))} className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 disabled:opacity-50">{sendingEmail.includes(String(reg.id)) ? <Loader2 size={10} className="animate-spin"/> : <Send size={10}/>} 重寄連結</button>)}</div></td><td className="p-4"><span className="text-xs text-gray-500">{translatePaymentMethod(reg.payment_method)}</span></td><td className="p-4 font-mono text-gray-600">NT$ {reg.paid_amount}</td><td className="p-4 text-right">
@@ -1911,7 +1912,7 @@ const MemberManager: React.FC<{ members: Member[]; onAdd: (m: Member) => void; o
            </div>
        </div>
        )}
-       <div className="bg-white p-6 rounded-2xl border border-gray-100"><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋會員 (姓名、編號、電話)..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"/></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse text-sm"><thead><tr className="bg-gray-50 text-gray-500"><th className="p-3">編號</th><th className="p-3">姓名</th><th className="p-3">品牌/職稱</th><th className="p-3">效期</th><th className="p-3">狀態</th><th className="p-3">操作</th></tr></thead><tbody className="divide-y">{filtered.map(m => { const isExpired = m.membership_expiry_date && m.membership_expiry_date < new Date().toISOString().slice(0, 10); const displayStatus = (m.status === 'active' && !isExpired) ? 'active' : 'inactive'; return (<tr key={m.id} className="hover:bg-gray-50"><td className="p-3 font-mono text-gray-500">{(m.member_no || '').toString().padStart(5, '0')}</td><td className="p-3 font-bold">{m.name}</td><td className="p-3"><div>{m.brand_name || m.company}</div><div className="text-xs text-gray-400">{m.job_title}</div></td><td className="p-3">{m.membership_expiry_date || '-'}</td><td className="p-3">{displayStatus === 'active' ? (<span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">有效</span>) : (<span className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-xs font-bold">失效</span>)}</td><td className="p-3 flex gap-2"><button onClick={() => handleEdit(m)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Edit size={16}/></button><button onClick={() => {if(confirm('確定刪除此會員？')) onDelete(m.id)}} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></td></tr>); })}{filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-400">無相符資料</td></tr>}</tbody></table></div></div>
+       <div className="bg-white p-6 rounded-2xl border border-gray-100"><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋會員 (姓名、編號、電話)..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"/></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse text-sm"><thead><tr className="bg-gray-50 text-gray-500"><th className="p-3">編號</th><th className="p-3">姓名</th><th className="p-3">品牌/職稱</th><th className="p-3">效期</th><th className="p-3">狀態</th><th className="p-3">操作</th></tr></thead><tbody className="divide-y">{filtered.map(m => { const isExpired = m.membership_expiry_date && m.membership_expiry_date < new Date().toISOString().slice(0, 10); const displayStatus = (m.status === 'active' && !isExpired) ? 'active' : 'inactive'; return (<tr key={m.id} className="hover:bg-gray-50"><td className="p-3 font-mono text-gray-500">{(m.member_no || '').toString().padStart(5, '0')}</td><td className="p-3 font-bold">{m.name}</td><td className="p-3"><div>{m.company_title || m.brand_name || m.company}</div><div className="text-xs text-gray-400">{m.job_title}</div></td><td className="p-3">{m.membership_expiry_date || '-'}</td><td className="p-3">{displayStatus === 'active' ? (<span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">有效</span>) : (<span className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-xs font-bold">失效</span>)}</td><td className="p-3 flex gap-2"><button onClick={() => handleEdit(m)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Edit size={16}/></button><button onClick={() => {if(confirm('確定刪除此會員？')) onDelete(m.id)}} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></td></tr>); })}{filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-400">無相符資料</td></tr>}</tbody></table></div></div>
     </div>
   );
 };

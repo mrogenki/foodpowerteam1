@@ -45,6 +45,8 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     phone: '',
     email: '',
     company: '',
+    company_title: '',
+    tax_id: '',
     title: '',
     referrer: '',
     notes: '',
@@ -133,7 +135,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       name: member.name,
       phone: member.phone || '',
       email: member.email || '',
-      company: member.company_title || member.brand_name || '',
+      company: member.brand_name || member.company || '',
+      company_title: member.company_title || '',
+      tax_id: member.tax_id || '',
       title: member.job_title || '',
       referrer: member.referrer || '',
       notes: '',
@@ -248,6 +252,8 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
           phone: formData.phone,
           email: formData.email,
           company: formData.company,
+          company_title: formData.company_title,
+          tax_id: formData.tax_id,
           title: formData.title,
           referrer: formData.referrer,
           notes: formData.notes,
@@ -457,6 +463,12 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">電子郵件</label><input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="example@email.com" readOnly={props.type === 'member'} /></div>
                   
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">公司/品牌名稱</label><input required type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的公司名稱" readOnly={props.type === 'member'} /></div>
+                  
+                  {/* 收據相關欄位 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-bold text-gray-700 mb-2">公司抬頭 (收據用)</label><input type="text" value={formData.company_title} onChange={e => setFormData({...formData, company_title: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="若需開立收據請填寫" readOnly={props.type === 'member'} /></div>
+                    <div><label className="block text-sm font-bold text-gray-700 mb-2">統一編號 (選填)</label><input type="text" value={formData.tax_id} onChange={e => setFormData({...formData, tax_id: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="8位數字" readOnly={props.type === 'member'} /></div>
+                  </div>
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">職務</label><input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="您的目前職位" readOnly={props.type === 'member'} /></div>
                   <div><label className="block text-sm font-bold text-gray-700 mb-2">引薦人 (選填)</label><input type="text" value={formData.referrer} onChange={e => setFormData({...formData, referrer: e.target.value})} className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${props.type === 'member' ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-white border-gray-200 focus:ring-2 focus:ring-red-500'}`} placeholder="引薦您的夥伴姓名" readOnly={props.type === 'member'} /></div>
                   

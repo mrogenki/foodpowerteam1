@@ -82,7 +82,7 @@ const MemberRenewalManager: React.FC = () => {
         member_no: item.member?.member_no || '---',
         member_email: item.member?.email,
         member_tax_id: item.member?.tax_id || '',
-        member_company: item.member?.company_title || item.member?.brand_name || '',
+        member_company: item.member?.company_title || '',
         receipt_status: item.merchant_order_no ? receiptMap[item.merchant_order_no] : undefined
       }));
 

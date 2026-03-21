@@ -65,6 +65,8 @@ export interface Registration {
   phone: string;
   email: string;
   company?: string;
+  company_title?: string;
+  tax_id?: string;
   title?: string;
   referrer?: string;
   notes?: string;
