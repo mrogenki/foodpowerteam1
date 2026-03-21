@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS financial_records (
   type TEXT NOT NULL, -- 'income' or 'expense'
   category TEXT NOT NULL,
   amount INTEGER NOT NULL,
+  invoice_no TEXT,
   description TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

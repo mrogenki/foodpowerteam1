@@ -2399,6 +2399,7 @@ const FinancialManager: React.FC<{
               <th className="p-4">日期</th>
               <th className="p-4">類型</th>
               <th className="p-4">類別</th>
+              <th className="p-4">發票編號</th>
               <th className="p-4">金額</th>
               <th className="p-4">描述</th>
               <th className="p-4">操作</th>
@@ -2417,6 +2418,7 @@ const FinancialManager: React.FC<{
                     </span>
                   </td>
                   <td className="p-4">{r.category}</td>
+                  <td className="p-4 text-gray-500 font-mono text-xs">{r.invoice_no || '-'}</td>
                   <td className="p-4 font-bold">${r.amount.toLocaleString()}</td>
                   <td className="p-4 text-gray-500 truncate max-w-[200px]">{r.description || '-'}</td>
                   <td className="p-4">
@@ -2456,6 +2458,10 @@ const FinancialManager: React.FC<{
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">類別</label>
                 <input type="text" placeholder="例如：會費、場地費、餐費..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentRecord.category || ''} onChange={e => setCurrentRecord({ ...currentRecord, category: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">發票編號 (選填)</label>
+                <input type="text" placeholder="例如：AB-12345678" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentRecord.invoice_no || ''} onChange={e => setCurrentRecord({ ...currentRecord, invoice_no: e.target.value })} />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">金額</label>
