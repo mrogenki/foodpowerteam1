@@ -60,7 +60,11 @@ const Header: React.FC = () => {
             <Link to="/join" className="flex items-center gap-1 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-red-700 shadow-md shadow-red-100 transition-all"><UserPlus size={16} /> 加入會員</Link>
           </div>
           <div className="sm:hidden flex items-center">
-            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-500 hover:text-red-600">
+            <button 
+              onClick={() => setIsOpen(!isOpen)} 
+              className="text-gray-500 hover:text-red-600"
+              aria-label="切換選單"
+            >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
@@ -118,7 +122,14 @@ const Footer: React.FC = () => {
                    </a>
                 </div>
                 <div className="bg-white p-2 rounded-xl shadow-sm">
-                   <img src="https://qr-official.line.me/gs/M_736bgkpm_BW.png?oat__id=6378179&oat_content=qr" alt="LINE QR Code" className="w-24 h-24" />
+                   <img 
+                     src="https://qr-official.line.me/gs/M_736bgkpm_BW.png?oat__id=6378179&oat_content=qr" 
+                     alt="LINE QR Code" 
+                     className="w-24 h-24" 
+                     width={96}
+                     height={96}
+                     loading="lazy"
+                   />
                 </div>
              </div>
           </div>
@@ -244,8 +255,8 @@ const App: React.FC = () => {
 
       // 分離公開與管理員資料
       const publicQueries = [
-        supabase.from('activities').select('*').order('date', { ascending: true }),
-        supabase.from('member_activities').select('*').order('date', { ascending: true }),
+        supabase.from('activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
+        supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
       ];
 
       // 只有在確定有 currentUser 時才加入管理員查詢
