@@ -1,50 +1,9 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  --font-sans: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
-  
-  /* Force hex colors for Tailwind v4 to fix html2canvas oklch/oklab error */
-  --color-white: #ffffff;
-  --color-black: #000000;
-  --color-transparent: transparent;
-  
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-  
-  --color-red-50: #fef2f2;
-  --color-red-100: #fee2e2;
-  --color-red-500: #ef4444;
-  --color-red-600: #dc2626;
-  --color-red-700: #b91c1c;
-  
-  --color-blue-50: #eff6ff;
-  --color-blue-100: #dbeafe;
-  --color-blue-500: #3b82f6;
-  --color-blue-600: #2563eb;
-  --color-blue-700: #1d4ed8;
-
-  --color-green-500: #22c55e;
-  --color-green-600: #16a34a;
-}
-
-/* Aggressively suppress modern color functions for PDF generation compatibility */
 @layer base {
-  *, ::before, ::after {
-    --tw-ring-color: rgba(59, 130, 246, 0.5) !important;
-    --tw-ring-offset-color: #ffffff !important;
-    --tw-shadow-color: rgba(0, 0, 0, 0.1) !important;
-    --tw-outline-color: currentColor !important;
+  body {
+    @apply font-sans;
   }
-}
-
-body {
-    font-family: var(--font-sans);
 }

@@ -264,52 +264,31 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           allowTaint: true,
           logging: false,
           onclone: (clonedDoc: Document) => {
-            // 1. SURGICAL COLOR SANITIZATION
-            // Instead of removing styles, we just replace the problematic color functions
-            const styleTags = clonedDoc.querySelectorAll('style');
-            styleTags.forEach(tag => {
-              if (tag.textContent) {
-                tag.textContent = tag.textContent
-                  .replace(/oklch\([^)]+\)/g, 'currentColor')
-                  .replace(/oklab\([^)]+\)/g, 'currentColor');
-              }
-            });
-
             const printable = clonedDoc.querySelector('.receipt-pdf-fix') as HTMLElement;
             if (printable) {
+              // Ensure the root element is clean for PDF rendering
               printable.style.backgroundColor = '#ffffff';
               printable.style.color = '#000000';
-
-              // 2. FORM TO TEXT CONVERSION (The "Magic" for perfect rendering)
-              // Convert all inputs, selects, and textareas to plain text divs
+              
+              // Force all inputs to show their values in the PDF
               const inputs = printable.querySelectorAll('input, select, textarea');
               inputs.forEach(input => {
                 const el = input as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
                 const replacement = clonedDoc.createElement('div');
-                
-                // Copy the value as text
                 replacement.textContent = el.value || ' ';
                 
-                // Copy essential styles for positioning and appearance
                 const style = window.getComputedStyle(el);
                 replacement.style.display = 'inline-block';
                 replacement.style.width = style.width;
                 replacement.style.height = style.height;
-                replacement.style.lineHeight = style.lineHeight;
                 replacement.style.fontSize = style.fontSize;
-                replacement.style.fontWeight = style.fontWeight;
-                replacement.style.color = style.color;
-                replacement.style.textAlign = style.textAlign;
                 replacement.style.padding = style.padding;
-                replacement.style.border = 'none'; // Remove input borders
+                replacement.style.border = 'none';
                 replacement.style.backgroundColor = 'transparent';
-                replacement.style.whiteSpace = 'pre-wrap';
-                replacement.style.wordBreak = 'break-word';
 
-                // Special handling for checkboxes
                 if (el.type === 'checkbox') {
                   replacement.textContent = (el as HTMLInputElement).checked ? '☑' : '☐';
-                  replacement.style.fontSize = '24px';
+                  replacement.style.fontSize = '20px';
                   replacement.style.width = 'auto';
                 }
 
@@ -317,15 +296,6 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                   el.parentNode.replaceChild(replacement, el);
                 }
               });
-              
-              // Remove any remaining shadow/filter properties
-              const all = printable.getElementsByTagName('*');
-              for (let i = 0; i < all.length; i++) {
-                const el = all[i] as HTMLElement;
-                el.style.boxShadow = 'none';
-                el.style.filter = 'none';
-                el.style.backdropFilter = 'none';
-              }
             }
           }
         },
