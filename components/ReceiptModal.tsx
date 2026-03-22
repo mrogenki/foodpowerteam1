@@ -264,35 +264,65 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           allowTaint: true,
           logging: false,
           onclone: (clonedDoc: Document) => {
-            // 1. Aggressively remove oklch/oklab from all style tags in the cloned document
-            // This prevents the html2canvas parser from crashing when it sees these functions
-            const styleTags = clonedDoc.querySelectorAll('style');
-            styleTags.forEach(tag => {
-              if (tag.textContent) {
-                // Replace modern color functions with safe fallbacks in the CSS text
-                tag.textContent = tag.textContent
-                  .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
-                  .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+            // 1. NUCLEAR OPTION: Remove ALL existing style and link tags from the cloned document
+            // This completely eliminates Tailwind v4's oklch/oklab variables from the PDF process
+            const styles = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
+            styles.forEach(s => s.remove());
+
+            // 2. Inject a MINIMAL and SAFE style sheet using only standard HEX colors
+            const safeStyle = clonedDoc.createElement('style');
+            safeStyle.textContent = `
+              .receipt-pdf-fix {
+                font-family: "Noto Sans TC", sans-serif !important;
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                width: 100% !important;
+                padding: 20px !important;
               }
-            });
+              .receipt-pdf-fix * {
+                box-sizing: border-box !important;
+                border-color: #000000 !important;
+              }
+              .receipt-pdf-fix table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                border: 1px solid #000000 !important;
+                margin-bottom: 10px !important;
+              }
+              .receipt-pdf-fix td, .receipt-pdf-fix th {
+                border: 1px solid #000000 !important;
+                padding: 12px 8px !important;
+                text-align: center !important;
+              }
+              .receipt-pdf-fix .text-left { text-align: left !important; }
+              .receipt-pdf-fix .text-right { text-align: right !important; }
+              .receipt-pdf-fix .font-bold { font-weight: bold !important; }
+              .receipt-pdf-fix .bg-gray-100 { background-color: #f3f4f6 !important; }
+              .receipt-pdf-fix .text-red-600 { color: #dc2626 !important; }
+              .receipt-pdf-fix .text-xl { font-size: 20px !important; }
+              .receipt-pdf-fix .text-2xl { font-size: 24px !important; }
+              .receipt-pdf-fix .text-3xl { font-size: 30px !important; }
+              .receipt-pdf-fix .mb-6 { margin-bottom: 24px !important; }
+              .receipt-pdf-fix .flex { display: flex !important; }
+              .receipt-pdf-fix .justify-between { justify-content: space-between !important; }
+              .receipt-pdf-fix .items-center { align-items: center !important; }
+              .receipt-pdf-fix .gap-2 { gap: 8px !important; }
+              .receipt-pdf-fix .mt-4 { margin-top: 16px !important; }
+              .receipt-pdf-fix .tracking-widest { letter-spacing: 0.1em !important; }
+              .receipt-pdf-fix img { display: block !important; margin: 0 auto !important; }
+            `;
+            clonedDoc.head.appendChild(safeStyle);
 
             const printable = clonedDoc.querySelector('.receipt-pdf-fix') as HTMLElement;
             if (printable) {
+              // Ensure the root element is clean
               printable.style.backgroundColor = '#ffffff';
               printable.style.color = '#000000';
               
-              // 2. Force hex colors on all elements within the printable area
-              const allElements = printable.getElementsByTagName('*');
-              for (let i = 0; i < allElements.length; i++) {
-                const el = allElements[i] as HTMLElement;
-                
-                // Force hex for common Tailwind classes
-                if (el.classList.contains('bg-gray-100')) el.style.backgroundColor = '#f3f4f6';
-                if (el.classList.contains('text-red-600')) el.style.color = '#dc2626';
-                if (el.classList.contains('text-gray-400')) el.style.color = '#9ca3af';
-                if (el.classList.contains('border-black')) el.style.borderColor = '#000000';
-                
-                // Remove problematic modern properties that often use oklch in Tailwind v4
+              // Remove any remaining shadow/filter properties that might use oklch
+              const all = printable.getElementsByTagName('*');
+              for (let i = 0; i < all.length; i++) {
+                const el = all[i] as HTMLElement;
                 el.style.boxShadow = 'none';
                 el.style.filter = 'none';
                 el.style.backdropFilter = 'none';
