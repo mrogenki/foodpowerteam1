@@ -264,62 +264,61 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           allowTaint: true,
           logging: false,
           onclone: (clonedDoc: Document) => {
-            // 1. NUCLEAR OPTION: Remove ALL existing style and link tags from the cloned document
-            // This completely eliminates Tailwind v4's oklch/oklab variables from the PDF process
-            const styles = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
-            styles.forEach(s => s.remove());
-
-            // 2. Inject a MINIMAL and SAFE style sheet using only standard HEX colors
-            const safeStyle = clonedDoc.createElement('style');
-            safeStyle.textContent = `
-              .receipt-pdf-fix {
-                font-family: "Noto Sans TC", sans-serif !important;
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                width: 100% !important;
-                padding: 20px !important;
+            // 1. SURGICAL COLOR SANITIZATION
+            // Instead of removing styles, we just replace the problematic color functions
+            const styleTags = clonedDoc.querySelectorAll('style');
+            styleTags.forEach(tag => {
+              if (tag.textContent) {
+                tag.textContent = tag.textContent
+                  .replace(/oklch\([^)]+\)/g, 'currentColor')
+                  .replace(/oklab\([^)]+\)/g, 'currentColor');
               }
-              .receipt-pdf-fix * {
-                box-sizing: border-box !important;
-                border-color: #000000 !important;
-              }
-              .receipt-pdf-fix table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                border: 1px solid #000000 !important;
-                margin-bottom: 10px !important;
-              }
-              .receipt-pdf-fix td, .receipt-pdf-fix th {
-                border: 1px solid #000000 !important;
-                padding: 12px 8px !important;
-                text-align: center !important;
-              }
-              .receipt-pdf-fix .text-left { text-align: left !important; }
-              .receipt-pdf-fix .text-right { text-align: right !important; }
-              .receipt-pdf-fix .font-bold { font-weight: bold !important; }
-              .receipt-pdf-fix .bg-gray-100 { background-color: #f3f4f6 !important; }
-              .receipt-pdf-fix .text-red-600 { color: #dc2626 !important; }
-              .receipt-pdf-fix .text-xl { font-size: 20px !important; }
-              .receipt-pdf-fix .text-2xl { font-size: 24px !important; }
-              .receipt-pdf-fix .text-3xl { font-size: 30px !important; }
-              .receipt-pdf-fix .mb-6 { margin-bottom: 24px !important; }
-              .receipt-pdf-fix .flex { display: flex !important; }
-              .receipt-pdf-fix .justify-between { justify-content: space-between !important; }
-              .receipt-pdf-fix .items-center { align-items: center !important; }
-              .receipt-pdf-fix .gap-2 { gap: 8px !important; }
-              .receipt-pdf-fix .mt-4 { margin-top: 16px !important; }
-              .receipt-pdf-fix .tracking-widest { letter-spacing: 0.1em !important; }
-              .receipt-pdf-fix img { display: block !important; margin: 0 auto !important; }
-            `;
-            clonedDoc.head.appendChild(safeStyle);
+            });
 
             const printable = clonedDoc.querySelector('.receipt-pdf-fix') as HTMLElement;
             if (printable) {
-              // Ensure the root element is clean
               printable.style.backgroundColor = '#ffffff';
               printable.style.color = '#000000';
+
+              // 2. FORM TO TEXT CONVERSION (The "Magic" for perfect rendering)
+              // Convert all inputs, selects, and textareas to plain text divs
+              const inputs = printable.querySelectorAll('input, select, textarea');
+              inputs.forEach(input => {
+                const el = input as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+                const replacement = clonedDoc.createElement('div');
+                
+                // Copy the value as text
+                replacement.textContent = el.value || ' ';
+                
+                // Copy essential styles for positioning and appearance
+                const style = window.getComputedStyle(el);
+                replacement.style.display = 'inline-block';
+                replacement.style.width = style.width;
+                replacement.style.height = style.height;
+                replacement.style.lineHeight = style.lineHeight;
+                replacement.style.fontSize = style.fontSize;
+                replacement.style.fontWeight = style.fontWeight;
+                replacement.style.color = style.color;
+                replacement.style.textAlign = style.textAlign;
+                replacement.style.padding = style.padding;
+                replacement.style.border = 'none'; // Remove input borders
+                replacement.style.backgroundColor = 'transparent';
+                replacement.style.whiteSpace = 'pre-wrap';
+                replacement.style.wordBreak = 'break-word';
+
+                // Special handling for checkboxes
+                if (el.type === 'checkbox') {
+                  replacement.textContent = (el as HTMLInputElement).checked ? '☑' : '☐';
+                  replacement.style.fontSize = '24px';
+                  replacement.style.width = 'auto';
+                }
+
+                if (el.parentNode) {
+                  el.parentNode.replaceChild(replacement, el);
+                }
+              });
               
-              // Remove any remaining shadow/filter properties that might use oklch
+              // Remove any remaining shadow/filter properties
               const all = printable.getElementsByTagName('*');
               for (let i = 0; i < all.length; i++) {
                 const el = all[i] as HTMLElement;
