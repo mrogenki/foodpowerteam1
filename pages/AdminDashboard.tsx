@@ -163,12 +163,12 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
         </div>
       </div>
       <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
-        <Link to="/admin" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${isActive('/admin') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><LayoutDashboard size={20} /><span>儀表板</span></Link>
-        <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-gray-800 text-gray-400 hover:text-white"><ExternalLink size={20} /><span>預覽前台網站</span></a>
+        <Link to="/admin" aria-label="儀表板" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${isActive('/admin') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><LayoutDashboard size={20} /><span>儀表板</span></Link>
+        <a href="/" target="_blank" rel="noopener noreferrer" aria-label="預覽前台網站" className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-gray-800 text-gray-400 hover:text-white"><ExternalLink size={20} /><span>預覽前台網站</span></a>
         
         <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">活動報到 (工作人員)</div>
-        <Link to="/admin/check-in" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><CheckSquare size={20} /><span>一般活動報到</span></Link>
-        <Link to="/admin/member-check-in" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>會員活動報到</span></Link>
+        <Link to="/admin/check-in" aria-label="一般活動報到" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><CheckSquare size={20} /><span>一般活動報到</span></Link>
+        <Link to="/admin/member-check-in" aria-label="會員活動報到" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>會員活動報到</span></Link>
         
         {isManager && (<>
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">活動管理</div>
@@ -2334,7 +2334,7 @@ const FinancialManager: React.FC<{
   const [currentRecord, setCurrentRecord] = useState<Partial<FinancialRecord>>({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
-  const filteredRecords = records.filter(r => r.date.startsWith(selectedMonth));
+  const filteredRecords = useMemo(() => records.filter(r => r.date.startsWith(selectedMonth)), [records, selectedMonth]);
 
   const monthlySummary = useMemo(() => {
     const income = filteredRecords.filter(r => r.type === FinancialType.INCOME).reduce((sum, r) => sum + r.amount, 0);
@@ -2425,8 +2425,8 @@ const FinancialManager: React.FC<{
                   <td className="p-4 text-gray-500 truncate max-w-[200px]">{r.description || '-'}</td>
                   <td className="p-4">
                     <div className="flex gap-2">
-                      <button onClick={() => { setIsEditing(true); setCurrentRecord(r); }} className="p-1 text-gray-400 hover:text-red-600"><Edit2 size={16} /></button>
-                      <button onClick={() => { if (confirm('確定刪除此記錄？')) onDelete(r.id); }} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                      <button onClick={() => { setIsEditing(true); setCurrentRecord(r); }} aria-label="編輯" className="p-1 text-gray-400 hover:text-red-600"><Edit2 size={16} /></button>
+                      <button onClick={() => { if (confirm('確定刪除此記錄？')) onDelete(r.id); }} aria-label="刪除" className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>

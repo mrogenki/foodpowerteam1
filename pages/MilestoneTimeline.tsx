@@ -37,17 +37,17 @@ const MilestoneTimeline: React.FC<MilestoneTimelineProps> = ({ milestones }) => 
           {/* Vertical line */}
           <div className="absolute left-4 md:left-1/2 transform md:-translate-x-1/2 h-full w-0.5 bg-red-200"></div>
 
-          <div className="space-y-12">
+          <div className="space-y-8">
             {years.map((year) => (
               <div key={year} className="relative">
                 {/* Year Header */}
-                <div className="flex justify-start md:justify-center mb-8">
+                <div className="flex justify-start md:justify-center mb-4">
                   <div className="relative z-10 bg-red-600 text-white px-6 py-2 rounded-full font-bold text-xl shadow-lg">
                     {year}
                   </div>
                 </div>
 
-                <div className="space-y-12">
+                <div className="space-y-4">
                   {groupedByYear[year].map((milestone, index) => (
                     <motion.div
                       key={milestone.id}

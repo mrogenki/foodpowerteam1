@@ -413,64 +413,97 @@ const App: React.FC = () => {
     return { valid: true, discount: data.discount_amount, message: '折扣碼適用', couponId: data.id };
   };
 
+  const fetchActivities = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true });
+    if (data) setActivities(data.map((a: any) => ({ ...a, status: a.status || 'active' })));
+  };
+
+  const fetchMemberActivities = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true });
+    if (data) setMemberActivities(data.map((a: any) => ({ ...a, status: a.status || 'active' })));
+  };
+
+  const fetchClubActivities = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('club_activities').select('*').order('date', { ascending: true });
+    if (data) setClubActivities(data as ClubActivity[]);
+  };
+
+  const fetchRegistrations = async () => {
+    if (!supabase || !currentUser) return;
+    const { data } = await supabase.from('registrations').select('*').order('created_at', { ascending: false });
+    if (data) setRegistrations(data);
+  };
+
+  const fetchMemberRegistrations = async () => {
+    if (!supabase || !currentUser) return;
+    const { data } = await supabase.from('member_registrations').select('*').order('created_at', { ascending: false });
+    if (data) setMemberRegistrations(data);
+  };
+
   // CRUD Functions ... (保持與原邏輯相同，Supabase Auth 會自動處理 RLS)
   const handleUpdateActivity = async (updated: Activity) => {
     setActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { error } = await supabase.from('activities').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); fetchData(); }
+    if (error) { console.error(error); fetchActivities(); }
   };
   const handleAddActivity = async (newAct: Activity) => {
-    if (!supabase) return;
     const activityToInsert = { ...newAct, id: newAct.id || crypto.randomUUID() };
+    setActivities(prev => [...prev, activityToInsert].sort((a, b) => a.date.localeCompare(b.date)));
+    if (!supabase) return;
     const { error } = await supabase.from('activities').insert([activityToInsert]);
-    if (!error) fetchData(); else alert('新增活動失敗: ' + error.message);
+    if (error) { alert('新增活動失敗: ' + error.message); fetchActivities(); }
   };
   const handleDeleteActivity = async (id: string | number) => {
     setActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     await supabase.from('registrations').delete().eq('activityId', id);
     const { error } = await supabase.from('activities').delete().eq('id', id);
-    if (error) fetchData();
+    if (error) fetchActivities();
   };
 
   const handleUpdateMemberActivity = async (updated: MemberActivity) => {
     setMemberActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { error } = await supabase.from('member_activities').update(updated).eq('id', updated.id);
-    if (error) fetchData();
+    if (error) fetchMemberActivities();
   };
   const handleAddMemberActivity = async (newAct: MemberActivity) => {
-    if (!supabase) return;
     const activityToInsert = { ...newAct, id: newAct.id || crypto.randomUUID() };
+    setMemberActivities(prev => [...prev, activityToInsert].sort((a, b) => a.date.localeCompare(b.date)));
+    if (!supabase) return;
     const { error } = await supabase.from('member_activities').insert([activityToInsert]);
-    if (!error) fetchData(); else alert('新增會員活動失敗: ' + error.message);
+    if (error) { alert('新增會員活動失敗: ' + error.message); fetchMemberActivities(); }
   };
   const handleDeleteMemberActivity = async (id: string | number) => {
     setMemberActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     await supabase.from('member_registrations').delete().eq('activityId', id);
     const { error } = await supabase.from('member_activities').delete().eq('id', id);
-    if (error) fetchData();
+    if (error) fetchMemberActivities();
   };
 
   const handleUpdateClubActivity = async (updated: ClubActivity) => {
     setClubActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { error } = await supabase.from('club_activities').update(updated).eq('id', updated.id);
-    if (error) fetchData();
+    if (error) fetchClubActivities();
   };
   const handleAddClubActivity = async (newAct: ClubActivity) => {
-    if (!supabase) return;
     const activityToInsert = { ...newAct, id: newAct.id || crypto.randomUUID() };
+    setClubActivities(prev => [...prev, activityToInsert].sort((a, b) => a.date.localeCompare(b.date)));
+    if (!supabase) return;
     const { error } = await supabase.from('club_activities').insert([activityToInsert]);
-    if (!error) fetchData(); else alert('新增俱樂部活動失敗: ' + error.message);
+    if (error) { alert('新增俱樂部活動失敗: ' + error.message); fetchClubActivities(); }
   };
   const handleDeleteClubActivity = async (id: string | number) => {
     setClubActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     const { error } = await supabase.from('club_activities').delete().eq('id', id);
-    if (error) fetchData();
+    if (error) fetchClubActivities();
   };
 
   const handleRegister = async (newReg: Registration, couponId?: string): Promise<boolean> => {
@@ -478,7 +511,7 @@ const App: React.FC = () => {
     const { error } = await supabase.from('registrations').insert([newReg]);
     if (error) { alert('報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); return true;
+    fetchRegistrations(); return true;
   };
 
   const handleMemberRegister = async (newReg: MemberRegistration, couponId?: string): Promise<boolean> => {
@@ -486,14 +519,14 @@ const App: React.FC = () => {
     const { error } = await supabase.from('member_registrations').insert([newReg]);
     if (error) { alert('會員報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); return true;
+    fetchMemberRegistrations(); return true;
   };
 
   const handleUpdateRegistration = async (updated: Registration) => {
     setRegistrations(prev => prev.map(r => r.id === updated.id ? updated : r));
     if (!supabase) return;
     const { error } = await supabase.from('registrations').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); fetchData(); alert('更新失敗'); }
+    if (error) { console.error(error); fetchRegistrations(); alert('更新失敗'); }
   };
   const handleDeleteRegistration = async (id: string | number) => {
     setRegistrations(prev => prev.filter(r => r.id !== id));
@@ -532,67 +565,100 @@ const App: React.FC = () => {
     if (error) { console.error(error); fetchData(); }
   };
 
+  const fetchMilestones = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('milestones').select('*').order('date', { ascending: false });
+    if (data) setMilestones(data);
+  };
+
+  const fetchFinancialRecords = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('financial_records').select('*').order('date', { ascending: false });
+    if (data) setFinancialRecords(data);
+  };
+
   const handleAddMilestone = async (newMilestone: Milestone) => {
+    setMilestones(prev => [newMilestone, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('milestones').insert([newMilestone]);
-    if (error) { console.error(error); alert('新增失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('新增失敗'); fetchMilestones(); }
   };
 
   const handleUpdateMilestone = async (updated: Milestone) => {
+    setMilestones(prev => prev.map(m => m.id === updated.id ? updated : m).sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('milestones').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); alert('更新失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('更新失敗'); fetchMilestones(); }
   };
 
   const handleDeleteMilestone = async (id: string | number) => {
+    setMilestones(prev => prev.filter(m => m.id !== id));
     if (!supabase) return;
     const { error } = await supabase.from('milestones').delete().eq('id', id);
-    if (error) { console.error(error); alert('刪除失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('刪除失敗'); fetchMilestones(); }
   };
 
   const handleAddFinancialRecord = async (newRecord: FinancialRecord) => {
+    setFinancialRecords(prev => [newRecord, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('financial_records').insert([newRecord]);
-    if (error) { console.error(error); alert('新增失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('新增失敗'); fetchFinancialRecords(); }
   };
 
   const handleUpdateFinancialRecord = async (updated: FinancialRecord) => {
+    setFinancialRecords(prev => prev.map(r => r.id === updated.id ? updated : r).sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('financial_records').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); alert('更新失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('更新失敗'); fetchFinancialRecords(); }
   };
 
   const handleDeleteFinancialRecord = async (id: string | number) => {
+    setFinancialRecords(prev => prev.filter(r => r.id !== id));
     if (!supabase) return;
     const { error } = await supabase.from('financial_records').delete().eq('id', id);
-    if (error) { console.error(error); alert('刪除失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('刪除失敗'); fetchFinancialRecords(); }
   };
 
   // User management (only for recording, not auth)
   const handleAddUser = async (newUser: AdminUser) => { if (!supabase) return; await supabase.from('admins').insert([newUser]); fetchData(); };
   const handleDeleteUser = async (id: string) => { if (!supabase) return; await supabase.from('admins').delete().eq('id', id); fetchData(); };
   
+  const fetchMembers = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('members').select('*');
+    if (data) {
+      const sortedMembers = data.sort((a: any, b: any) => {
+        const valA = String(a.member_no || '');
+        const valB = String(b.member_no || '');
+        if (!valA && !valB) return 0;
+        if (!valA) return 1;
+        if (!valB) return -1;
+        return valA.localeCompare(valB, undefined, { numeric: true });
+      });
+      setMembers(sortedMembers);
+    }
+  };
+
   const handleAddMember = async (newMember: Member) => { 
     if (!supabase) return; 
     const memberToInsert = { ...newMember, id: newMember.id || crypto.randomUUID() };
+    setMembers(prev => [...prev, memberToInsert].sort((a, b) => String(a.member_no || '').localeCompare(String(b.member_no || ''), undefined, { numeric: true })));
     const { error } = await supabase.from('members').insert([memberToInsert]); 
-    if (error) alert('新增會員失敗：' + error.message); else fetchData(); 
+    if (error) { alert('新增會員失敗：' + error.message); fetchMembers(); }
   };
+
   const handleUpdateMember = async (updated: Member) => { 
+    setMembers(prev => prev.map(m => m.id === updated.id ? updated : m).sort((a, b) => String(a.member_no || '').localeCompare(String(b.member_no || ''), undefined, { numeric: true })));
     if (!supabase) return; 
     const { error } = await supabase.from('members').update(updated).eq('id', updated.id); 
-    if (error) alert('更新會員失敗：' + error.message); else fetchData(); 
+    if (error) { alert('更新會員失敗：' + error.message); fetchMembers(); }
   };
+
   const handleDeleteMember = async (id: string | number) => { 
+    setMembers(prev => prev.filter(m => m.id !== id));
     if (!supabase) return; 
     const { error } = await supabase.from('members').delete().eq('id', id); 
-    if (error) alert('刪除會員失敗：' + error.message); else fetchData(); 
+    if (error) { alert('刪除會員失敗：' + error.message); fetchMembers(); }
   };
   const handleAddMembers = async (newMembers: Member[]) => {
     if (!supabase) return;
