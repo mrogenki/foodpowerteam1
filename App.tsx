@@ -2,6 +2,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Menu, X, Loader2, UserPlus, MessageCircle, XCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 // 使用 React.lazy 進行程式碼分割，減少初始載入體積
 const Home = lazy(() => import('./pages/Home'));
@@ -19,7 +20,6 @@ const RenewalPayment = lazy(() => import('./pages/RenewalPayment'));
 const AboutUs = lazy(() => import('./pages/AboutUs'));
 const MilestoneTimeline = lazy(() => import('./pages/MilestoneTimeline'));
 
-import 'react-quill-new/dist/quill.snow.css';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity, Milestone, FinancialRecord } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
@@ -44,44 +44,56 @@ const Header: React.FC = () => {
   if (isAdminPage) return null;
 
   return (
-    <nav className="bg-white border-b sticky top-0 z-50">
+    <nav className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-20">
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center gap-2">
-              <img src="/logo.svg" alt="食在力量" className="w-8 h-8 rounded-md object-cover" />
-              <span className="text-xl font-bold tracking-tight">食在力量</span>
+            <Link to="/" className="flex-shrink-0 flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm group-hover:shadow-md transition-all">
+                <img src="/logo.svg" alt="食在力量" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-2xl font-bold tracking-tight text-gray-900 whitespace-nowrap">食在力量</span>
             </Link>
           </div>
-          <div className="hidden sm:flex items-center space-x-8">
-            <Link to="/" className="text-gray-700 hover:text-red-600 transition-colors font-medium">首頁</Link>
-            <Link to="/about" className="text-gray-700 hover:text-red-600 transition-colors font-medium">關於我們</Link>
-            <Link to="/milestones" className="text-gray-700 hover:text-red-600 transition-colors font-medium">大事記</Link>
-            <Link to="/activities" className="text-gray-700 hover:text-red-600 transition-colors font-medium">協會活動</Link>
-            <Link to="/members" className="text-gray-700 hover:text-red-600 transition-colors font-medium">會員列表</Link>
-            <Link to="/join" className="flex items-center gap-1 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-red-700 shadow-md shadow-red-100 transition-all"><UserPlus size={16} /> 加入會員</Link>
+          <div className="hidden lg:flex items-center space-x-10">
+            <Link to="/" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">首頁</Link>
+            <Link to="/about" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">關於我們</Link>
+            <Link to="/milestones" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">大事記</Link>
+            <Link to="/activities" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">協會活動</Link>
+            <Link to="/members" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">會員列表</Link>
+            <Link to="/join" className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-red-700 shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5 active:translate-y-0">
+              <UserPlus size={18} /> 
+              <span>加入會員</span>
+            </Link>
           </div>
-          <div className="sm:hidden flex items-center">
+          <div className="lg:hidden flex items-center">
             <button 
               onClick={() => setIsOpen(!isOpen)} 
-              className="text-gray-500 hover:text-red-600"
+              className="text-gray-500 hover:text-red-600 p-2 rounded-lg hover:bg-gray-50 transition-all"
               aria-label="切換選單"
             >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
+              {isOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           </div>
         </div>
       </div>
-      {isOpen && (
-        <div className="sm:hidden bg-white border-t px-4 py-3 space-y-3 shadow-lg">
-          <Link to="/" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">首頁</Link>
-          <Link to="/about" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">關於我們</Link>
-          <Link to="/milestones" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">大事記</Link>
-          <Link to="/activities" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">協會活動</Link>
-          <Link to="/members" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">會員列表</Link>
-          <Link to="/join" onClick={() => setIsOpen(false)} className="block text-red-600 font-bold">加入會員</Link>
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="lg:hidden bg-white border-t px-4 py-6 space-y-4 shadow-2xl absolute top-full left-0 w-full"
+          >
+            <Link to="/" onClick={() => setIsOpen(false)} className="block text-xl font-bold text-gray-900 px-4 py-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">首頁</Link>
+            <Link to="/about" onClick={() => setIsOpen(false)} className="block text-xl font-bold text-gray-900 px-4 py-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">關於我們</Link>
+            <Link to="/milestones" onClick={() => setIsOpen(false)} className="block text-xl font-bold text-gray-900 px-4 py-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">大事記</Link>
+            <Link to="/activities" onClick={() => setIsOpen(false)} className="block text-xl font-bold text-gray-900 px-4 py-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">協會活動</Link>
+            <Link to="/members" onClick={() => setIsOpen(false)} className="block text-xl font-bold text-gray-900 px-4 py-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">會員列表</Link>
+            <Link to="/join" onClick={() => setIsOpen(false)} className="block text-xl font-bold text-red-600 px-4 py-2 bg-red-50 rounded-xl transition-all">加入會員</Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 };
@@ -90,51 +102,67 @@ const Footer: React.FC = () => {
   const location = useLocation();
   if (location.pathname.startsWith('/admin')) return null;
   return (
-    <footer className="bg-white border-t py-12">
+    <footer className="bg-white border-t py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Logo & Copyright */}
-          <div className="text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-              <img src="/logo.svg" alt="食在力量" className="w-8 h-8 rounded-md object-cover" />
-              <span className="font-bold text-gray-800 tracking-wider text-lg">食在力量</span>
+          <div className="col-span-1 md:col-span-2">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-sm">
+                <img src="/logo.svg" alt="食在力量" className="w-full h-full object-cover" />
+              </div>
+              <span className="font-bold text-gray-900 tracking-wider text-2xl whitespace-nowrap">食在力量</span>
             </div>
+            <p className="text-gray-500 text-lg max-w-md leading-relaxed mb-8">
+              連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動。
+            </p>
             <p className="text-gray-400 text-sm">
               &copy; 2026 食在力量活動報名系統 v2.0.<br/>
-              <Link to="/admin" className="hover:text-gray-300 transition-colors">All rights reserved.</Link>
+              <Link to="/admin" className="hover:text-red-600 transition-colors">All rights reserved.</Link>
             </p>
           </div>
 
+          {/* Quick Links */}
+          <div className="space-y-4">
+            <h4 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-6">快速連結</h4>
+            <ul className="space-y-3">
+              <li><Link to="/about" className="text-gray-500 hover:text-red-600 transition-colors">關於我們</Link></li>
+              <li><Link to="/milestones" className="text-gray-500 hover:text-red-600 transition-colors">大事記</Link></li>
+              <li><Link to="/activities" className="text-gray-500 hover:text-red-600 transition-colors">協會活動</Link></li>
+              <li><Link to="/members" className="text-gray-500 hover:text-red-600 transition-colors">會員列表</Link></li>
+            </ul>
+          </div>
+
           {/* LINE Join Section */}
-          <div className="flex flex-col items-center md:items-end">
-             <div className="bg-[#06C755]/5 p-6 rounded-2xl flex flex-col sm:flex-row items-center gap-6 border border-[#06C755]/20 hover:bg-[#06C755]/10 transition-colors">
-                <div className="text-center sm:text-left">
-                   <h3 className="font-bold text-gray-900 flex items-center justify-center sm:justify-start gap-2 mb-2">
-                     <MessageCircle className="text-[#06C755]" />
-                     <span className="text-[#06C755]">官方 LINE 帳號</span>
-                   </h3>
-                   <p className="text-sm text-gray-600 mb-4">加入好友，掌握最新活動資訊<br/>與產業動態！</p>
-                   <a 
-                     href="https://lin.ee/oIeFIMO" 
-                     target="_blank" 
-                     rel="noopener noreferrer"
-                     className="inline-flex items-center gap-2 bg-[#06C755] hover:bg-[#05b64d] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-100 hover:shadow-green-200"
-                   >
-                     <MessageCircle size={18} fill="currentColor" className="text-white/20" />
-                     加入好友
-                   </a>
+          <div className="space-y-4">
+            <h4 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-6">官方帳號</h4>
+            <div className="bg-[#06C755]/5 p-6 rounded-3xl border border-[#06C755]/10 hover:bg-[#06C755]/10 transition-all group">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="bg-white p-2 rounded-xl shadow-sm group-hover:scale-105 transition-transform">
+                  <img 
+                    src="https://qr-official.line.me/gs/M_736bgkpm_BW.png?oat__id=6378179&oat_content=qr" 
+                    alt="LINE QR Code" 
+                    className="w-16 h-16" 
+                    width={64}
+                    height={64}
+                    loading="lazy"
+                  />
                 </div>
-                <div className="bg-white p-2 rounded-xl shadow-sm">
-                   <img 
-                     src="https://qr-official.line.me/gs/M_736bgkpm_BW.png?oat__id=6378179&oat_content=qr" 
-                     alt="LINE QR Code" 
-                     className="w-24 h-24" 
-                     width={96}
-                     height={96}
-                     loading="lazy"
-                   />
+                <div>
+                  <h5 className="font-bold text-[#06C755] text-sm">LINE 官方帳號</h5>
+                  <p className="text-xs text-gray-500">掌握最新動態</p>
                 </div>
-             </div>
+              </div>
+              <a 
+                href="https://lin.ee/oIeFIMO" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 bg-[#06C755] hover:bg-[#05b64d] text-white w-full py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-100"
+              >
+                <MessageCircle size={18} fill="currentColor" className="text-white/20" />
+                立即加入好友
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -413,64 +441,97 @@ const App: React.FC = () => {
     return { valid: true, discount: data.discount_amount, message: '折扣碼適用', couponId: data.id };
   };
 
+  const fetchActivities = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true });
+    if (data) setActivities(data.map((a: any) => ({ ...a, status: a.status || 'active' })));
+  };
+
+  const fetchMemberActivities = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true });
+    if (data) setMemberActivities(data.map((a: any) => ({ ...a, status: a.status || 'active' })));
+  };
+
+  const fetchClubActivities = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('club_activities').select('*').order('date', { ascending: true });
+    if (data) setClubActivities(data as ClubActivity[]);
+  };
+
+  const fetchRegistrations = async () => {
+    if (!supabase || !currentUser) return;
+    const { data } = await supabase.from('registrations').select('*').order('created_at', { ascending: false });
+    if (data) setRegistrations(data);
+  };
+
+  const fetchMemberRegistrations = async () => {
+    if (!supabase || !currentUser) return;
+    const { data } = await supabase.from('member_registrations').select('*').order('created_at', { ascending: false });
+    if (data) setMemberRegistrations(data);
+  };
+
   // CRUD Functions ... (保持與原邏輯相同，Supabase Auth 會自動處理 RLS)
   const handleUpdateActivity = async (updated: Activity) => {
     setActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { error } = await supabase.from('activities').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); fetchData(); }
+    if (error) { console.error(error); fetchActivities(); }
   };
   const handleAddActivity = async (newAct: Activity) => {
-    if (!supabase) return;
     const activityToInsert = { ...newAct, id: newAct.id || crypto.randomUUID() };
+    setActivities(prev => [...prev, activityToInsert].sort((a, b) => a.date.localeCompare(b.date)));
+    if (!supabase) return;
     const { error } = await supabase.from('activities').insert([activityToInsert]);
-    if (!error) fetchData(); else alert('新增活動失敗: ' + error.message);
+    if (error) { alert('新增活動失敗: ' + error.message); fetchActivities(); }
   };
   const handleDeleteActivity = async (id: string | number) => {
     setActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     await supabase.from('registrations').delete().eq('activityId', id);
     const { error } = await supabase.from('activities').delete().eq('id', id);
-    if (error) fetchData();
+    if (error) fetchActivities();
   };
 
   const handleUpdateMemberActivity = async (updated: MemberActivity) => {
     setMemberActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { error } = await supabase.from('member_activities').update(updated).eq('id', updated.id);
-    if (error) fetchData();
+    if (error) fetchMemberActivities();
   };
   const handleAddMemberActivity = async (newAct: MemberActivity) => {
-    if (!supabase) return;
     const activityToInsert = { ...newAct, id: newAct.id || crypto.randomUUID() };
+    setMemberActivities(prev => [...prev, activityToInsert].sort((a, b) => a.date.localeCompare(b.date)));
+    if (!supabase) return;
     const { error } = await supabase.from('member_activities').insert([activityToInsert]);
-    if (!error) fetchData(); else alert('新增會員活動失敗: ' + error.message);
+    if (error) { alert('新增會員活動失敗: ' + error.message); fetchMemberActivities(); }
   };
   const handleDeleteMemberActivity = async (id: string | number) => {
     setMemberActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     await supabase.from('member_registrations').delete().eq('activityId', id);
     const { error } = await supabase.from('member_activities').delete().eq('id', id);
-    if (error) fetchData();
+    if (error) fetchMemberActivities();
   };
 
   const handleUpdateClubActivity = async (updated: ClubActivity) => {
     setClubActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
     if (!supabase) return;
     const { error } = await supabase.from('club_activities').update(updated).eq('id', updated.id);
-    if (error) fetchData();
+    if (error) fetchClubActivities();
   };
   const handleAddClubActivity = async (newAct: ClubActivity) => {
-    if (!supabase) return;
     const activityToInsert = { ...newAct, id: newAct.id || crypto.randomUUID() };
+    setClubActivities(prev => [...prev, activityToInsert].sort((a, b) => a.date.localeCompare(b.date)));
+    if (!supabase) return;
     const { error } = await supabase.from('club_activities').insert([activityToInsert]);
-    if (!error) fetchData(); else alert('新增俱樂部活動失敗: ' + error.message);
+    if (error) { alert('新增俱樂部活動失敗: ' + error.message); fetchClubActivities(); }
   };
   const handleDeleteClubActivity = async (id: string | number) => {
     setClubActivities(prev => prev.filter(a => a.id !== id));
     if (!supabase) return;
     const { error } = await supabase.from('club_activities').delete().eq('id', id);
-    if (error) fetchData();
+    if (error) fetchClubActivities();
   };
 
   const handleRegister = async (newReg: Registration, couponId?: string): Promise<boolean> => {
@@ -478,7 +539,7 @@ const App: React.FC = () => {
     const { error } = await supabase.from('registrations').insert([newReg]);
     if (error) { alert('報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); return true;
+    fetchRegistrations(); return true;
   };
 
   const handleMemberRegister = async (newReg: MemberRegistration, couponId?: string): Promise<boolean> => {
@@ -486,14 +547,14 @@ const App: React.FC = () => {
     const { error } = await supabase.from('member_registrations').insert([newReg]);
     if (error) { alert('會員報名失敗：' + error.message); return false; }
     if (couponId) await supabase.from('coupons').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', couponId);
-    await fetchData(); return true;
+    fetchMemberRegistrations(); return true;
   };
 
   const handleUpdateRegistration = async (updated: Registration) => {
     setRegistrations(prev => prev.map(r => r.id === updated.id ? updated : r));
     if (!supabase) return;
     const { error } = await supabase.from('registrations').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); fetchData(); alert('更新失敗'); }
+    if (error) { console.error(error); fetchRegistrations(); alert('更新失敗'); }
   };
   const handleDeleteRegistration = async (id: string | number) => {
     setRegistrations(prev => prev.filter(r => r.id !== id));
@@ -532,67 +593,100 @@ const App: React.FC = () => {
     if (error) { console.error(error); fetchData(); }
   };
 
+  const fetchMilestones = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('milestones').select('*').order('date', { ascending: false });
+    if (data) setMilestones(data);
+  };
+
+  const fetchFinancialRecords = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('financial_records').select('*').order('date', { ascending: false });
+    if (data) setFinancialRecords(data);
+  };
+
   const handleAddMilestone = async (newMilestone: Milestone) => {
+    setMilestones(prev => [newMilestone, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('milestones').insert([newMilestone]);
-    if (error) { console.error(error); alert('新增失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('新增失敗'); fetchMilestones(); }
   };
 
   const handleUpdateMilestone = async (updated: Milestone) => {
+    setMilestones(prev => prev.map(m => m.id === updated.id ? updated : m).sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('milestones').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); alert('更新失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('更新失敗'); fetchMilestones(); }
   };
 
   const handleDeleteMilestone = async (id: string | number) => {
+    setMilestones(prev => prev.filter(m => m.id !== id));
     if (!supabase) return;
     const { error } = await supabase.from('milestones').delete().eq('id', id);
-    if (error) { console.error(error); alert('刪除失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('刪除失敗'); fetchMilestones(); }
   };
 
   const handleAddFinancialRecord = async (newRecord: FinancialRecord) => {
+    setFinancialRecords(prev => [newRecord, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('financial_records').insert([newRecord]);
-    if (error) { console.error(error); alert('新增失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('新增失敗'); fetchFinancialRecords(); }
   };
 
   const handleUpdateFinancialRecord = async (updated: FinancialRecord) => {
+    setFinancialRecords(prev => prev.map(r => r.id === updated.id ? updated : r).sort((a, b) => b.date.localeCompare(a.date)));
     if (!supabase) return;
     const { error } = await supabase.from('financial_records').update(updated).eq('id', updated.id);
-    if (error) { console.error(error); alert('更新失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('更新失敗'); fetchFinancialRecords(); }
   };
 
   const handleDeleteFinancialRecord = async (id: string | number) => {
+    setFinancialRecords(prev => prev.filter(r => r.id !== id));
     if (!supabase) return;
     const { error } = await supabase.from('financial_records').delete().eq('id', id);
-    if (error) { console.error(error); alert('刪除失敗'); }
-    fetchData();
+    if (error) { console.error(error); alert('刪除失敗'); fetchFinancialRecords(); }
   };
 
   // User management (only for recording, not auth)
   const handleAddUser = async (newUser: AdminUser) => { if (!supabase) return; await supabase.from('admins').insert([newUser]); fetchData(); };
   const handleDeleteUser = async (id: string) => { if (!supabase) return; await supabase.from('admins').delete().eq('id', id); fetchData(); };
   
+  const fetchMembers = async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from('members').select('*');
+    if (data) {
+      const sortedMembers = data.sort((a: any, b: any) => {
+        const valA = String(a.member_no || '');
+        const valB = String(b.member_no || '');
+        if (!valA && !valB) return 0;
+        if (!valA) return 1;
+        if (!valB) return -1;
+        return valA.localeCompare(valB, undefined, { numeric: true });
+      });
+      setMembers(sortedMembers);
+    }
+  };
+
   const handleAddMember = async (newMember: Member) => { 
     if (!supabase) return; 
     const memberToInsert = { ...newMember, id: newMember.id || crypto.randomUUID() };
+    setMembers(prev => [...prev, memberToInsert].sort((a, b) => String(a.member_no || '').localeCompare(String(b.member_no || ''), undefined, { numeric: true })));
     const { error } = await supabase.from('members').insert([memberToInsert]); 
-    if (error) alert('新增會員失敗：' + error.message); else fetchData(); 
+    if (error) { alert('新增會員失敗：' + error.message); fetchMembers(); }
   };
+
   const handleUpdateMember = async (updated: Member) => { 
+    setMembers(prev => prev.map(m => m.id === updated.id ? updated : m).sort((a, b) => String(a.member_no || '').localeCompare(String(b.member_no || ''), undefined, { numeric: true })));
     if (!supabase) return; 
     const { error } = await supabase.from('members').update(updated).eq('id', updated.id); 
-    if (error) alert('更新會員失敗：' + error.message); else fetchData(); 
+    if (error) { alert('更新會員失敗：' + error.message); fetchMembers(); }
   };
+
   const handleDeleteMember = async (id: string | number) => { 
+    setMembers(prev => prev.filter(m => m.id !== id));
     if (!supabase) return; 
     const { error } = await supabase.from('members').delete().eq('id', id); 
-    if (error) alert('刪除會員失敗：' + error.message); else fetchData(); 
+    if (error) { alert('刪除會員失敗：' + error.message); fetchMembers(); }
   };
   const handleAddMembers = async (newMembers: Member[]) => {
     if (!supabase) return;

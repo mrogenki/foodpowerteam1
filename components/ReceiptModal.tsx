@@ -258,7 +258,47 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         margin:       10,
         filename:     `收據_${receiptNo}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { 
+          scale: 1.5, // Reduced scale to prevent memory issues and hangs
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          onclone: (clonedDoc: Document) => {
+            const printable = clonedDoc.querySelector('.receipt-pdf-fix') as HTMLElement;
+            if (printable) {
+              // Ensure the root element is clean for PDF rendering
+              printable.style.backgroundColor = '#ffffff';
+              printable.style.color = '#000000';
+              
+              // Force all inputs to show their values in the PDF
+              const inputs = printable.querySelectorAll('input, select, textarea');
+              inputs.forEach(input => {
+                const el = input as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+                const replacement = clonedDoc.createElement('div');
+                replacement.textContent = el.value || ' ';
+                
+                const style = window.getComputedStyle(el);
+                replacement.style.display = 'inline-block';
+                replacement.style.width = style.width;
+                replacement.style.height = style.height;
+                replacement.style.fontSize = style.fontSize;
+                replacement.style.padding = style.padding;
+                replacement.style.border = 'none';
+                replacement.style.backgroundColor = 'transparent';
+
+                if (el.type === 'checkbox') {
+                  replacement.textContent = (el as HTMLInputElement).checked ? '☑' : '☐';
+                  replacement.style.fontSize = '20px';
+                  replacement.style.width = 'auto';
+                }
+
+                if (el.parentNode) {
+                  el.parentNode.replaceChild(replacement, el);
+                }
+              });
+            }
+          }
+        },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
       };
       
@@ -321,7 +361,10 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         errorMsg = '請檢查網路連線、EmailJS 模板設定 (template_receipt) 或 Supabase 儲存空間權限。';
       }
       
-      alert('寄送失敗: ' + errorMsg);
+      // Use setTimeout to prevent UI hang and allow the browser to recover before showing alert
+      setTimeout(() => {
+        alert('寄送失敗: ' + errorMsg);
+      }, 100);
     } finally {
       setIsSending(false);
     }
@@ -389,7 +432,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         </div>
 
         {/* Printable Area */}
-        <div ref={printRef} className="p-8 print:p-0 bg-white text-black" style={{ fontFamily: "'Noto Sans TC', sans-serif" }}>
+        <div ref={printRef} className="p-8 print:p-0 bg-white text-black receipt-pdf-fix" style={{ fontFamily: "'Noto Sans TC', sans-serif" }}>
           
           {/* Receipt Header */}
           <div className="text-center mb-6">
@@ -401,44 +444,44 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           <div className="mb-2 text-xl space-y-2">
             <div className="flex justify-between items-center">
               <p>立案字號：台內團字第1130012253號</p>
-              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]">
+              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]" style={{ backgroundColor: '#f3f4f6' }}>
                 <span>日期：</span>
-                <input type="text" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-left print:appearance-none font-bold" />
+                <input type="text" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-left print:appearance-none font-bold" style={{ backgroundColor: 'transparent', color: '#000000' }} />
               </div>
             </div>
             <div className="flex justify-between items-center">
               <p>統一編號：00509918</p>
-              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]">
+              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]" style={{ backgroundColor: '#f3f4f6' }}>
                 <span>編號：</span>
-                <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-red-600 font-bold print:appearance-none" placeholder="00000" />
+                <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-red-600 font-bold print:appearance-none" style={{ backgroundColor: 'transparent', color: '#dc2626' }} placeholder="00000" />
               </div>
             </div>
           </div>
 
           {/* Main Table */}
-          <table className="w-full border-collapse border border-black text-xl text-center">
+          <table className="w-full border-collapse border border-black text-xl text-center" style={{ borderColor: '#000000' }}>
             <tbody>
               {/* Row 1 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3 w-[12%]">茲收到</td>
-                <td className="border border-black py-3 w-[58%] text-left px-4" colSpan={3}>
-                  <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)} className="w-full outline-none print:appearance-none font-bold" />
+                <td className="border border-black bg-gray-100 font-bold py-3 w-[12%]" style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>茲收到</td>
+                <td className="border border-black py-3 w-[58%] text-left px-4" colSpan={3} style={{ borderColor: '#000000' }}>
+                  <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)} className="w-full outline-none print:appearance-none font-bold" style={{ backgroundColor: 'transparent', color: '#000000' }} />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-3 w-[15%]">統一編號</td>
-                <td className="border border-black py-3 w-[15%]">
-                  <input type="text" value={taxId} onChange={e => setTaxId(e.target.value)} className="w-full outline-none text-center print:appearance-none font-bold" />
+                <td className="border border-black bg-gray-100 font-bold py-3 w-[15%]" style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>統一編號</td>
+                <td className="border border-black py-3 w-[15%]" style={{ borderColor: '#000000' }}>
+                  <input type="text" value={taxId} onChange={e => setTaxId(e.target.value)} className="w-full outline-none text-center print:appearance-none font-bold" style={{ backgroundColor: 'transparent', color: '#000000' }} />
                 </td>
               </tr>
               
               {/* Row 2 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3">NT$</td>
-                <td className="border border-black py-3 text-left px-4" colSpan={3}>
-                  <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full outline-none print:appearance-none font-bold" />
+                <td className="border border-black bg-gray-100 font-bold py-3" style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>NT$</td>
+                <td className="border border-black py-3 text-left px-4" colSpan={3} style={{ borderColor: '#000000' }}>
+                  <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full outline-none print:appearance-none font-bold" style={{ backgroundColor: 'transparent', color: '#000000' }} />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-3">支付方式</td>
-                <td className="border border-black py-3">
-                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full outline-none text-center bg-transparent print:appearance-none font-bold">
+                <td className="border border-black bg-gray-100 font-bold py-3" style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>支付方式</td>
+                <td className="border border-black py-3" style={{ borderColor: '#000000' }}>
+                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full outline-none text-center bg-transparent print:appearance-none font-bold" style={{ backgroundColor: 'transparent', color: '#000000' }}>
                     <option value="信用卡">信用卡</option>
                     <option value="匯款">匯款</option>
                     <option value="現金">現金</option>
@@ -449,8 +492,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
 
               {/* Row 3 - Combined Income Types */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3">款項項目</td>
-                <td className="border border-black py-3 px-4" colSpan={5}>
+                <td className="border border-black bg-gray-100 font-bold py-3" style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>款項項目</td>
+                <td className="border border-black py-3 px-4" colSpan={5} style={{ borderColor: '#000000' }}>
                   <div className="flex flex-wrap items-center justify-around gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={selectedFeeType === 'initiation'} onChange={() => setSelectedFeeType('initiation')} className="w-6 h-6 cursor-pointer" />
@@ -467,7 +510,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={selectedFeeType === 'goods_donation'} onChange={() => setSelectedFeeType('goods_donation')} className="w-6 h-6 cursor-pointer" />
                       <span>捐物</span>
-                      <span className="text-gray-400 text-sm font-normal ml-1">(若為捐物請於備註說明品項)</span>
+                      <span className="text-gray-400 text-sm font-normal ml-1" style={{ color: '#9ca3af' }}>(若為捐物請於備註說明品項)</span>
                     </label>
                   </div>
                 </td>
@@ -475,20 +518,20 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
 
               {/* Row 5 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3">訂單編號</td>
-                <td className="border border-black py-3 text-left px-4" colSpan={3}>
-                  <input type="text" value={orderNo} onChange={e => setOrderNo(e.target.value)} className="w-full outline-none print:appearance-none font-bold" />
+                <td className="border border-black bg-gray-100 font-bold py-3" style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>訂單編號</td>
+                <td className="border border-black py-3 text-left px-4" colSpan={3} style={{ borderColor: '#000000' }}>
+                  <input type="text" value={orderNo} onChange={e => setOrderNo(e.target.value)} className="w-full outline-none print:appearance-none font-bold" style={{ backgroundColor: 'transparent', color: '#000000' }} />
                 </td>
-                <td className="border border-black bg-gray-100 font-bold py-3" colSpan={2}>協會簽章</td>
+                <td className="border border-black bg-gray-100 font-bold py-3" colSpan={2} style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>協會簽章</td>
               </tr>
 
               {/* Row 6 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3 h-36 align-top pt-4">備註</td>
-                <td className="border border-black py-3 text-left px-4 align-top pt-4" colSpan={3}>
-                  <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-full outline-none resize-none print:appearance-none font-bold" rows={4} />
+                <td className="border border-black bg-gray-100 font-bold py-3 h-36 align-top pt-4" style={{ borderColor: '#000000', backgroundColor: '#f3f4f6' }}>備註</td>
+                <td className="border border-black py-3 text-left px-4 align-top pt-4" colSpan={3} style={{ borderColor: '#000000' }}>
+                  <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-full outline-none resize-none print:appearance-none font-bold" rows={4} style={{ backgroundColor: 'transparent', color: '#000000' }} />
                 </td>
-                <td className="border border-black py-3 relative group" colSpan={2}>
+                <td className="border border-black py-3 relative group" colSpan={2} style={{ borderColor: '#000000' }}>
                   <div className="absolute inset-0 flex items-center justify-center p-2">
                     {sealImage ? (
                       <img 
@@ -515,16 +558,16 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           {/* Footer Info */}
           <div className="flex justify-between items-center mt-4 text-xl font-bold">
             <div>理事長：<span className="ml-2">許淳凱</span></div>
-            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1">
+            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1" style={{ backgroundColor: '#f3f4f6' }}>
               <span>經手人：</span>
-              <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none font-bold">
+              <select value={handler} onChange={e => setHandler(e.target.value)} className="bg-transparent border-none outline-none print:appearance-none font-bold" style={{ backgroundColor: 'transparent', color: '#000000' }}>
                 <option value="許暐脡">許暐脡</option>
                 <option value="許淳凱">許淳凱</option>
               </select>
             </div>
           </div>
 
-          <div className="mt-4 text-red-600 font-bold text-xl flex gap-6">
+          <div className="mt-4 text-red-600 font-bold text-xl flex gap-6" style={{ color: '#dc2626' }}>
             <span>台北富邦-古亭分行</span>
             <span>戶名：食在力量美食產業交流協會</span>
             <span>帳號：82120000168305</span>
@@ -533,8 +576,29 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         </div>
       </div>
       
-      {/* Print Styles */}
+      {/* Print and PDF Styles */}
       <style dangerouslySetInnerHTML={{__html: `
+        /* Fix for html2canvas oklch error in Tailwind v4 */
+        .receipt-pdf-fix {
+          background-color: #ffffff !important;
+          color: #000000 !important;
+        }
+        .receipt-pdf-fix .bg-gray-100 { background-color: #f3f4f6 !important; }
+        .receipt-pdf-fix .bg-gray-50 { background-color: #f9fafb !important; }
+        .receipt-pdf-fix .text-red-600 { color: #dc2626 !important; }
+        .receipt-pdf-fix .text-gray-400 { color: #9ca3af !important; }
+        .receipt-pdf-fix .text-gray-500 { color: #6b7280 !important; }
+        .receipt-pdf-fix .text-gray-900 { color: #111827 !important; }
+        .receipt-pdf-fix .bg-gray-200 { background-color: #e5e7eb !important; }
+        .receipt-pdf-fix .border-black { border-color: #000000 !important; }
+        .receipt-pdf-fix .border { border-color: #000000 !important; }
+        .receipt-pdf-fix input, .receipt-pdf-fix textarea, .receipt-pdf-fix select {
+          color: #000000 !important;
+          background-color: transparent !important;
+        }
+        .receipt-pdf-fix input.text-red-600 { color: #dc2626 !important; }
+        .receipt-pdf-fix .text-red-600 { color: #dc2626 !important; }
+
         @media print {
           body * {
             visibility: hidden;

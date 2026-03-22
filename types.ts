@@ -239,24 +239,26 @@ export interface Milestone {
   id: string | number;
   date: string;
   title: string;
+  description: string;
   picture?: string;
-  description?: string;
   created_at?: string;
 }
 
-export enum FinancialType {
-  INCOME = 'income',
-  EXPENSE = 'expense',
+export interface FinancialRecord extends Transaction {
+  // FinancialRecord is an alias or extension of Transaction for consistency
 }
 
-export interface FinancialRecord {
-  id: string | number;
+export interface Transaction {
+  id: string;
+  created_at: string;
   date: string;
-  type: FinancialType;
+  type: 'income' | 'expenditure';
   category: string;
   amount: number;
-  invoice_no?: string;
-  party?: string;
   description?: string;
-  created_at?: string;
+  note?: string;
+  merchant_order_no?: string;
+  invoice_number?: string;
+  entity?: string;
+  document_url?: string;
 }

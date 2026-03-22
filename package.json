@@ -22,6 +22,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "crypto-js": "4.2.0",
     "editorjs-html": "^4.0.5",
+    "html2canvas": "npm:html2canvas-pro@^2.0.2",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.563.0",
     "motion": "^12.34.3",
@@ -31,6 +32,9 @@
     "react-router-dom": "^7.13.0",
     "tailwindcss": "^4.2.2",
     "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "html2canvas": "npm:html2canvas-pro@^2.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
