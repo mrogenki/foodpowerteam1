@@ -47,19 +47,19 @@ const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center gap-2">
-              <img src="/logo.svg" alt="食在力量" className="w-8 h-8 rounded-md object-cover" />
-              <span className="text-xl font-bold tracking-tight">食在力量</span>
+            <Link to="/" className="flex-shrink-0 flex items-center gap-3">
+              <img src="/logo.svg" alt="食在力量" className="w-10 h-10 rounded-lg object-cover shadow-sm" />
+              <span className="text-2xl font-black tracking-tighter text-gray-900 whitespace-nowrap">食在力量</span>
             </Link>
           </div>
-          <div className="hidden sm:flex items-center space-x-8">
+          <div className="hidden lg:flex items-center space-x-8">
             <Link to="/" className="text-gray-700 hover:text-red-600 transition-colors font-medium">首頁</Link>
             <Link to="/about" className="text-gray-700 hover:text-red-600 transition-colors font-medium">關於我們</Link>
             <Link to="/activities" className="text-gray-700 hover:text-red-600 transition-colors font-medium">協會活動</Link>
             <Link to="/members" className="text-gray-700 hover:text-red-600 transition-colors font-medium">會員列表</Link>
             <Link to="/join" className="flex items-center gap-1 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-red-700 shadow-md shadow-red-100 transition-all"><UserPlus size={16} /> 加入會員</Link>
           </div>
-          <div className="sm:hidden flex items-center">
+          <div className="lg:hidden flex items-center">
             <button onClick={() => setIsOpen(!isOpen)} className="text-gray-500 hover:text-red-600">
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -67,7 +67,7 @@ const Header: React.FC = () => {
         </div>
       </div>
       {isOpen && (
-        <div className="sm:hidden bg-white border-t px-4 py-3 space-y-3 shadow-lg">
+        <div className="lg:hidden bg-white border-t px-4 py-3 space-y-3 shadow-lg">
           <Link to="/" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">首頁</Link>
           <Link to="/about" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">關於我們</Link>
           <Link to="/activities" onClick={() => setIsOpen(false)} className="block text-gray-700 font-bold">協會活動</Link>
@@ -88,9 +88,9 @@ const Footer: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
           {/* Logo & Copyright */}
           <div className="text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-              <img src="/logo.svg" alt="食在力量" className="w-8 h-8 rounded-md object-cover" />
-              <span className="font-bold text-gray-800 tracking-wider text-lg">食在力量</span>
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
+              <img src="/logo.svg" alt="食在力量" className="w-10 h-10 rounded-lg object-cover" />
+              <span className="font-bold text-gray-800 tracking-wider text-xl whitespace-nowrap">食在力量</span>
             </div>
             <p className="text-gray-400 text-sm">
               &copy; 2026 食在力量活動報名系統 v2.0.<br/>
