@@ -60,9 +60,13 @@ const MemberList: React.FC<MemberListProps> = ({ members }) => {
 
   // 自動判斷會籍是否有效 (前端顯示邏輯)
   const isMemberActive = (m: Member) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const isExpired = m.membership_expiry_date && m.membership_expiry_date < today;
-    return m.status === 'active' && !isExpired;
+    // 1. 若有到期日，以到期日為準 (大於等於今天即為有效)
+    if (m.membership_expiry_date) {
+      const today = new Date().toISOString().slice(0, 10);
+      return m.membership_expiry_date >= today;
+    }
+    // 2. 若無到期日 (例如永久會員)，則依照 status 判斷
+    return m.status === 'active';
   };
 
   const activeMembers = members.filter(isMemberActive);
@@ -132,10 +136,10 @@ const MemberList: React.FC<MemberListProps> = ({ members }) => {
                       <span className="font-mono text-xs text-gray-400 font-bold opacity-60">#{(member.member_no || '').toString().padStart(5, '0')}</span>
                     </div>
                     <h3 className={`text-xl font-bold text-gray-900 mb-1 transition-colors ${style.hoverText}`}>
-                      {member.company_title || member.company || member.brand_name || '未填寫公司'}
+                      {member.brand_name || member.company_title || member.company || '未填寫品牌'}
                     </h3>
-                    {member.brand_name && member.brand_name !== member.company_title && (
-                      <p className="text-xs text-gray-400">{member.brand_name}</p>
+                    {(member.company_title || member.company) && (member.company_title || member.company) !== member.brand_name && (
+                      <p className="text-xs text-gray-400">{member.company_title || member.company}</p>
                     )}
                   </div>
                   
