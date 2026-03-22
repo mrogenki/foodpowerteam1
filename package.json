@@ -22,7 +22,6 @@
     "@tailwindcss/vite": "^4.2.2",
     "crypto-js": "4.2.0",
     "editorjs-html": "^4.0.5",
-    "html2canvas": "npm:html2canvas-pro@^2.0.2",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.563.0",
     "motion": "^12.34.3",
@@ -33,14 +32,9 @@
     "tailwindcss": "^4.2.2",
     "xlsx": "^0.18.5"
   },
-  "overrides": {
-    "html2canvas": "npm:html2canvas-pro@^2.0.2"
-  },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

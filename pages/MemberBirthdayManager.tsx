@@ -15,9 +15,9 @@ const MemberBirthdayManager: React.FC<MemberBirthdayManagerProps> = ({ members }
 
   // 判斷會員是否有效
   const isMemberActive = (member: Member) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const isExpired = member.membership_expiry_date && member.membership_expiry_date < today;
-    return member.status === 'active' && !isExpired;
+    if (member.status === 'inactive') return false;
+    if (!member.membership_expiry_date) return true;
+    return member.membership_expiry_date >= new Date().toISOString().slice(0, 10);
   };
 
   const birthdayMembers = useMemo(() => {
