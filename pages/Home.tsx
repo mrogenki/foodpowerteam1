@@ -30,14 +30,14 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     return activityFullDate > now;
   };
 
-  const allUpcomingActivities = React.useMemo(() => [
+  const allUpcomingActivities = [
     ...activities.map(a => ({ ...a, isMemberActivity: false })),
     ...memberActivities.map(a => ({ ...a, isMemberActivity: true }))
   ].filter(isUpcoming).sort((a, b) => {
     const dateA = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`).getTime();
     const dateB = new Date(`${b.date.replace(/-/g, '/')} ${b.time}`).getTime();
     return dateA - dateB; // 越近的排越前面
-  }).slice(0, 5), [activities, memberActivities, now]);
+  }).slice(0, 5);
 
   // 輪播自動播放邏輯
   useEffect(() => {
@@ -63,7 +63,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
   };
 
   useEffect(() => {
-    document.title = `食在力量 - 連結產業，創造共好`;
+    document.title = `食在力量`;
     
     const updateMeta = (prop: string, content: string) => {
       let el = document.querySelector(`meta[property="${prop}"]`);
@@ -73,24 +73,11 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     updateMeta('og:title', '食在力量');
     updateMeta('og:description', '食在力量 - 連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動報名與會員管理服務。');
     updateMeta('og:image', 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1200&auto=format&fit=crop');
-    updateMeta('og:url', 'https://www.foodpowerteam.com/');
+    updateMeta('og:url', 'https://foodpowerteam.vercel.app/');
   }, []);
-
-  // JSON-LD for Organization
-  const orgJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "食在力量",
-    "url": "https://www.foodpowerteam.com/",
-    "logo": "https://www.foodpowerteam.com/logo.svg",
-    "description": "連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動報名與會員管理服務。"
-  };
 
   return (
     <div className="pb-20">
-      <script type="application/ld+json">
-        {JSON.stringify(orgJsonLd)}
-      </script>
       {/* Hero Section / Carousel */}
       {allUpcomingActivities.length > 0 ? (
         <div className="relative w-full aspect-video overflow-hidden bg-gray-900">
@@ -106,8 +93,6 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
                 className="w-full h-full object-cover" 
                 loading={index === 0 ? "eager" : "lazy"}
                 referrerPolicy="no-referrer"
-                width="1920"
-                height="1080"
               />
               <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
                 <div className="flex items-center gap-2 md:gap-3 lg:gap-4 mb-4 md:mb-6">
@@ -116,15 +101,15 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
                   </span>
                   {activity.isMemberActivity && (
                     <span className="bg-red-600 text-white px-3 py-1 md:px-5 md:py-1.5 lg:px-6 lg:py-2 rounded-full text-sm md:text-lg lg:text-xl font-bold flex items-center gap-1 md:gap-2">
-                      <Crown className="w-3.5 h-3.5 md:w-5 md:h-5 lg:w-6 lg:h-6" aria-hidden="true" />
+                      <Crown className="w-3.5 h-3.5 md:w-5 md:h-5 lg:w-6 lg:h-6" />
                       會員專屬
                     </span>
                   )}
                 </div>
                 <h2 className="text-2xl md:text-5xl lg:text-6xl font-extrabold text-white mb-4 md:mb-6 drop-shadow-lg max-w-5xl leading-tight">{activity.title}</h2>
                 <div className="flex flex-wrap justify-center items-center gap-3 md:gap-6 text-sm md:text-xl lg:text-2xl text-gray-200 mb-8 md:mb-10 drop-shadow-md">
-                  <span className="flex items-center gap-1.5 md:gap-2"><Calendar className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" aria-hidden="true" /> {activity.date}</span>
-                  <span className="flex items-center gap-1.5 md:gap-2"><MapPin className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" aria-hidden="true" /> {activity.location}</span>
+                  <span className="flex items-center gap-1.5 md:gap-2"><Calendar className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" /> {activity.date}</span>
+                  <span className="flex items-center gap-1.5 md:gap-2"><MapPin className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" /> {activity.location}</span>
                 </div>
                 <Link 
                   to={activity.isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`} 
@@ -138,19 +123,11 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
           
           {allUpcomingActivities.length > 1 && (
             <>
-              <button 
-                onClick={prevSlide} 
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all"
-                aria-label="上一個活動"
-              >
-                <ChevronLeft size={32} aria-hidden="true" />
+              <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all">
+                <ChevronLeft size={32} />
               </button>
-              <button 
-                onClick={nextSlide} 
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all"
-                aria-label="下一個活動"
-              >
-                <ChevronRight size={32} aria-hidden="true" />
+              <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all">
+                <ChevronRight size={32} />
               </button>
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
                 {allUpcomingActivities.map((_, index) => (
@@ -158,7 +135,6 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
                     key={index}
                     onClick={() => setCurrentSlide(index)}
                     className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'}`}
-                    aria-label={`切換至第 ${index + 1} 個活動`}
                   />
                 ))}
               </div>
@@ -185,12 +161,12 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
             </div>
             <div className="relative z-10">
               <Link to="/activities" className="bg-red-50 text-red-600 hover:bg-red-100 px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap">
-                <Calendar size={20} aria-hidden="true" />
+                <Calendar size={20} />
                 查看所有活動
               </Link>
             </div>
             {/* 裝飾背景 */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-red-50 rounded-full blur-[80px] opacity-50 -translate-y-1/2 translate-x-1/2" aria-hidden="true"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-50 rounded-full blur-[80px] opacity-50 -translate-y-1/2 translate-x-1/2"></div>
           </div>
 
           {/* 加入會員 CTA */}
@@ -201,17 +177,17 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
             </div>
             <div className="relative z-10 flex flex-col sm:flex-row gap-4">
               <Link to="/join" className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/50 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
-                <UserPlus size={20} aria-hidden="true" />
+                <UserPlus size={20} />
                 立即加入會員
               </Link>
               <Link to="/renew" className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-4 rounded-xl font-bold text-lg border border-gray-700 hover:border-gray-600 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
-                <Crown size={20} aria-hidden="true" />
+                <Crown size={20} />
                 會員續約
               </Link>
             </div>
             {/* 裝飾背景 */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2" aria-hidden="true"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-10 translate-y-1/2 -translate-x-1/2" aria-hidden="true"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-10 translate-y-1/2 -translate-x-1/2"></div>
           </div>
 
         </div>

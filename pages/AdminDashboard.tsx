@@ -7,7 +7,6 @@ import { supabase } from '../utils/supabaseClient';
 import MemberRenewalManager from './MemberRenewalManager';
 import MemberBirthdayManager from './MemberBirthdayManager';
 import ReceiptManager from './ReceiptManager';
-import TransactionManager from './TransactionManager';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 import BlockEditor from '../components/BlockEditor';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity } from '../types';
@@ -184,7 +183,6 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
             </div>
           </Link>
           <Link to="/admin/receipts" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/receipts') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><FileText size={20} /><span>收據管理</span></Link>
-          <Link to="/admin/transactions" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/transactions') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><DollarSign size={20} /><span>收支管理</span></Link>
           <Link to="/admin/birthdays" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/birthdays') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Cake size={20} /><span>會員生日管理</span></Link>
           <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
         </>)}
@@ -2041,7 +2039,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
           <Route path="/receipts" element={<ReceiptManager />} />
-          <Route path="/transactions" element={<TransactionManager />} />
           <Route path="/birthdays" element={<MemberBirthdayManager members={props.members} />} />
           <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} memberActivities={props.memberActivities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
           

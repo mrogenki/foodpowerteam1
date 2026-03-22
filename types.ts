@@ -234,18 +234,3 @@ export interface Receipt {
   email?: string;
   created_at: string;
 }
-
-export interface Transaction {
-  id: string;
-  created_at: string;
-  date: string;
-  type: 'income' | 'expenditure';
-  category: string;
-  amount: number;
-  description?: string;
-  note?: string;
-  merchant_order_no?: string;
-  invoice_number?: string;
-  entity?: string;
-  document_url?: string;
-}

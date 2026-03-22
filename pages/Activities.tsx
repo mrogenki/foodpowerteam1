@@ -26,23 +26,15 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
 
   return (
     <Link to={linkPath} className={`group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 block ${isClosed ? 'opacity-80 grayscale-[0.5]' : ''}`}>
-      <div className="relative aspect-video overflow-hidden bg-gray-100">
-        <img 
-          src={activity.picture} 
-          alt={activity.title} 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-          loading="lazy"
-          width="600"
-          height="337"
-          referrerPolicy="no-referrer"
-        />
+      <div className="relative aspect-video overflow-hidden">
+        <img src={activity.picture} alt={activity.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         <div className="absolute top-4 left-4 flex gap-2">
           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getTypeColor(activity.type)}`}>
             {activity.type}
           </span>
           {isMemberActivity && (
              <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-               <Crown size={12} aria-hidden="true" /> 會員專屬
+               <Crown size={12} /> 會員專屬
              </span>
           )}
         </div>
@@ -56,27 +48,27 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
         <h3 className={`text-xl font-bold mb-4 line-clamp-1 transition-colors ${isClosed ? 'text-gray-500' : 'group-hover:text-red-600'}`}>{activity.title}</h3>
         <div className="space-y-2 text-sm text-gray-500 mb-6">
           <div className="flex items-center gap-2">
-            <Calendar size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} aria-hidden="true" />
+            <Calendar size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
             <span>{activity.date}</span>
-            <Clock size={16} className={`${isClosed ? 'text-gray-400' : 'text-red-600'} ml-2`} aria-hidden="true" />
+            <Clock size={16} className={`${isClosed ? 'text-gray-400' : 'text-red-600'} ml-2`} />
             <span>{activity.time}</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} aria-hidden="true" />
+            <MapPin size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
             <span className="line-clamp-1">{activity.location}</span>
           </div>
           <div className="flex items-center gap-2">
-            <DollarSign size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} aria-hidden="true" />
+            <DollarSign size={16} className={isClosed ? 'text-gray-400' : 'text-red-600'} />
             <span>NT$ {activity.price.toLocaleString()}</span>
           </div>
         </div>
         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
           {isClosed ? (
-             <span className="text-gray-400 font-bold text-sm flex items-center gap-1"><Ban size={16} aria-hidden="true" /> 報名截止</span>
+             <span className="text-gray-400 font-bold text-sm flex items-center gap-1"><Ban size={16}/> 報名截止</span>
           ) : (
              <span className="text-red-600 font-bold text-sm">立即報名</span>
           )}
-          <ChevronRight size={18} className={isClosed ? 'text-gray-300' : 'text-red-600'} aria-hidden="true" />
+          <ChevronRight size={18} className={isClosed ? 'text-gray-300' : 'text-red-600'} />
         </div>
       </div>
     </Link>
@@ -87,7 +79,7 @@ const ActivitiesPage: React.FC<ActivitiesProps> = ({ activities, memberActivitie
   const now = new Date();
 
   useEffect(() => {
-    document.title = '協會活動 | 食在力量 - 連結產業，創造共好';
+    document.title = '協會活動 | 食在力量';
   }, []);
 
   const isUpcoming = (a: Activity | MemberActivity) => {
@@ -100,22 +92,22 @@ const ActivitiesPage: React.FC<ActivitiesProps> = ({ activities, memberActivitie
     return activityFullDate <= now;
   };
 
-  const allActivities = React.useMemo(() => [
+  const allActivities = [
     ...activities.map(a => ({ ...a, isMemberActivity: false })),
     ...memberActivities.map(a => ({ ...a, isMemberActivity: true }))
   ].sort((a, b) => {
     const dateA = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`).getTime();
     const dateB = new Date(`${b.date.replace(/-/g, '/')} ${b.time}`).getTime();
     return dateB - dateA; // Sort descending (newest first)
-  }), [activities, memberActivities]);
+  });
 
-  const upcomingActivities = React.useMemo(() => allActivities.filter(isUpcoming).sort((a, b) => {
+  const upcomingActivities = allActivities.filter(isUpcoming).sort((a, b) => {
     const dateA = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`).getTime();
     const dateB = new Date(`${b.date.replace(/-/g, '/')} ${b.time}`).getTime();
     return dateA - dateB; // Sort ascending for upcoming (closest first)
-  }), [allActivities, now]);
+  });
   
-  const pastActivities = React.useMemo(() => allActivities.filter(isPast), [allActivities, now]);
+  const pastActivities = allActivities.filter(isPast);
 
   return (
     <div className="pb-20 pt-12">
