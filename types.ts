@@ -235,16 +235,28 @@ export interface Receipt {
   created_at: string;
 }
 
-export interface FinanceRecord {
+export interface Milestone {
   id: string | number;
-  date: string;          // 日期
-  type: 'income' | 'expense'; // 收/支
-  category: string;      // 類別
-  amount: number;        // 金額
-  target: string;        // 收支對象
-  invoice_no?: string;   // 發票號碼
-  document_url?: string; // 單據上傳 (URL)
-  handler_name: string;  // 經手人
-  note?: string;         // 備註
-  created_at: string;
+  date: string;
+  title: string;
+  picture?: string;
+  description?: string;
+  created_at?: string;
+}
+
+export enum FinancialType {
+  INCOME = 'income',
+  EXPENSE = 'expense',
+}
+
+export interface FinancialRecord {
+  id: string | number;
+  date: string;
+  type: FinancialType;
+  category: string;
+  amount: number;
+  invoice_no?: string;
+  party?: string;
+  description?: string;
+  created_at?: string;
 }

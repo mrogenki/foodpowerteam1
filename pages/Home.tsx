@@ -80,7 +80,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     <div className="pb-20">
       {/* Hero Section / Carousel */}
       {allUpcomingActivities.length > 0 ? (
-        <div className="relative w-full aspect-[4/3] md:aspect-video lg:aspect-[21/9] overflow-hidden bg-gray-900">
+        <div className="relative w-full aspect-video overflow-hidden bg-gray-900">
           {allUpcomingActivities.map((activity, index) => (
             <div 
               key={`${activity.isMemberActivity ? 'm' : 'g'}-${activity.id}`} 
@@ -123,10 +123,18 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
           
           {allUpcomingActivities.length > 1 && (
             <>
-              <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all">
+              <button 
+                onClick={prevSlide} 
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all"
+                aria-label="上一個活動"
+              >
                 <ChevronLeft size={32} />
               </button>
-              <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all">
+              <button 
+                onClick={nextSlide} 
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all"
+                aria-label="下一個活動"
+              >
                 <ChevronRight size={32} />
               </button>
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
@@ -135,6 +143,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
                     key={index}
                     onClick={() => setCurrentSlide(index)}
                     className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'}`}
+                    aria-label={`切換至第 ${index + 1} 個活動`}
                   />
                 ))}
               </div>
