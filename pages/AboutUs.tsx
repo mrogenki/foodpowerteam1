@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
-import { History, Users, Briefcase, ChevronRight, Award, Globe, Heart, Target } from 'lucide-react';
+import { History, Users, Briefcase, Award, Globe, Heart, Target } from 'lucide-react';
 
 const AboutUs: React.FC = () => {
+  useEffect(() => {
+    document.title = '關於我們 | 食在力量 - 連結產業，創造共好';
+  }, []);
+
   const sections = [
     {
       id: 'history',

@@ -91,13 +91,11 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   // 檢查活動是否已關閉
   const isClosed = activity.status === 'closed';
 
-  // 判斷會員是否有效 (優先以日期判斷)
+  // 判斷會員是否有效 (前端顯示邏輯)
   const isMemberActive = (m: Member): boolean => {
-    if (m.membership_expiry_date) {
-      const today = new Date().toISOString().slice(0, 10);
-      return m.membership_expiry_date >= today;
-    }
-    return m.status === 'active';
+    const today = new Date().toISOString().slice(0, 10);
+    const isExpired = m.membership_expiry_date && m.membership_expiry_date < today;
+    return m.status === 'active' && !isExpired;
   };
 
   // 計算已報名人數 (排除已退費/已取消 status === 'refunded' 的人)

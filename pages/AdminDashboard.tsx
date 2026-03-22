@@ -7,9 +7,10 @@ import { supabase } from '../utils/supabaseClient';
 import MemberRenewalManager from './MemberRenewalManager';
 import MemberBirthdayManager from './MemberBirthdayManager';
 import ReceiptManager from './ReceiptManager';
+import FinanceManager from './FinanceManager';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
 import BlockEditor from '../components/BlockEditor';
-import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity } from '../types';
+import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity, FinanceRecord } from '../types';
 import { EMAIL_CONFIG } from '../constants';
 
 interface AdminDashboardProps {
@@ -22,6 +23,7 @@ interface AdminDashboardProps {
   users: AdminUser[];
   members: Member[];
   memberApplications: MemberApplication[]; // 新增：會員申請列表
+  financeRecords: FinanceRecord[];
   coupons: Coupon[];
   clubActivities: ClubActivity[];
   onUpdateActivity: (act: Activity) => void;
@@ -47,6 +49,8 @@ interface AdminDashboardProps {
   onGenerateCoupons?: (activityId: string, amount: number, memberIds: string[], sendEmail: boolean) => void;
   onApproveMemberApplication: (app: MemberApplication) => void; // 新增：核准
   onDeleteMemberApplication: (id: string | number) => void; // 新增：拒絕
+  onAddFinanceRecord: (record: FinanceRecord) => void;
+  onDeleteFinanceRecord: (id: string | number) => void;
 }
 
 // 輔助函式：翻譯藍新付款方式
@@ -183,6 +187,7 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
             </div>
           </Link>
           <Link to="/admin/receipts" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/receipts') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><FileText size={20} /><span>收據管理</span></Link>
+          <Link to="/admin/finance" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/finance') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><DollarSign size={20} /><span>收支管理</span></Link>
           <Link to="/admin/birthdays" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/birthdays') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Cake size={20} /><span>會員生日管理</span></Link>
           <Link to="/admin/coupons" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/coupons') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Ticket size={20} /><span>折扣券管理</span></Link>
         </>)}
@@ -336,12 +341,11 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ currentUser, members, act
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
 
   const stats = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
     // 有效會員總數 (不受月份影響，顯示當前總數)
     const activeMembers = members.filter(m => {
-       if (m.membership_expiry_date) {
-          return m.membership_expiry_date >= new Date().toISOString().slice(0, 10);
-       }
-       return m.status === 'active';
+       const isExpired = m.membership_expiry_date && m.membership_expiry_date < today;
+       return m.status === 'active' && !isExpired;
     }).length;
 
     // 該月新會員申請數與營收
@@ -2039,6 +2043,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
           <Route path="/receipts" element={<ReceiptManager />} />
+          <Route path="/finance" element={<FinanceManager records={props.financeRecords} onAdd={props.onAddFinanceRecord} onDelete={props.onDeleteFinanceRecord} onUploadImage={props.onUploadImage} />} />
           <Route path="/birthdays" element={<MemberBirthdayManager members={props.members} />} />
           <Route path="/coupons" element={<CouponManager coupons={props.coupons} activities={props.activities} memberActivities={props.memberActivities} members={props.members} onGenerate={props.onGenerateCoupons} />} />
           

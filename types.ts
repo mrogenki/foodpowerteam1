@@ -234,3 +234,17 @@ export interface Receipt {
   email?: string;
   created_at: string;
 }
+
+export interface FinanceRecord {
+  id: string | number;
+  date: string;          // 日期
+  type: 'income' | 'expense'; // 收/支
+  category: string;      // 類別
+  amount: number;        // 金額
+  target: string;        // 收支對象
+  invoice_no?: string;   // 發票號碼
+  document_url?: string; // 單據上傳 (URL)
+  handler_name: string;  // 經手人
+  note?: string;         // 備註
+  created_at: string;
+}
