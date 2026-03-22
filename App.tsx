@@ -19,7 +19,6 @@ const RenewalPayment = lazy(() => import('./pages/RenewalPayment'));
 const AboutUs = lazy(() => import('./pages/AboutUs'));
 const MilestoneTimeline = lazy(() => import('./pages/MilestoneTimeline'));
 
-import 'react-quill-new/dist/quill.snow.css';
 import { Activity, MemberActivity, Registration, MemberRegistration, AdminUser, Member, Coupon, MemberApplication, UserRole, ClubActivity, Milestone, FinancialRecord } from './types';
 import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
