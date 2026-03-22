@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, UserPlus, Calendar, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
@@ -30,14 +29,14 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     return activityFullDate > now;
   };
 
-  const allUpcomingActivities = React.useMemo(() => [
+  const allUpcomingActivities = [
     ...activities.map(a => ({ ...a, isMemberActivity: false })),
     ...memberActivities.map(a => ({ ...a, isMemberActivity: true }))
   ].filter(isUpcoming).sort((a, b) => {
     const dateA = new Date(`${a.date.replace(/-/g, '/')} ${a.time}`).getTime();
     const dateB = new Date(`${b.date.replace(/-/g, '/')} ${b.time}`).getTime();
     return dateA - dateB; // 越近的排越前面
-  }).slice(0, 5), [activities, memberActivities, now]);
+  }).slice(0, 5);
 
   // 輪播自動播放邏輯
   useEffect(() => {
@@ -63,7 +62,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
   };
 
   useEffect(() => {
-    document.title = `食在力量 - 連結產業，創造共好`;
+    document.title = `食在力量`;
     
     const updateMeta = (prop: string, content: string) => {
       let el = document.querySelector(`meta[property="${prop}"]`);
@@ -73,234 +72,134 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
     updateMeta('og:title', '食在力量');
     updateMeta('og:description', '食在力量 - 連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動報名與會員管理服務。');
     updateMeta('og:image', 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1200&auto=format&fit=crop');
-    updateMeta('og:url', 'https://www.foodpowerteam.com/');
+    updateMeta('og:url', 'https://foodpowerteam.vercel.app/');
   }, []);
 
-  // JSON-LD for Organization
-  const orgJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "食在力量",
-    "url": "https://www.foodpowerteam.com/",
-    "logo": "https://www.foodpowerteam.com/logo.svg",
-    "description": "連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動報名與會員管理服務。"
-  };
-
   return (
-    <div className="pb-20 bg-white">
-      <script type="application/ld+json">
-        {JSON.stringify(orgJsonLd)}
-      </script>
-
+    <div className="pb-20">
       {/* Hero Section / Carousel */}
       {allUpcomingActivities.length > 0 ? (
-        <div className="relative w-full h-[85vh] overflow-hidden bg-black">
-          <AnimatePresence mode="wait">
-            {allUpcomingActivities.map((activity, index) => index === currentSlide && (
-              <motion.div 
-                key={`${activity.isMemberActivity ? 'm' : 'g'}-${activity.id}`} 
-                initial={{ opacity: 0, scale: 1.1 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute inset-0 z-10"
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-20"></div>
-                <img 
-                  src={optimizeImageUrl(activity.picture, 1920)} 
-                  alt={activity.title} 
-                  className="w-full h-full object-cover opacity-80" 
-                  loading="eager"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 z-30 flex flex-col justify-end pb-24 px-6 md:px-12 lg:px-24 max-w-7xl mx-auto">
-                  <motion.div 
-                    initial={{ y: 40, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.3, duration: 0.8 }}
-                    className="flex flex-wrap items-center gap-3 mb-8"
-                  >
-                    <span className={`${getTypeColor(activity.type)} text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest`}>
-                      {activity.type}
+        <div className="relative w-full aspect-video overflow-hidden bg-gray-900">
+          {allUpcomingActivities.map((activity, index) => (
+            <div 
+              key={`${activity.isMemberActivity ? 'm' : 'g'}-${activity.id}`} 
+              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            >
+              <div className="absolute inset-0 bg-black/50 z-10"></div>
+              <img 
+                src={optimizeImageUrl(activity.picture)} 
+                alt={activity.title} 
+                className="w-full h-full object-cover" 
+                loading={index === 0 ? "eager" : "lazy"}
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
+                <div className="flex items-center gap-2 md:gap-3 lg:gap-4 mb-4 md:mb-6">
+                  <span className={`${getTypeColor(activity.type)} text-white px-3 py-1 md:px-5 md:py-1.5 lg:px-6 lg:py-2 rounded-full text-sm md:text-lg lg:text-xl font-bold flex items-center gap-1`}>
+                    {activity.type}
+                  </span>
+                  {activity.isMemberActivity && (
+                    <span className="bg-red-600 text-white px-3 py-1 md:px-5 md:py-1.5 lg:px-6 lg:py-2 rounded-full text-sm md:text-lg lg:text-xl font-bold flex items-center gap-1 md:gap-2">
+                      <Crown className="w-3.5 h-3.5 md:w-5 md:h-5 lg:w-6 lg:h-6" />
+                      會員專屬
                     </span>
-                    {activity.isMemberActivity && (
-                      <span className="bg-red-600 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                        <Crown size={14} />
-                        會員專屬
-                      </span>
-                    )}
-                  </motion.div>
-                  
-                  <motion.h2 
-                    initial={{ y: 40, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.4, duration: 0.8 }}
-                    className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tighter uppercase max-w-5xl"
-                  >
-                    {activity.title}
-                  </motion.h2>
-
-                  <motion.div 
-                    initial={{ y: 40, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.5, duration: 0.8 }}
-                    className="flex flex-wrap items-center gap-8 text-gray-300 mb-12"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Calendar size={24} className="text-red-500" />
-                      <span className="text-lg font-medium tracking-tight">{activity.date}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <MapPin size={24} className="text-red-500" />
-                      <span className="text-lg font-medium tracking-tight">{activity.location}</span>
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ y: 40, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.6, duration: 0.8 }}
-                  >
-                    <Link 
-                      to={activity.isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`} 
-                      className="inline-flex items-center gap-4 bg-white text-black hover:bg-red-600 hover:text-white px-10 py-5 rounded-full font-black text-lg transition-all shadow-2xl hover:-translate-y-1 active:translate-y-0"
-                    >
-                      探索詳情
-                      <ChevronRight size={24} />
-                    </Link>
-                  </motion.div>
+                  )}
                 </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                <h2 className="text-2xl md:text-5xl lg:text-6xl font-extrabold text-white mb-4 md:mb-6 drop-shadow-lg max-w-5xl leading-tight">{activity.title}</h2>
+                <div className="flex flex-wrap justify-center items-center gap-3 md:gap-6 text-sm md:text-xl lg:text-2xl text-gray-200 mb-8 md:mb-10 drop-shadow-md">
+                  <span className="flex items-center gap-1.5 md:gap-2"><Calendar className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" /> {activity.date}</span>
+                  <span className="flex items-center gap-1.5 md:gap-2"><MapPin className="w-4 h-4 md:w-6 md:h-6 lg:w-7 lg:h-7" /> {activity.location}</span>
+                </div>
+                <Link 
+                  to={activity.isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`} 
+                  className="bg-white text-gray-900 hover:bg-gray-100 px-6 py-2 md:px-8 md:py-3 lg:px-10 lg:py-4 rounded-full font-bold text-base md:text-xl lg:text-2xl transition-colors shadow-lg"
+                >
+                  查看活動詳情
+                </Link>
+              </div>
+            </div>
+          ))}
           
           {allUpcomingActivities.length > 1 && (
-            <div className="absolute bottom-12 right-12 z-40 flex items-center gap-6">
-              <div className="flex gap-3">
+            <>
+              <button 
+                onClick={prevSlide} 
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all"
+                aria-label="上一個活動"
+              >
+                <ChevronLeft size={32} />
+              </button>
+              <button 
+                onClick={nextSlide} 
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all"
+                aria-label="下一個活動"
+              >
+                <ChevronRight size={32} />
+              </button>
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
                 {allUpcomingActivities.map((_, index) => (
                   <button 
                     key={index}
                     onClick={() => setCurrentSlide(index)}
-                    className={`h-1 transition-all duration-500 ${index === currentSlide ? 'w-12 bg-red-600' : 'w-6 bg-white/30 hover:bg-white/60'}`}
+                    className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'}`}
                     aria-label={`切換至第 ${index + 1} 個活動`}
                   />
                 ))}
               </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={prevSlide} 
-                  className="p-3 border border-white/20 hover:bg-white hover:text-black text-white rounded-full backdrop-blur-sm transition-all"
-                  aria-label="上一個活動"
-                >
-                  <ChevronLeft size={24} />
-                </button>
-                <button 
-                  onClick={nextSlide} 
-                  className="p-3 border border-white/20 hover:bg-white hover:text-black text-white rounded-full backdrop-blur-sm transition-all"
-                  aria-label="下一個活動"
-                >
-                  <ChevronRight size={24} />
-                </button>
-              </div>
-            </div>
+            </>
           )}
         </div>
       ) : (
-        <section className="relative h-[70vh] flex items-center bg-black overflow-hidden">
-          <div className="absolute inset-0 opacity-40">
-            <img 
-              src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1920&auto=format&fit=crop" 
-              className="w-full h-full object-cover"
-              alt="Background"
-            />
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent"></div>
-          <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 lg:px-24 w-full">
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-black text-white mb-8 leading-[0.85] tracking-tighter uppercase">
-              連結產業<br/>創造共好
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-300 max-w-2xl leading-relaxed mb-12 font-medium">
-              食在力量致力於餐飲業與食品產業的交流與成長，匯聚各產業菁英，提供講座論壇、企業參訪與專業課程。
-            </p>
-            <Link to="/activities" className="inline-flex items-center gap-4 bg-red-600 text-white hover:bg-white hover:text-black px-10 py-5 rounded-full font-black text-lg transition-all shadow-2xl">
-              探索活動
-              <ChevronRight size={24} />
-            </Link>
+        <section className="bg-red-600 text-white py-20 px-4">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-6">連結產業，創造共好</h1>
+            <p className="text-xl text-red-100 max-w-3xl leading-relaxed">食在力量致力於餐飲業&食品產業的交流與成長，提供講座論壇、企業參訪與專業課程，讓您的事業在這裡蓬勃發展。</p>
           </div>
         </section>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-24 -mt-20 relative z-40">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+        <div className="space-y-8">
           
           {/* 協會活動 CTA */}
-          <motion.div 
-            whileHover={{ y: -10 }}
-            className="bg-white rounded-[40px] p-10 md:p-16 shadow-2xl shadow-black/5 border border-gray-100 group transition-all"
-          >
-            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 mb-8 group-hover:bg-red-600 group-hover:text-white transition-all">
-              <Calendar size={32} />
+          <div className="bg-white border border-gray-100 rounded-3xl p-8 md:p-12 shadow-xl relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 max-w-2xl">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">探索協會活動</h2>
+              <p className="text-gray-600 mb-0">我們定期舉辦講座論壇、企業參訪與專業課程，歡迎報名參加，與我們一起成長。</p>
             </div>
-            <h2 className="text-4xl font-black text-gray-900 mb-6 tracking-tight uppercase">探索協會活動</h2>
-            <p className="text-gray-500 text-lg leading-relaxed mb-10">
-              我們定期舉辦講座論壇、企業參訪與專業課程，歡迎報名參加，與我們一起成長。
-            </p>
-            <Link to="/activities" className="inline-flex items-center gap-3 text-red-600 font-black text-xl hover:gap-5 transition-all">
-              查看所有活動
-              <ChevronRight size={28} />
-            </Link>
-          </motion.div>
-
-          {/* 加入會員 CTA */}
-          <motion.div 
-            whileHover={{ y: -10 }}
-            className="bg-gray-900 rounded-[40px] p-10 md:p-16 shadow-2xl shadow-black/20 relative overflow-hidden group transition-all"
-          >
             <div className="relative z-10">
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-white mb-8 group-hover:bg-red-600 transition-all">
-                <UserPlus size={32} />
-              </div>
-              <h2 className="text-4xl font-black text-white mb-6 tracking-tight uppercase">加入食在力量</h2>
-              <p className="text-gray-400 text-lg leading-relaxed mb-10">
-                立即註冊成為會員，享有專屬活動優惠、產業媒合機會，並與頂尖業者交流共學。
-              </p>
-              <div className="flex flex-wrap gap-6">
-                <Link to="/join" className="bg-red-600 hover:bg-white hover:text-black text-white px-8 py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-red-900/20">
-                  立即加入
-                </Link>
-                <Link to="/renew" className="bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-2xl font-black text-lg border border-white/10 transition-all">
-                  會員續約
-                </Link>
-              </div>
+              <Link to="/activities" className="bg-red-50 text-red-600 hover:bg-red-100 px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                <Calendar size={20} />
+                查看所有活動
+              </Link>
             </div>
             {/* 裝飾背景 */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full blur-[120px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
-          </motion.div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-50 rounded-full blur-[80px] opacity-50 -translate-y-1/2 translate-x-1/2"></div>
+          </div>
+
+          {/* 加入會員 CTA */}
+          <div className="bg-gray-900 rounded-3xl p-8 md:p-12 relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 max-w-2xl">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">還沒加入食在力量會員嗎？</h2>
+              <p className="text-gray-400 mb-0">立即註冊成為會員，享有專屬活動優惠、產業媒合機會，並與頂尖業者交流共學。</p>
+            </div>
+            <div className="relative z-10 flex flex-col sm:flex-row gap-4">
+              <Link to="/join" className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/50 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                <UserPlus size={20} />
+                立即加入會員
+              </Link>
+              <Link to="/renew" className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-4 rounded-xl font-bold text-lg border border-gray-700 hover:border-gray-600 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                <Crown size={20} />
+                會員續約
+              </Link>
+            </div>
+            {/* 裝飾背景 */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-10 translate-y-1/2 -translate-x-1/2"></div>
+          </div>
 
         </div>
       </div>
-
-      {/* Stats Section */}
-      <section className="py-32 px-6 md:px-12 lg:px-24 max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">500+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">活躍會員</div>
-          </div>
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">100+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">年度活動</div>
-          </div>
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">50+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">合作企業</div>
-          </div>
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">10+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">產業類別</div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
