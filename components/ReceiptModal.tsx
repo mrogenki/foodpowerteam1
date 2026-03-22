@@ -266,18 +266,37 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           onclone: (clonedDoc: Document) => {
             const printable = clonedDoc.querySelector('.receipt-pdf-fix') as HTMLElement;
             if (printable) {
+              // Recursive function to strip oklch/oklab from all elements
+              const stripModernColors = (el: HTMLElement) => {
+                const style = window.getComputedStyle(el);
+                const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'boxShadow'];
+                
+                props.forEach(prop => {
+                  const val = (style as any)[prop];
+                  if (val && (val.includes('oklch') || val.includes('oklab'))) {
+                    // Force fallback colors
+                    if (prop === 'color') el.style.color = '#000000';
+                    else if (prop === 'backgroundColor') el.style.backgroundColor = 'transparent';
+                    else if (prop === 'borderColor') el.style.borderColor = '#000000';
+                    else el.style[prop as any] = 'none';
+                  }
+                });
+
+                // Force specific Tailwind v4 classes to hex
+                if (el.classList.contains('bg-gray-100')) el.style.backgroundColor = '#f3f4f6';
+                if (el.classList.contains('text-red-600')) el.style.color = '#dc2626';
+                if (el.classList.contains('text-gray-400')) el.style.color = '#9ca3af';
+                if (el.classList.contains('border-black')) el.style.borderColor = '#000000';
+
+                // Process children
+                for (let i = 0; i < el.children.length; i++) {
+                  stripModernColors(el.children[i] as HTMLElement);
+                }
+              };
+
               printable.style.backgroundColor = '#ffffff';
               printable.style.color = '#000000';
-              
-              // Force hex colors for common elements to bypass oklch parsing issues
-              const grayBgElements = clonedDoc.querySelectorAll('.bg-gray-100');
-              grayBgElements.forEach(el => (el as HTMLElement).style.backgroundColor = '#f3f4f6');
-              
-              const redTextElements = clonedDoc.querySelectorAll('.text-red-600');
-              redTextElements.forEach(el => (el as HTMLElement).style.color = '#dc2626');
-              
-              const grayTextElements = clonedDoc.querySelectorAll('.text-gray-400');
-              grayTextElements.forEach(el => (el as HTMLElement).style.color = '#9ca3af');
+              stripModernColors(printable);
             }
           }
         },
