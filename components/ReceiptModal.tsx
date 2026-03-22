@@ -259,44 +259,44 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         filename:     `收據_${receiptNo}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
         html2canvas:  { 
-          scale: 2, 
+          scale: 1.5, // Reduced scale to prevent memory issues and hangs
           useCORS: true,
+          allowTaint: true,
           logging: false,
-          letterRendering: true,
           onclone: (clonedDoc: Document) => {
+            // 1. Aggressively remove oklch/oklab from all style tags in the cloned document
+            // This prevents the html2canvas parser from crashing when it sees these functions
+            const styleTags = clonedDoc.querySelectorAll('style');
+            styleTags.forEach(tag => {
+              if (tag.textContent) {
+                // Replace modern color functions with safe fallbacks in the CSS text
+                tag.textContent = tag.textContent
+                  .replace(/oklch\([^)]+\)/g, 'rgb(0,0,0)')
+                  .replace(/oklab\([^)]+\)/g, 'rgb(0,0,0)');
+              }
+            });
+
             const printable = clonedDoc.querySelector('.receipt-pdf-fix') as HTMLElement;
             if (printable) {
-              // Recursive function to strip oklch/oklab from all elements
-              const stripModernColors = (el: HTMLElement) => {
-                const style = window.getComputedStyle(el);
-                const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'boxShadow'];
+              printable.style.backgroundColor = '#ffffff';
+              printable.style.color = '#000000';
+              
+              // 2. Force hex colors on all elements within the printable area
+              const allElements = printable.getElementsByTagName('*');
+              for (let i = 0; i < allElements.length; i++) {
+                const el = allElements[i] as HTMLElement;
                 
-                props.forEach(prop => {
-                  const val = (style as any)[prop];
-                  if (val && (val.includes('oklch') || val.includes('oklab'))) {
-                    // Force fallback colors
-                    if (prop === 'color') el.style.color = '#000000';
-                    else if (prop === 'backgroundColor') el.style.backgroundColor = 'transparent';
-                    else if (prop === 'borderColor') el.style.borderColor = '#000000';
-                    else el.style[prop as any] = 'none';
-                  }
-                });
-
-                // Force specific Tailwind v4 classes to hex
+                // Force hex for common Tailwind classes
                 if (el.classList.contains('bg-gray-100')) el.style.backgroundColor = '#f3f4f6';
                 if (el.classList.contains('text-red-600')) el.style.color = '#dc2626';
                 if (el.classList.contains('text-gray-400')) el.style.color = '#9ca3af';
                 if (el.classList.contains('border-black')) el.style.borderColor = '#000000';
-
-                // Process children
-                for (let i = 0; i < el.children.length; i++) {
-                  stripModernColors(el.children[i] as HTMLElement);
-                }
-              };
-
-              printable.style.backgroundColor = '#ffffff';
-              printable.style.color = '#000000';
-              stripModernColors(printable);
+                
+                // Remove problematic modern properties that often use oklch in Tailwind v4
+                el.style.boxShadow = 'none';
+                el.style.filter = 'none';
+                el.style.backdropFilter = 'none';
+              }
             }
           }
         },
@@ -362,7 +362,10 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         errorMsg = '請檢查網路連線、EmailJS 模板設定 (template_receipt) 或 Supabase 儲存空間權限。';
       }
       
-      alert('寄送失敗: ' + errorMsg);
+      // Use setTimeout to prevent UI hang and allow the browser to recover before showing alert
+      setTimeout(() => {
+        alert('寄送失敗: ' + errorMsg);
+      }, 100);
     } finally {
       setIsSending(false);
     }

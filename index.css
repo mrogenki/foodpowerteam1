@@ -25,8 +25,14 @@
   --color-red-600: #dc2626;
   --color-red-700: #b91c1c;
   
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
   --color-blue-500: #3b82f6;
   --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
 }
 
 /* Aggressively suppress modern color functions for PDF generation compatibility */
