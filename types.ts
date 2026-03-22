@@ -234,29 +234,3 @@ export interface Receipt {
   email?: string;
   created_at: string;
 }
-
-export interface Milestone {
-  id: string | number;
-  date: string;
-  title: string;
-  picture?: string;
-  description?: string;
-  created_at?: string;
-}
-
-export enum FinancialType {
-  INCOME = 'income',
-  EXPENSE = 'expense',
-}
-
-export interface FinancialRecord {
-  id: string | number;
-  date: string;
-  type: FinancialType;
-  category: string;
-  amount: number;
-  invoice_no?: string;
-  party?: string;
-  description?: string;
-  created_at?: string;
-}

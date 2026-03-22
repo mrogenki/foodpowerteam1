@@ -8,8 +8,6 @@ import { EMAIL_CONFIG } from '../constants';
 import { submitNewebPayForm, NEWEB_CONFIG } from '../utils/newebpay';
 import BlockRenderer from '../components/BlockRenderer';
 
-import { supabase } from '../utils/supabaseClient';
-
 interface ActivityDetailProps {
   type: 'general' | 'member';
   activities: (Activity | MemberActivity)[];
@@ -25,35 +23,6 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const activity = props.activities.find(a => String(a.id) === id);
-  const [fullActivity, setFullActivity] = useState<(Activity | MemberActivity) | null>(null);
-  const [loadingFull, setLoadingFull] = useState(false);
-
-  useEffect(() => {
-    if (activity && !activity.description) {
-      const fetchFull = async () => {
-        setLoadingFull(true);
-        try {
-          const table = props.type === 'general' ? 'activities' : 'member_activities';
-          const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
-          if (data) {
-            setFullActivity(data);
-          } else {
-            setFullActivity(activity);
-          }
-        } catch (err) {
-          console.error('Error fetching full activity:', err);
-          setFullActivity(activity);
-        } finally {
-          setLoadingFull(false);
-        }
-      };
-      fetchFull();
-    } else {
-      setFullActivity(activity || null);
-    }
-  }, [activity, id, props.type]);
-
-  const currentActivity = fullActivity || activity;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -86,9 +55,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
 
   // 動態更新 Meta Tags (標題、圖片)
   useEffect(() => {
-    if (currentActivity) {
+    if (activity) {
       // 1. 更新瀏覽器標題
-      document.title = `${currentActivity.title} - 食在力量`;
+      document.title = `${activity.title} - 食在力量`;
 
       // 2. 嘗試更新 Meta 標籤 (支援 og 與 twitter card)
       const updateMeta = (key: string, value: string, isProperty: boolean = true) => {
@@ -103,24 +72,24 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       };
       
       // Open Graph
-      updateMeta('og:title', currentActivity.title);
-      updateMeta('og:description', currentActivity.description ? currentActivity.description.substring(0, 100) : '點擊查看活動詳情');
-      updateMeta('og:image', currentActivity.picture);
+      updateMeta('og:title', activity.title);
+      updateMeta('og:description', activity.description ? activity.description.substring(0, 100) : '點擊查看活動詳情');
+      updateMeta('og:image', activity.picture);
       updateMeta('og:url', window.location.href);
 
       // Twitter Card
-      updateMeta('twitter:title', currentActivity.title, false);
-      updateMeta('twitter:description', currentActivity.description ? currentActivity.description.substring(0, 100) : '點擊查看活動詳情', false);
-      updateMeta('twitter:image', currentActivity.picture, false);
+      updateMeta('twitter:title', activity.title, false);
+      updateMeta('twitter:description', activity.description ? activity.description.substring(0, 100) : '點擊查看活動詳情', false);
+      updateMeta('twitter:image', activity.picture, false);
     }
-  }, [currentActivity]);
+  }, [activity]);
 
   if (!activity) {
     return <div className="p-20 text-center">活動不存在</div>;
   }
 
   // 檢查活動是否已關閉
-  const isClosed = currentActivity.status === 'closed';
+  const isClosed = activity.status === 'closed';
 
   // 判斷會員是否有效 (優先以日期判斷)
   const isMemberActive = (m: Member): boolean => {
@@ -144,7 +113,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     ).length;
   }
 
-  const basePrice = currentActivity.price;
+  const basePrice = activity.price;
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
   // 搜尋會員邏輯
@@ -181,7 +150,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   const handleShare = async () => {
     const shareUrl = window.location.href;
     // 修正：針對手機原生分享，移除 URL 避免重複
-    const shareTextBase = `【食在力量活動推薦】\n活動：${currentActivity.title}\n日期：${currentActivity.date}\n時間：${currentActivity.time}\n地點：${currentActivity.location}\n\n立即點擊連結報名：`;
+    const shareTextBase = `【食在力量活動推薦】\n活動：${activity.title}\n日期：${activity.date}\n時間：${activity.time}\n地點：${activity.location}\n\n立即點擊連結報名：`;
     
     // 電腦版/剪貼簿複製：保留 URL
     const shareTextClipboard = `${shareTextBase}\n${shareUrl}`;
@@ -189,7 +158,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     if (navigator.share) {
       try {
         // 傳遞 title, text (不含URL), url (由系統處理)
-        await navigator.share({ title: currentActivity.title, text: shareTextBase, url: shareUrl });
+        await navigator.share({ title: activity.title, text: shareTextBase, url: shareUrl });
       } catch (err) { console.log('Share failed', err); }
     } else {
       try {
@@ -203,7 +172,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
   const checkCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponStatus('validating');
-    const result = await props.validateCoupon(couponCode, currentActivity.id as string);
+    const result = await props.validateCoupon(couponCode, activity.id as string);
     
     if (result.valid) {
       setCouponStatus('valid');
@@ -232,10 +201,10 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
         phone: formData.phone,
         company: formData.company,
         job_title: formData.title, 
-        activity_title: currentActivity.title,
-        activity_date: currentActivity.date,
-        activity_time: currentActivity.time,
-        activity_location: currentActivity.location,
+        activity_title: activity.title,
+        activity_date: activity.date,
+        activity_time: activity.time,
+        activity_location: activity.location,
         activity_price: finalPrice,
       };
       await emailjs.send(EMAIL_CONFIG.SERVICE_ID, EMAIL_CONFIG.TEMPLATE_ID, templateParams, EMAIL_CONFIG.PUBLIC_KEY);
@@ -262,13 +231,13 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     setIsSubmitting(true);
 
     // 產生訂單編號 (格式: 活動ID後3碼 + 時間戳)
-    const merchantOrderNo = `ACT${String(currentActivity.id).slice(-3)}${Date.now()}`;
+    const merchantOrderNo = `ACT${String(activity.id).slice(-3)}${Date.now()}`;
 
     try {
       let success = false;
       const commonData = {
         id: Math.random().toString(36).substr(2, 9),
-        activityId: currentActivity.id,
+        activityId: activity.id,
         paid_amount: finalPrice,
         coupon_code: validCouponId ? couponCode : undefined,
         created_at: new Date().toISOString(),
@@ -320,7 +289,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
             submitNewebPayForm({
               MerchantOrderNo: merchantOrderNo,
               Amt: finalPrice,
-              ItemDesc: currentActivity.title,
+              ItemDesc: activity.title,
               Email: formData.email
             });
           }, 500);
@@ -366,7 +335,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-8">
           <div className="rounded-2xl overflow-hidden shadow-sm relative">
-            <img src={currentActivity.picture} alt={currentActivity.title} className={`w-full aspect-video object-cover ${isClosed ? 'grayscale opacity-70' : ''}`} />
+            <img src={activity.picture} alt={activity.title} className={`w-full aspect-video object-cover ${isClosed ? 'grayscale opacity-70' : ''}`} />
             {props.type === 'member' && (
                <div className="absolute top-4 left-4 bg-red-600/90 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 backdrop-blur-sm shadow-lg"><Crown size={20} /> 會員專屬活動</div>
             )}
@@ -381,7 +350,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
           
           <div>
             <div className="flex items-center gap-3 mb-4">
-               <span className={`px-3 py-1 rounded-md text-sm font-bold ${isClosed ? 'bg-gray-200 text-gray-500' : 'bg-red-100 text-red-600'}`}>{currentActivity.type}</span>
+               <span className={`px-3 py-1 rounded-md text-sm font-bold ${isClosed ? 'bg-gray-200 text-gray-500' : 'bg-red-100 text-red-600'}`}>{activity.type}</span>
                {props.type === 'member' && (
                  <span className="bg-red-600 text-white px-3 py-1 rounded-md text-sm font-bold flex items-center gap-1">
                    <Crown size={14} /> 會員專屬
@@ -389,24 +358,17 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
                )}
                <span className="text-gray-400 text-sm">已有 {alreadyRegisteredCount} 人報名</span>
             </div>
-            <h1 className="text-4xl font-bold mb-6 text-gray-900">{currentActivity.title}</h1>
+            <h1 className="text-4xl font-bold mb-6 text-gray-900">{activity.title}</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-6 rounded-2xl border border-gray-100 mb-8">
-              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><Calendar size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">日期時間</p><p className="font-medium">{currentActivity.date}</p><p className="text-sm text-gray-500 font-bold">{currentActivity.time}</p></div></div>
-              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><MapPin size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">地點</p><p className="font-medium">{currentActivity.location}</p></div></div>
-              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><DollarSign size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">活動費用</p><p className="font-medium">NT$ {currentActivity.price.toLocaleString()}</p></div></div>
+              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><Calendar size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">日期時間</p><p className="font-medium">{activity.date}</p><p className="text-sm text-gray-500 font-bold">{activity.time}</p></div></div>
+              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><MapPin size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">地點</p><p className="font-medium">{activity.location}</p></div></div>
+              <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><DollarSign size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">活動費用</p><p className="font-medium">NT$ {activity.price.toLocaleString()}</p></div></div>
             </div>
 
             <div className="prose prose-red max-w-none mb-10">
               <h3 className="text-xl font-bold mb-4">活動介紹</h3>
-              {loadingFull ? (
-                <div className="flex items-center gap-2 text-gray-400">
-                  <Loader2 className="animate-spin" size={20} />
-                  <span>載入詳細介紹中...</span>
-                </div>
-              ) : (
-                <BlockRenderer value={currentActivity.description} />
-              )}
+              <BlockRenderer value={activity.description} />
             </div>
 
             <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
