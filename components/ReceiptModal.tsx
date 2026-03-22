@@ -258,7 +258,17 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         margin:       10,
         filename:     `收據_${receiptNo}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { 
+          scale: 2, 
+          useCORS: true,
+          onclone: (clonedDoc: Document) => {
+            const printable = clonedDoc.querySelector('.receipt-pdf-fix');
+            if (printable) {
+              (printable as HTMLElement).style.backgroundColor = '#ffffff';
+              (printable as HTMLElement).style.color = '#000000';
+            }
+          }
+        },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
       };
       
@@ -389,7 +399,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         </div>
 
         {/* Printable Area */}
-        <div ref={printRef} className="p-8 print:p-0 bg-white text-black" style={{ fontFamily: "'Noto Sans TC', sans-serif" }}>
+        <div ref={printRef} className="p-8 print:p-0 bg-white text-black receipt-pdf-fix" style={{ fontFamily: "'Noto Sans TC', sans-serif" }}>
           
           {/* Receipt Header */}
           <div className="text-center mb-6">
@@ -533,8 +543,29 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         </div>
       </div>
       
-      {/* Print Styles */}
+      {/* Print and PDF Styles */}
       <style dangerouslySetInnerHTML={{__html: `
+        /* Fix for html2canvas oklch error in Tailwind v4 */
+        .receipt-pdf-fix {
+          background-color: #ffffff !important;
+          color: #000000 !important;
+        }
+        .receipt-pdf-fix .bg-gray-100 { background-color: #f3f4f6 !important; }
+        .receipt-pdf-fix .bg-gray-50 { background-color: #f9fafb !important; }
+        .receipt-pdf-fix .text-red-600 { color: #dc2626 !important; }
+        .receipt-pdf-fix .text-gray-400 { color: #9ca3af !important; }
+        .receipt-pdf-fix .text-gray-500 { color: #6b7280 !important; }
+        .receipt-pdf-fix .text-gray-900 { color: #111827 !important; }
+        .receipt-pdf-fix .bg-gray-200 { background-color: #e5e7eb !important; }
+        .receipt-pdf-fix .border-black { border-color: #000000 !important; }
+        .receipt-pdf-fix .border { border-color: #000000 !important; }
+        .receipt-pdf-fix input, .receipt-pdf-fix textarea, .receipt-pdf-fix select {
+          color: #000000 !important;
+          background-color: transparent !important;
+        }
+        .receipt-pdf-fix input.text-red-600 { color: #dc2626 !important; }
+        .receipt-pdf-fix .text-red-600 { color: #dc2626 !important; }
+
         @media print {
           body * {
             visibility: hidden;
