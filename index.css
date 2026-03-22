@@ -4,6 +4,11 @@
   --font-sans: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
+html, body {
     font-family: var(--font-sans);
+    color: #000000;
+    background-color: #ffffff;
+    border-color: #e5e7eb;
+    outline-color: #e5e7eb;
+    text-decoration-color: #e5e7eb;
 }

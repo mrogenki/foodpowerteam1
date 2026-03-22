@@ -258,5 +258,6 @@ export interface FinancialRecord {
   invoice_no?: string;
   party?: string;
   description?: string;
+  receipt_url?: string;
   created_at?: string;
 }

@@ -254,6 +254,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
       const element = printRef.current;
       if (!element) throw new Error('找不到列印內容');
 
+      element.classList.add('pdf-generating');
+
       const opt = {
         margin:       10,
         filename:     `收據_${receiptNo}.pdf`,
@@ -263,6 +265,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
       };
       
       const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+      
+      element.classList.remove('pdf-generating');
 
       // 2. 上傳到 Supabase Storage
       const fileName = `${Date.now()}_${receiptNo}.pdf`;
@@ -388,10 +392,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           </div>
         </div>
 
-        {/* Printable Area */}
-        <div ref={printRef} className="p-8 print:p-0 bg-white text-black" style={{ fontFamily: "'Noto Sans TC', sans-serif" }}>
-          
-          {/* Receipt Header */}
+        {/* Printable Area Wrapper */}
+        <div className="overflow-x-auto w-full">
+          {/* Printable Area */}
+          <div id="receipt-print-area" ref={printRef} className="p-8 print:p-0 bg-white text-black mx-auto" style={{ fontFamily: "'Noto Sans TC', sans-serif", width: '1000px', minWidth: '1000px' }}>
+            
+            {/* Receipt Header */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold tracking-widest mb-2">食在力量美食產業交流協會</h1>
             <h2 className="text-2xl font-bold tracking-[1em] ml-[1em]">收據</h2>
@@ -404,6 +410,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
               <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]">
                 <span>日期：</span>
                 <input type="text" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-left print:appearance-none font-bold" />
+                <span className="pdf-text flex-grow text-left font-bold">{date}</span>
               </div>
             </div>
             <div className="flex justify-between items-center">
@@ -411,6 +418,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
               <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 min-w-[280px]">
                 <span>編號：</span>
                 <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} className="bg-transparent border-none outline-none flex-grow text-red-600 font-bold print:appearance-none" placeholder="00000" />
+                <span className="pdf-text flex-grow text-red-600 font-bold">{receiptNo || '00000'}</span>
               </div>
             </div>
           </div>
@@ -423,10 +431,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 <td className="border border-black bg-gray-100 font-bold py-3 w-[12%]">茲收到</td>
                 <td className="border border-black py-3 w-[58%] text-left px-4" colSpan={3}>
                   <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)} className="w-full outline-none print:appearance-none font-bold" />
+                  <span className="pdf-text w-full font-bold">{payerName}</span>
                 </td>
                 <td className="border border-black bg-gray-100 font-bold py-3 w-[15%]">統一編號</td>
                 <td className="border border-black py-3 w-[15%]">
                   <input type="text" value={taxId} onChange={e => setTaxId(e.target.value)} className="w-full outline-none text-center print:appearance-none font-bold" />
+                  <span className="pdf-text w-full text-center font-bold">{taxId}</span>
                 </td>
               </tr>
               
@@ -435,6 +445,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 <td className="border border-black bg-gray-100 font-bold py-3">NT$</td>
                 <td className="border border-black py-3 text-left px-4" colSpan={3}>
                   <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full outline-none print:appearance-none font-bold" />
+                  <span className="pdf-text w-full font-bold">{amount}</span>
                 </td>
                 <td className="border border-black bg-gray-100 font-bold py-3">支付方式</td>
                 <td className="border border-black py-3">
@@ -444,6 +455,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                     <option value="現金">現金</option>
                     <option value="其他">其他</option>
                   </select>
+                  <span className="pdf-text w-full text-center font-bold">{paymentMethod}</span>
                 </td>
               </tr>
 
@@ -452,20 +464,32 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 <td className="border border-black bg-gray-100 font-bold py-3">款項項目</td>
                 <td className="border border-black py-3 px-4" colSpan={5}>
                   <div className="flex flex-wrap items-center justify-around gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer relative">
                       <input type="checkbox" checked={selectedFeeType === 'initiation'} onChange={() => setSelectedFeeType('initiation')} className="w-6 h-6 cursor-pointer" />
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
+                        {selectedFeeType === 'initiation' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      </div>
                       <span>入會費</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer relative">
                       <input type="checkbox" checked={selectedFeeType === 'annual'} onChange={() => setSelectedFeeType('annual')} className="w-6 h-6 cursor-pointer" />
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
+                        {selectedFeeType === 'annual' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      </div>
                       <span>年費</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer relative">
                       <input type="checkbox" checked={selectedFeeType === 'donation'} onChange={() => setSelectedFeeType('donation')} className="w-6 h-6 cursor-pointer" />
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
+                        {selectedFeeType === 'donation' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      </div>
                       <span>捐款</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer relative">
                       <input type="checkbox" checked={selectedFeeType === 'goods_donation'} onChange={() => setSelectedFeeType('goods_donation')} className="w-6 h-6 cursor-pointer" />
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
+                        {selectedFeeType === 'goods_donation' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      </div>
                       <span>捐物</span>
                       <span className="text-gray-400 text-sm font-normal ml-1">(若為捐物請於備註說明品項)</span>
                     </label>
@@ -478,6 +502,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 <td className="border border-black bg-gray-100 font-bold py-3">訂單編號</td>
                 <td className="border border-black py-3 text-left px-4" colSpan={3}>
                   <input type="text" value={orderNo} onChange={e => setOrderNo(e.target.value)} className="w-full outline-none print:appearance-none font-bold" />
+                  <span className="pdf-text w-full font-bold">{orderNo}</span>
                 </td>
                 <td className="border border-black bg-gray-100 font-bold py-3" colSpan={2}>協會簽章</td>
               </tr>
@@ -487,6 +512,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 <td className="border border-black bg-gray-100 font-bold py-3 h-36 align-top pt-4">備註</td>
                 <td className="border border-black py-3 text-left px-4 align-top pt-4" colSpan={3}>
                   <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-full outline-none resize-none print:appearance-none font-bold" rows={4} />
+                  <span className="pdf-text w-full h-full font-bold whitespace-pre-wrap">{remarks}</span>
                 </td>
                 <td className="border border-black py-3 relative group" colSpan={2}>
                   <div className="absolute inset-0 flex items-center justify-center p-2">
@@ -521,6 +547,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
                 <option value="許暐脡">許暐脡</option>
                 <option value="許淳凱">許淳凱</option>
               </select>
+              <span className="pdf-text font-bold">{handler}</span>
             </div>
           </div>
 
@@ -531,10 +558,24 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           </div>
 
         </div>
+        </div>
       </div>
       
       {/* Print Styles */}
       <style dangerouslySetInnerHTML={{__html: `
+        .pdf-generating input, .pdf-generating select, .pdf-generating textarea {
+          display: none !important;
+        }
+        .pdf-generating .pdf-text {
+          display: block !important;
+        }
+        .pdf-generating .pdf-checkbox {
+          display: flex !important;
+        }
+        .pdf-text {
+          display: none !important;
+        }
+        
         @media print {
           body * {
             visibility: hidden;
@@ -574,6 +615,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
             color: black !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            line-height: 1.5 !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
           }
           /* Make sure the printable area and its children are visible */
           .fixed.inset-0, .fixed.inset-0 * {
@@ -582,6 +626,11 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           /* Hide scrollbars */
           ::-webkit-scrollbar {
             display: none;
+          }
+          /* Ensure the print area takes up the full width of the page */
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
           }
         }
       `}} />

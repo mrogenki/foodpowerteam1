@@ -163,12 +163,12 @@ const Sidebar: React.FC<{ user: AdminUser; onLogout: () => void; pendingCount: n
         </div>
       </div>
       <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
-        <Link to="/admin" aria-label="儀表板" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${isActive('/admin') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><LayoutDashboard size={20} /><span>儀表板</span></Link>
-        <a href="/" target="_blank" rel="noopener noreferrer" aria-label="預覽前台網站" className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-gray-800 text-gray-400 hover:text-white"><ExternalLink size={20} /><span>預覽前台網站</span></a>
+        <Link to="/admin" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${isActive('/admin') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><LayoutDashboard size={20} /><span>儀表板</span></Link>
+        <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-gray-800 text-gray-400 hover:text-white"><ExternalLink size={20} /><span>預覽前台網站</span></a>
         
         <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">活動報到 (工作人員)</div>
-        <Link to="/admin/check-in" aria-label="一般活動報到" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><CheckSquare size={20} /><span>一般活動報到</span></Link>
-        <Link to="/admin/member-check-in" aria-label="會員活動報到" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>會員活動報到</span></Link>
+        <Link to="/admin/check-in" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><CheckSquare size={20} /><span>一般活動報到</span></Link>
+        <Link to="/admin/member-check-in" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname.startsWith('/admin/member-check-in') ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}`}><Crown size={20} /><span>會員活動報到</span></Link>
         
         {isManager && (<>
           <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-600 uppercase">活動管理</div>
@@ -2329,12 +2329,13 @@ const FinancialManager: React.FC<{
   onAdd: (r: FinancialRecord) => void;
   onUpdate: (r: FinancialRecord) => void;
   onDelete: (id: string | number) => void;
-}> = ({ records, onAdd, onUpdate, onDelete }) => {
+  onUploadImage: (file: File) => Promise<string>;
+}> = ({ records, onAdd, onUpdate, onDelete, onUploadImage }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<Partial<FinancialRecord>>({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
-  const filteredRecords = useMemo(() => records.filter(r => r.date.startsWith(selectedMonth)), [records, selectedMonth]);
+  const filteredRecords = records.filter(r => r.date.startsWith(selectedMonth));
 
   const monthlySummary = useMemo(() => {
     const income = filteredRecords.filter(r => r.type === FinancialType.INCOME).reduce((sum, r) => sum + r.amount, 0);
@@ -2354,6 +2355,13 @@ const FinancialManager: React.FC<{
     }
     setIsEditing(false);
     setCurrentRecord({});
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const url = await onUploadImage(e.target.files[0]);
+      if (url) setCurrentRecord({ ...currentRecord, receipt_url: url });
+    }
   };
 
   return (
@@ -2402,13 +2410,14 @@ const FinancialManager: React.FC<{
               <th className="p-4">對象</th>
               <th className="p-4">發票編號</th>
               <th className="p-4">金額</th>
+              <th className="p-4">單據</th>
               <th className="p-4">描述</th>
               <th className="p-4">操作</th>
             </tr>
           </thead>
           <tbody>
             {filteredRecords.length === 0 ? (
-              <tr><td colSpan={6} className="p-8 text-center text-gray-400">本月尚無記錄</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-gray-400">本月尚無記錄</td></tr>
             ) : (
               filteredRecords.map(r => (
                 <tr key={r.id} className="border-t hover:bg-gray-50 transition-colors">
@@ -2422,11 +2431,20 @@ const FinancialManager: React.FC<{
                   <td className="p-4 text-gray-700 font-medium">{r.party || '-'}</td>
                   <td className="p-4 text-gray-500 font-mono text-xs">{r.invoice_no || '-'}</td>
                   <td className="p-4 font-bold">${r.amount.toLocaleString()}</td>
+                  <td className="p-4">
+                    {r.receipt_url ? (
+                      <a href={r.receipt_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs font-bold">
+                        <ImageIcon size={14} /> 查看
+                      </a>
+                    ) : (
+                      <span className="text-gray-300 text-xs">-</span>
+                    )}
+                  </td>
                   <td className="p-4 text-gray-500 truncate max-w-[200px]">{r.description || '-'}</td>
                   <td className="p-4">
                     <div className="flex gap-2">
-                      <button onClick={() => { setIsEditing(true); setCurrentRecord(r); }} aria-label="編輯" className="p-1 text-gray-400 hover:text-red-600"><Edit2 size={16} /></button>
-                      <button onClick={() => { if (confirm('確定刪除此記錄？')) onDelete(r.id); }} aria-label="刪除" className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                      <button onClick={() => { setIsEditing(true); setCurrentRecord(r); }} className="p-1 text-gray-400 hover:text-red-600"><Edit2 size={16} /></button>
+                      <button onClick={() => { if (confirm('確定刪除此記錄？')) onDelete(r.id); }} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -2472,6 +2490,26 @@ const FinancialManager: React.FC<{
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">金額</label>
                 <input type="number" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500" value={currentRecord.amount || ''} onChange={e => setCurrentRecord({ ...currentRecord, amount: parseInt(e.target.value) })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">單據上傳 (選填)</label>
+                <div className="flex items-center gap-4">
+                  {currentRecord.receipt_url && (
+                    <a href={currentRecord.receipt_url} target="_blank" rel="noreferrer" className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border block hover:opacity-80 transition-opacity">
+                      {currentRecord.receipt_url.toLowerCase().endsWith('.pdf') ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-red-500 bg-red-50">
+                          <span className="font-bold text-xs mt-1">PDF</span>
+                        </div>
+                      ) : (
+                        <img src={currentRecord.receipt_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      )}
+                    </a>
+                  )}
+                  <label className="cursor-pointer bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-200 flex items-center gap-2 text-sm">
+                    <UploadCloud size={18} /> 上傳單據
+                    <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleImageChange} />
+                  </label>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">描述 (選填)</label>
@@ -2655,7 +2693,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <Route path="/members" element={<MemberManager members={props.members} onAdd={props.onAddMember} onUpdate={props.onUpdateMember} onDelete={props.onDeleteMember} onImport={props.onAddMembers!} />} />
           <Route path="/club" element={<ClubManager activities={props.clubActivities} onUpdate={props.onUpdateClubActivity} onAdd={props.onAddClubActivity} onDelete={props.onDeleteClubActivity} onUploadImage={props.onUploadImage} />} />
           <Route path="/milestones" element={<MilestoneManager milestones={props.milestones} onAdd={props.onAddMilestone} onUpdate={props.onUpdateMilestone} onDelete={props.onDeleteMilestone} onUploadImage={props.onUploadImage} />} />
-          <Route path="/finances" element={<FinancialManager records={props.financialRecords} onAdd={props.onAddFinancialRecord} onUpdate={props.onUpdateFinancialRecord} onDelete={props.onDeleteFinancialRecord} />} />
+          <Route path="/finances" element={<FinancialManager records={props.financialRecords} onAdd={props.onAddFinancialRecord} onUpdate={props.onUpdateFinancialRecord} onDelete={props.onDeleteFinancialRecord} onUploadImage={props.onUploadImage} />} />
           <Route path="/member-applications" element={<MemberApplicationManager applications={props.memberApplications} onApprove={props.onApproveMemberApplication} onDelete={props.onDeleteMemberApplication} />} />
           <Route path="/member-renewals" element={<MemberRenewalManager />} />
           <Route path="/receipts" element={<ReceiptManager />} />
