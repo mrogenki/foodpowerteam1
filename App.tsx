@@ -56,13 +56,13 @@ const Header: React.FC = () => {
             </Link>
           </div>
           <div className="hidden lg:flex items-center space-x-10">
-            <Link to="/" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">首頁</Link>
-            <Link to="/about" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">關於我們</Link>
-            <Link to="/milestones" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">大事記</Link>
-            <Link to="/activities" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">協會活動</Link>
-            <Link to="/members" className="text-gray-600 hover:text-red-600 transition-colors font-medium text-sm uppercase tracking-widest">會員列表</Link>
-            <Link to="/join" className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-red-700 shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5 active:translate-y-0">
-              <UserPlus size={18} /> 
+            <Link to="/" className="text-gray-600 hover:text-red-600 transition-colors font-bold text-lg uppercase tracking-widest">首頁</Link>
+            <Link to="/about" className="text-gray-600 hover:text-red-600 transition-colors font-bold text-lg uppercase tracking-widest">關於我們</Link>
+            <Link to="/milestones" className="text-gray-600 hover:text-red-600 transition-colors font-bold text-lg uppercase tracking-widest">大事記</Link>
+            <Link to="/activities" className="text-gray-600 hover:text-red-600 transition-colors font-bold text-lg uppercase tracking-widest">協會活動</Link>
+            <Link to="/members" className="text-gray-600 hover:text-red-600 transition-colors font-bold text-lg uppercase tracking-widest">會員列表</Link>
+            <Link to="/join" className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-full text-lg font-bold hover:bg-red-700 shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5 active:translate-y-0">
+              <UserPlus size={20} /> 
               <span>加入會員</span>
             </Link>
           </div>
@@ -123,17 +123,6 @@ const Footer: React.FC = () => {
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-4">
-            <h4 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-6">快速連結</h4>
-            <ul className="space-y-3">
-              <li><Link to="/about" className="text-gray-500 hover:text-red-600 transition-colors">關於我們</Link></li>
-              <li><Link to="/milestones" className="text-gray-500 hover:text-red-600 transition-colors">大事記</Link></li>
-              <li><Link to="/activities" className="text-gray-500 hover:text-red-600 transition-colors">協會活動</Link></li>
-              <li><Link to="/members" className="text-gray-500 hover:text-red-600 transition-colors">會員列表</Link></li>
-            </ul>
-          </div>
-
-          {/* LINE Join Section */}
           <div className="space-y-4">
             <h4 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-6">官方帳號</h4>
             <div className="bg-[#06C755]/5 p-6 rounded-3xl border border-[#06C755]/10 hover:bg-[#06C755]/10 transition-all group">

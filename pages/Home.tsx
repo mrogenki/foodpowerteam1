@@ -279,28 +279,6 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
 
         </div>
       </div>
-
-      {/* Stats Section */}
-      <section className="py-32 px-6 md:px-12 lg:px-24 max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">500+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">活躍會員</div>
-          </div>
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">100+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">年度活動</div>
-          </div>
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">50+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">合作企業</div>
-          </div>
-          <div>
-            <div className="text-6xl font-black text-gray-900 mb-2 tracking-tighter">10+</div>
-            <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">產業類別</div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
