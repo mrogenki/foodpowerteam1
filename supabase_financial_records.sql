@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS financial_records (
   invoice_no TEXT,
   party TEXT,
   description TEXT,
+  receipt_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

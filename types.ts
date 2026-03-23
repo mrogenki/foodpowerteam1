@@ -261,3 +261,17 @@ export interface FinancialRecord {
   receipt_url?: string;
   created_at?: string;
 }
+
+export interface FinanceRecord {
+  id: string | number;
+  date: string;
+  type: 'income' | 'expense';
+  category: string;
+  amount: number;
+  target: string;
+  invoice_no?: string;
+  document_url?: string;
+  handler_name: string;
+  note?: string;
+  created_at?: string;
+}
