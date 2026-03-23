@@ -406,7 +406,8 @@ const App: React.FC = () => {
     try {
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `activity-covers/${fileName}`;
+      const folder = fileExt === 'pdf' ? 'documents' : 'activity-covers';
+      const filePath = `${folder}/${fileName}`;
       const { error: uploadError } = await supabase.storage.from('activity-images').upload(filePath, file, { cacheControl: '3600', upsert: false });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from('activity-images').getPublicUrl(filePath);
