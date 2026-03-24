@@ -3,11 +3,13 @@ import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-r
 import { LayoutDashboard, Calendar, Users, LogOut, ChevronRight, Search, FileDown, Plus, Edit, Edit2, Trash2, CheckCircle, XCircle, Shield, UserPlus, DollarSign, TrendingUp, BarChart3, Mail, User, Clock, Image as ImageIcon, UploadCloud, Loader2, Smartphone, Building2, Briefcase, Globe, FileUp, Download, ClipboardList, CheckSquare, AlertCircle, RotateCcw, MapPin, Filter, X, Eye, EyeOff, Ticket, Cake, CreditCard, Home, Hash, Crown, ArrowLeft, RefreshCcw, Ban, UserCheck, ExternalLink, BellRing, Send, History, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import emailjs from '@emailjs/browser';
+import html2pdf from 'html2pdf.js';
 import { supabase } from '../utils/supabaseClient';
 import MemberRenewalManager from './MemberRenewalManager';
 import MemberBirthdayManager from './MemberBirthdayManager';
 import ReceiptManager from './ReceiptManager';
 import ReceiptModal, { ReceiptData } from '../components/ReceiptModal';
+import BatchReceiptGenerator from '../components/BatchReceiptGenerator';
 import BlockEditor from '../components/BlockEditor';
 import { Activity, MemberActivity, Registration, MemberRegistration, ActivityType, AdminUser, UserRole, Member, AttendanceRecord, AttendanceStatus, Coupon, IndustryCategories, PaymentStatus, MemberApplication, ClubActivity, Milestone, FinancialType, FinancialRecord } from '../types';
 import { EMAIL_CONFIG } from '../constants';
@@ -766,24 +768,27 @@ const MemberApplicationManager: React.FC<{
                     <div className="flex justify-end gap-2">
                       {isPaid && (
                         <button
-                          onClick={() => setReceiptData({
-                            payerName: app.name,
-                            companyName: app.company_title || '',
-                            taxId: app.tax_id || '',
-                            amount: app.paid_amount || 5000,
-                            paymentMethod: translatePaymentMethod(app.payment_method),
-                            feeType: 'initiation',
-                            orderNo: app.merchant_order_no || '',
-                            email: app.email || ''
-                          })}
-                          disabled={app.merchant_order_no ? receiptMap[app.merchant_order_no] === 'sent' : false}
+                          onClick={() => {
+                            const orderNo = app.merchant_order_no || `MANUAL_${app.id}`;
+                            setReceiptData({
+                              payerName: app.name,
+                              companyName: app.company_title || '',
+                              taxId: app.tax_id || '',
+                              amount: app.paid_amount || 5000,
+                              paymentMethod: translatePaymentMethod(app.payment_method),
+                              feeType: 'initiation',
+                              orderNo: orderNo,
+                              email: app.email || ''
+                            });
+                          }}
+                          disabled={(app.merchant_order_no || `MANUAL_${app.id}`) ? (receiptMap[app.merchant_order_no || `MANUAL_${app.id}`] === 'sent' || receiptMap[app.merchant_order_no || `MANUAL_${app.id}`] === 'issued') : false}
                           className={`px-3 py-2 rounded-lg font-bold text-xs transition-colors border ${
-                            app.merchant_order_no && receiptMap[app.merchant_order_no] === 'sent'
+                            (app.merchant_order_no || `MANUAL_${app.id}`) && (receiptMap[app.merchant_order_no || `MANUAL_${app.id}`] === 'sent' || receiptMap[app.merchant_order_no || `MANUAL_${app.id}`] === 'issued')
                               ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
                               : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
                           }`}
                         >
-                          {app.merchant_order_no && receiptMap[app.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
+                          {(app.merchant_order_no || `MANUAL_${app.id}`) && (receiptMap[app.merchant_order_no || `MANUAL_${app.id}`] === 'sent' || receiptMap[app.merchant_order_no || `MANUAL_${app.id}`] === 'issued') ? '已開立' : '開立收據'}
                         </button>
                       )}
                       <button 
@@ -949,6 +954,7 @@ const ActivityManager: React.FC<{
   const [selectedRegIds, setSelectedRegIds] = useState<string[]>([]);
   const [isBatchIssuing, setIsBatchIssuing] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [batchReceiptData, setBatchReceiptData] = useState<any>(null);
 
   const fetchReceipts = async () => {
     try {
@@ -1154,90 +1160,79 @@ const ActivityManager: React.FC<{
   };
 
   const handleBatchIssueReceipts = async () => {
-    const regsToIssue = filteredRegs.filter(r => 
-      selectedRegIds.includes(String(r.id)) && 
-      r.payment_status === PaymentStatus.PAID &&
-      (!r.merchant_order_no || receiptMap[r.merchant_order_no] !== 'sent')
-    );
+    const regsToIssue = filteredRegs.filter(r => {
+      const orderNo = r.merchant_order_no || `MANUAL_${r.id}`;
+      return selectedRegIds.includes(String(r.id)) && 
+             r.payment_status === PaymentStatus.PAID &&
+             receiptMap[orderNo] !== 'sent' && receiptMap[orderNo] !== 'issued';
+    });
 
     if (regsToIssue.length === 0) {
       alert('請選擇已付款且尚未開立收據的報名者。');
       return;
     }
 
-    if (!confirm(`確定要批量開立 ${regsToIssue.length} 份收據嗎？\n這將會自動產生收據編號並儲存紀錄。`)) return;
+    if (!confirm(`確定要批量開立並寄送 ${regsToIssue.length} 份收據嗎？\n這將會自動產生收據編號、儲存紀錄並寄出 Email。`)) return;
 
     setIsBatchIssuing(true);
     setBatchProgress({ current: 0, total: regsToIssue.length });
 
-    let successCount = 0;
-    let failCount = 0;
-
     try {
-      for (let i = 0; i < regsToIssue.length; i++) {
-        const reg = regsToIssue[i];
-        setBatchProgress(prev => ({ ...prev, current: i + 1 }));
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const datePrefix = `${year}${month}${day}`;
 
+      const { data: latestData } = await supabase
+        .from('receipts')
+        .select('receipt_no')
+        .like('receipt_no', `${datePrefix}%`)
+        .order('receipt_no', { ascending: false })
+        .limit(1);
+
+      let nextSeq = 1;
+      if (latestData && latestData.length > 0) {
+        const lastNo = latestData[0].receipt_no;
+        const lastSeq = parseInt(lastNo.substring(8), 10);
+        if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+      }
+
+      const receiptsToProcess: ReceiptData[] = regsToIssue.map((reg, index) => {
         const member = members?.find(m => String(m.id) === String(reg.memberId));
         const name = reg.name || reg.member_name || member?.name || '';
         const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
         const email = reg.email || member?.email || '';
 
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        const datePrefix = `${year}${month}${day}`;
-
-        const { data: latestData } = await supabase
-          .from('receipts')
-          .select('receipt_no')
-          .like('receipt_no', `${datePrefix}%`)
-          .order('receipt_no', { ascending: false })
-          .limit(1);
-
-        let nextSeq = 1;
-        if (latestData && latestData.length > 0) {
-          const lastNo = latestData[0].receipt_no;
-          const lastSeq = parseInt(lastNo.substring(8), 10);
-          if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
-        }
-        const receiptNo = `${datePrefix}${String(nextSeq).padStart(3, '0')}`;
-
-        const { error } = await supabase.from('receipts').insert({
-          receipt_no: receiptNo,
-          payer_name: company ? `${name}（${company}）` : name,
-          tax_id: reg.tax_id || member?.tax_id || null,
+        return {
+          receiptNo: `${datePrefix}${String(nextSeq + index).padStart(3, '0')}`,
+          payerName: company ? `${name}（${company}）` : name,
+          taxId: reg.tax_id || member?.tax_id || '',
           amount: reg.paid_amount || 0,
-          payment_method: translatePaymentMethod(reg.payment_method),
-          fee_type: 'donation',
-          order_no: reg.merchant_order_no || null,
-          issue_date: today.toISOString().split('T')[0],
-          handler_name: '許暐脡',
-          note: `活動：${currentActivity?.title || ''}`,
-          status: 'issued',
-          email: email || null
-        });
+          paymentMethod: translatePaymentMethod(reg.payment_method),
+          feeType: 'donation',
+          orderNo: reg.merchant_order_no || `MANUAL_${reg.id}`,
+          issueDate: today.toISOString().split('T')[0],
+          handlerName: '許暐脡',
+          remarks: `活動：${currentActivity?.title || ''}`,
+          email: email
+        };
+      });
 
-        if (error) {
-          console.error(`Error issuing receipt for ${name}:`, error);
-          failCount++;
-        } else {
-          successCount++;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-
-      alert(`批量開立完成！\n成功：${successCount} 份\n失敗：${failCount} 份\n\n提示：批量開立僅會產生收據紀錄，如需寄出電子收據，請至「收據管理」或個別點擊「檢視」進行寄送。`);
-      fetchReceipts();
-      setSelectedRegIds([]);
+      setBatchReceiptData(receiptsToProcess);
     } catch (err) {
       console.error('Batch issue error:', err);
-      alert('批量處理過程中發生錯誤');
-    } finally {
+      alert('準備批量處理資料時發生錯誤');
       setIsBatchIssuing(false);
     }
+  };
+
+  const handleBatchComplete = (successCount: number, failCount: number) => {
+    alert(`批量開立完成！\n成功：${successCount} 份\n失敗：${failCount} 份`);
+    fetchReceipts();
+    setSelectedRegIds([]);
+    setIsBatchIssuing(false);
+    setBatchReceiptData(null);
   };
 
   const toggleSelectAll = () => {
@@ -1375,25 +1370,28 @@ const ActivityManager: React.FC<{
                       <div className="flex justify-end gap-2">
                         {reg.payment_status === PaymentStatus.PAID && (
                           <button
-                            onClick={() => setReceiptData({
-                              payerName: name,
-                              companyName: company,
-                              taxId: reg.tax_id || member?.tax_id || '',
-                              amount: reg.paid_amount || 0,
-                              paymentMethod: translatePaymentMethod(reg.payment_method),
-                              feeType: 'donation',
-                              orderNo: reg.merchant_order_no || '',
-                              email: reg.email || member?.email || '',
-                              remarks: `活動：${currentActivity?.title || ''}`
-                            })}
-                            disabled={reg.merchant_order_no ? receiptMap[reg.merchant_order_no] === 'sent' : false}
+                            onClick={() => {
+                              const orderNo = reg.merchant_order_no || `MANUAL_${reg.id}`;
+                              setReceiptData({
+                                payerName: name,
+                                companyName: company,
+                                taxId: reg.tax_id || member?.tax_id || '',
+                                amount: reg.paid_amount || 0,
+                                paymentMethod: translatePaymentMethod(reg.payment_method),
+                                feeType: 'donation',
+                                orderNo: orderNo,
+                                email: reg.email || member?.email || '',
+                                remarks: `活動：${currentActivity?.title || ''}`
+                              });
+                            }}
+                            disabled={(reg.merchant_order_no || `MANUAL_${reg.id}`) ? (receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'sent' || receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'issued') : false}
                             className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors border ${
-                              reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent'
+                              (reg.merchant_order_no || `MANUAL_${reg.id}`) && (receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'sent' || receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'issued')
                                 ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
                                 : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
                             }`}
                           >
-                            {reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
+                            {(reg.merchant_order_no || `MANUAL_${reg.id}`) && (receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'sent' || receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'issued') ? '已開立' : '開立收據'}
                           </button>
                         )}
                         <button onClick={() => { if(confirm('確定刪除此報名資料？')) onDeleteReg(reg.id); }} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={16} /></button>
@@ -1490,6 +1488,13 @@ const ActivityManager: React.FC<{
           initialData={receiptData}
         />
       )}
+      {batchReceiptData && (
+        <BatchReceiptGenerator
+          receiptsToProcess={batchReceiptData}
+          onProgress={(current, total) => setBatchProgress({ current, total })}
+          onComplete={handleBatchComplete}
+        />
+      )}
     </div>
   );
 };
@@ -1509,6 +1514,7 @@ const ActivityCheckInManager: React.FC<{
   const [selectedRegIds, setSelectedRegIds] = useState<string[]>([]);
   const [isBatchIssuing, setIsBatchIssuing] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [batchReceiptData, setBatchReceiptData] = useState<any>(null);
 
   const fetchReceipts = async () => {
     try {
@@ -1613,90 +1619,79 @@ const ActivityCheckInManager: React.FC<{
   };
 
   const handleBatchIssueReceipts = async () => {
-    const regsToIssue = filteredRegs.filter(r => 
-      selectedRegIds.includes(String(r.id)) && 
-      r.payment_status === PaymentStatus.PAID &&
-      (!r.merchant_order_no || receiptMap[r.merchant_order_no] !== 'sent')
-    );
+    const regsToIssue = filteredRegs.filter(r => {
+      const orderNo = r.merchant_order_no || `MANUAL_${r.id}`;
+      return selectedRegIds.includes(String(r.id)) && 
+             r.payment_status === PaymentStatus.PAID &&
+             receiptMap[orderNo] !== 'sent' && receiptMap[orderNo] !== 'issued';
+    });
 
     if (regsToIssue.length === 0) {
       alert('請選擇已付款且尚未開立收據的報名者。');
       return;
     }
 
-    if (!confirm(`確定要批量開立 ${regsToIssue.length} 份收據嗎？\n這將會自動產生收據編號並儲存紀錄。`)) return;
+    if (!confirm(`確定要批量開立並寄送 ${regsToIssue.length} 份收據嗎？\n這將會自動產生收據編號、儲存紀錄並寄出 Email。`)) return;
 
     setIsBatchIssuing(true);
     setBatchProgress({ current: 0, total: regsToIssue.length });
 
-    let successCount = 0;
-    let failCount = 0;
-
     try {
-      for (let i = 0; i < regsToIssue.length; i++) {
-        const reg = regsToIssue[i];
-        setBatchProgress(prev => ({ ...prev, current: i + 1 }));
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const datePrefix = `${year}${month}${day}`;
 
+      const { data: latestData } = await supabase
+        .from('receipts')
+        .select('receipt_no')
+        .like('receipt_no', `${datePrefix}%`)
+        .order('receipt_no', { ascending: false })
+        .limit(1);
+
+      let nextSeq = 1;
+      if (latestData && latestData.length > 0) {
+        const lastNo = latestData[0].receipt_no;
+        const lastSeq = parseInt(lastNo.substring(8), 10);
+        if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+      }
+
+      const receiptsToProcess: ReceiptData[] = regsToIssue.map((reg, index) => {
         const member = members?.find(m => String(m.id) === String(reg.memberId));
         const name = reg.name || reg.member_name || member?.name || '';
         const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
         const email = reg.email || member?.email || '';
 
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        const datePrefix = `${year}${month}${day}`;
-
-        const { data: latestData } = await supabase
-          .from('receipts')
-          .select('receipt_no')
-          .like('receipt_no', `${datePrefix}%`)
-          .order('receipt_no', { ascending: false })
-          .limit(1);
-
-        let nextSeq = 1;
-        if (latestData && latestData.length > 0) {
-          const lastNo = latestData[0].receipt_no;
-          const lastSeq = parseInt(lastNo.substring(8), 10);
-          if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
-        }
-        const receiptNo = `${datePrefix}${String(nextSeq).padStart(3, '0')}`;
-
-        const { error } = await supabase.from('receipts').insert({
-          receipt_no: receiptNo,
-          payer_name: company ? `${name}（${company}）` : name,
-          tax_id: reg.tax_id || member?.tax_id || null,
+        return {
+          receiptNo: `${datePrefix}${String(nextSeq + index).padStart(3, '0')}`,
+          payerName: company ? `${name}（${company}）` : name,
+          taxId: reg.tax_id || member?.tax_id || '',
           amount: reg.paid_amount || 0,
-          payment_method: translatePaymentMethod(reg.payment_method),
-          fee_type: 'donation',
-          order_no: reg.merchant_order_no || null,
-          issue_date: today.toISOString().split('T')[0],
-          handler_name: '許暐脡',
-          note: `活動：${currentActivity?.title || ''}`,
-          status: 'issued',
-          email: email || null
-        });
+          paymentMethod: translatePaymentMethod(reg.payment_method),
+          feeType: 'donation',
+          orderNo: reg.merchant_order_no || `MANUAL_${reg.id}`,
+          issueDate: today.toISOString().split('T')[0],
+          handlerName: '許暐脡',
+          remarks: `活動：${currentActivity?.title || ''}`,
+          email: email
+        };
+      });
 
-        if (error) {
-          console.error(`Error issuing receipt for ${name}:`, error);
-          failCount++;
-        } else {
-          successCount++;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-
-      alert(`批量開立完成！\n成功：${successCount} 份\n失敗：${failCount} 份\n\n提示：批量開立僅會產生收據紀錄，如需寄出電子收據，請至「收據管理」或個別點擊「檢視」進行寄送。`);
-      fetchReceipts();
-      setSelectedRegIds([]);
+      setBatchReceiptData(receiptsToProcess);
     } catch (err) {
       console.error('Batch issue error:', err);
-      alert('批量處理過程中發生錯誤');
-    } finally {
+      alert('準備批量處理資料時發生錯誤');
       setIsBatchIssuing(false);
     }
+  };
+
+  const handleBatchComplete = (successCount: number, failCount: number) => {
+    alert(`批量開立完成！\n成功：${successCount} 份\n失敗：${failCount} 份`);
+    fetchReceipts();
+    setSelectedRegIds([]);
+    setIsBatchIssuing(false);
+    setBatchReceiptData(null);
   };
 
   const toggleSelectAll = () => {
@@ -1878,25 +1873,28 @@ const ActivityCheckInManager: React.FC<{
                      <td className="p-4 text-right">
                        {reg.payment_status === PaymentStatus.PAID && (
                          <button
-                           onClick={() => setReceiptData({
-                             payerName: name,
-                             companyName: company,
-                             taxId: reg.tax_id || member?.tax_id || '',
-                             amount: reg.paid_amount || 0,
-                             paymentMethod: translatePaymentMethod(reg.payment_method),
-                             feeType: 'donation',
-                             orderNo: reg.merchant_order_no || '',
-                             email: reg.email || member?.email || '',
-                             remarks: `活動：${currentActivity?.title || ''}`
-                           })}
-                           disabled={reg.merchant_order_no ? receiptMap[reg.merchant_order_no] === 'sent' : false}
+                           onClick={() => {
+                             const orderNo = reg.merchant_order_no || `MANUAL_${reg.id}`;
+                             setReceiptData({
+                               payerName: name,
+                               companyName: company,
+                               taxId: reg.tax_id || member?.tax_id || '',
+                               amount: reg.paid_amount || 0,
+                               paymentMethod: translatePaymentMethod(reg.payment_method),
+                               feeType: 'donation',
+                               orderNo: orderNo,
+                               email: reg.email || member?.email || '',
+                               remarks: `活動：${currentActivity?.title || ''}`
+                             });
+                           }}
+                           disabled={(reg.merchant_order_no || `MANUAL_${reg.id}`) ? (receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'sent' || receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'issued') : false}
                            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors border ${
-                             reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent'
+                             (reg.merchant_order_no || `MANUAL_${reg.id}`) && (receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'sent' || receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'issued')
                                ? 'bg-green-50 text-green-700 border-green-200 cursor-default'
                                : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
                            }`}
                          >
-                           {reg.merchant_order_no && receiptMap[reg.merchant_order_no] === 'sent' ? '已開立' : '開立收據'}
+                           {(reg.merchant_order_no || `MANUAL_${reg.id}`) && (receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'sent' || receiptMap[reg.merchant_order_no || `MANUAL_${reg.id}`] === 'issued') ? '已開立' : '開立收據'}
                          </button>
                        )}
                      </td>
@@ -1921,6 +1919,13 @@ const ActivityCheckInManager: React.FC<{
              fetchReceipts();
            }}
            initialData={receiptData}
+         />
+       )}
+       {batchReceiptData && (
+         <BatchReceiptGenerator
+           receiptsToProcess={batchReceiptData}
+           onProgress={(current, total) => setBatchProgress({ current, total })}
+           onComplete={handleBatchComplete}
          />
        )}
     </div>
