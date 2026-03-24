@@ -278,8 +278,8 @@ const App: React.FC = () => {
 
       // 分離公開與管理員資料
       const publicQueries = [
-        supabase.from('activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
-        supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
+        supabase.from('activities').select('id, type, title, date, time, location, price, picture, status, description').order('date', { ascending: true }),
+        supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status, description').order('date', { ascending: true }),
       ];
 
       // 只有在確定有 currentUser 時才加入管理員查詢
@@ -536,13 +536,13 @@ const App: React.FC = () => {
 
   const fetchActivities = async () => {
     if (!supabase) return;
-    const { data } = await supabase.from('activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true });
+    const { data } = await supabase.from('activities').select('id, type, title, date, time, location, price, picture, status, description').order('date', { ascending: true });
     if (data) setActivities(data.map((a: any) => ({ ...a, status: a.status || 'active' })));
   };
 
   const fetchMemberActivities = async () => {
     if (!supabase) return;
-    const { data } = await supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true });
+    const { data } = await supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status, description').order('date', { ascending: true });
     if (data) setMemberActivities(data.map((a: any) => ({ ...a, status: a.status || 'active' })));
   };
 

@@ -364,7 +364,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
               <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isClosed ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}><DollarSign size={24} /></div><div><p className="text-xs text-gray-400 uppercase font-bold tracking-wider">活動費用</p><p className="font-medium">NT$ {activity.price.toLocaleString()}</p></div></div>
             </div>
 
-            <div className="prose prose-red max-w-none mb-10">
+            <div className="prose prose-red max-w-none mb-10 overflow-hidden">
               <h3 className="text-xl font-bold mb-4">活動介紹</h3>
               <BlockRenderer value={activity.description} />
             </div>

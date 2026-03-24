@@ -14,11 +14,11 @@ const BlockRenderer: React.FC<BlockRendererProps> = ({ value }) => {
       blocks = parsed;
     } else {
       // Fallback for legacy plain text
-      return <p className="text-gray-600 leading-relaxed whitespace-pre-line">{value}</p>;
+      return <p className="text-gray-600 leading-relaxed whitespace-pre-line break-all">{value}</p>;
     }
   } catch (e) {
     // Fallback for legacy plain text
-    return <p className="text-gray-600 leading-relaxed whitespace-pre-line">{value}</p>;
+    return <p className="text-gray-600 leading-relaxed whitespace-pre-line break-all">{value}</p>;
   }
 
   return (
@@ -26,7 +26,7 @@ const BlockRenderer: React.FC<BlockRendererProps> = ({ value }) => {
       {blocks.map((block) => (
         <div key={block.id} className="block-item">
           {block.type === 'text' && (
-            <p className="text-gray-600 leading-relaxed whitespace-pre-line">{block.content}</p>
+            <p className="text-gray-600 leading-relaxed whitespace-pre-line break-all">{block.content}</p>
           )}
           {block.type === 'image' && block.content && (
             <div className="space-y-2">
