@@ -260,7 +260,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         margin:       10,
         filename:     `收據_${receiptNo}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { scale: 2, useCORS: true, windowWidth: 1200, scrollX: 0, scrollY: 0 },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
       };
       
@@ -563,6 +563,102 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
       
       {/* Print Styles */}
       <style dangerouslySetInnerHTML={{__html: `
+        /* PDF Generation Fallback Styles for html2canvas */
+        .pdf-generating {
+          background-color: white !important;
+          padding: 20px !important;
+        }
+        .pdf-generating table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          border: 1px solid black !important;
+        }
+        .pdf-generating td, .pdf-generating th {
+          border: 1px solid black !important;
+        }
+        .pdf-generating .bg-gray-100 {
+          background-color: #f3f4f6 !important;
+        }
+        .pdf-generating .text-red-600 {
+          color: #dc2626 !important;
+        }
+        .pdf-generating .bg-blue-600 {
+          background-color: #2563eb !important;
+        }
+        .pdf-generating .border-gray-400 {
+          border-color: #9ca3af !important;
+        }
+        .pdf-generating .flex {
+          display: flex !important;
+        }
+        .pdf-generating .items-center {
+          align-items: center !important;
+        }
+        .pdf-generating .justify-between {
+          justify-content: space-between !important;
+        }
+        .pdf-generating .justify-around {
+          justify-content: space-around !important;
+        }
+        .pdf-generating .justify-center {
+          justify-content: center !important;
+        }
+        .pdf-generating .flex-wrap {
+          flex-wrap: wrap !important;
+        }
+        .pdf-generating .flex-grow {
+          flex-grow: 1 !important;
+        }
+        .pdf-generating .font-bold {
+          font-weight: bold !important;
+        }
+        .pdf-generating .text-center {
+          text-align: center !important;
+        }
+        .pdf-generating .text-left {
+          text-align: left !important;
+        }
+        .pdf-generating .gap-2 { gap: 0.5rem !important; }
+        .pdf-generating .gap-4 { gap: 1rem !important; }
+        .pdf-generating .gap-6 { gap: 1.5rem !important; }
+        .pdf-generating .py-3 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+        .pdf-generating .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+        .pdf-generating .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+        .pdf-generating .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+        .pdf-generating .pt-4 { padding-top: 1rem !important; }
+        .pdf-generating .mb-2 { margin-bottom: 0.5rem !important; }
+        .pdf-generating .mb-6 { margin-bottom: 1.5rem !important; }
+        .pdf-generating .mt-4 { margin-top: 1rem !important; }
+        .pdf-generating .ml-2 { margin-left: 0.5rem !important; }
+        .pdf-generating .ml-1 { margin-left: 0.25rem !important; }
+        .pdf-generating .w-full { width: 100% !important; }
+        .pdf-generating .w-\[12\%\] { width: 12% !important; }
+        .pdf-generating .w-\[58\%\] { width: 58% !important; }
+        .pdf-generating .w-\[15\%\] { width: 15% !important; }
+        .pdf-generating .min-w-\[280px\] { min-width: 280px !important; }
+        .pdf-generating .h-full { height: 100% !important; }
+        .pdf-generating .h-\[100px\] { height: 100px !important; }
+        .pdf-generating .w-6 { width: 1.5rem !important; }
+        .pdf-generating .h-6 { height: 1.5rem !important; }
+        .pdf-generating .w-3 { width: 0.75rem !important; }
+        .pdf-generating .h-3 { height: 0.75rem !important; }
+        .pdf-generating .border-2 { border-width: 2px !important; }
+        .pdf-generating .rounded-sm { border-radius: 0.125rem !important; }
+        .pdf-generating .whitespace-pre-wrap { white-space: pre-wrap !important; }
+        .pdf-generating .align-top { vertical-align: top !important; }
+        .pdf-generating .relative { position: relative !important; }
+        .pdf-generating .absolute { position: absolute !important; }
+        .pdf-generating .inset-0 { top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; }
+        .pdf-generating .p-2 { padding: 0.5rem !important; }
+        .pdf-generating .opacity-90 { opacity: 0.9 !important; }
+        .pdf-generating .tracking-widest { letter-spacing: 0.1em !important; }
+        .pdf-generating .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+        .pdf-generating .text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+        .pdf-generating .text-2xl { font-size: 1.5rem !important; line-height: 2rem !important; }
+        .pdf-generating .text-3xl { font-size: 1.875rem !important; line-height: 2.25rem !important; }
+        .pdf-generating .font-normal { font-weight: normal !important; }
+        .pdf-generating .text-gray-400 { color: #9ca3af !important; }
+
         .pdf-generating input, .pdf-generating select, .pdf-generating textarea {
           display: none !important;
         }
