@@ -50,7 +50,7 @@ const Header: React.FC = () => {
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center gap-3 group">
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm group-hover:shadow-md transition-all">
-                <img src="/logo.svg" alt="食在力量" className="w-full h-full object-cover" />
+                <img src="/logo.svg" alt="" className="w-full h-full object-cover" />
               </div>
               <span className="text-2xl font-bold tracking-tight text-gray-900 whitespace-nowrap">食在力量</span>
             </Link>
@@ -109,23 +109,23 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-sm">
-                <img src="/logo.svg" alt="食在力量" className="w-full h-full object-cover" />
+                <img src="/logo.svg" alt="" className="w-full h-full object-cover" />
               </div>
               <span className="font-bold text-gray-900 tracking-wider text-2xl whitespace-nowrap">食在力量</span>
             </div>
             <p className="text-gray-500 text-lg max-w-md leading-relaxed mb-8">
               連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動。
             </p>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-500 text-sm">
               &copy; 2026 食在力量活動報名系統 v2.0.<br/>
-              <Link to="/admin" className="hover:text-red-600 transition-colors">All rights reserved.</Link>
+              <Link to="/admin" className="text-gray-500 hover:text-red-700 transition-colors">All rights reserved.</Link>
             </p>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h4 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-6">官方帳號</h4>
-            <div className="bg-[#06C755]/5 p-6 rounded-3xl border border-[#06C755]/10 hover:bg-[#06C755]/10 transition-all group">
+            <h2 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-6">官方帳號</h2>
+            <div className="bg-[#05A044]/5 p-6 rounded-3xl border border-[#05A044]/10 hover:bg-[#05A044]/10 transition-all group">
               <div className="flex items-center gap-4 mb-4">
                 <div className="bg-white p-2 rounded-xl shadow-sm group-hover:scale-105 transition-transform">
                   <img 
@@ -138,15 +138,15 @@ const Footer: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <h5 className="font-bold text-[#06C755] text-sm">LINE 官方帳號</h5>
-                  <p className="text-xs text-gray-500">掌握最新動態</p>
+                  <h3 className="font-bold text-[#05A044] text-sm">LINE 官方帳號</h3>
+                  <p className="text-xs text-gray-600">掌握最新動態</p>
                 </div>
               </div>
               <a 
                 href="https://lin.ee/oIeFIMO" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#06C755] hover:bg-[#05b64d] text-white w-full py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-100"
+                className="flex items-center justify-center gap-2 bg-[#05A044] hover:bg-[#048b3b] text-white w-full py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-100"
               >
                 <MessageCircle size={18} fill="currentColor" className="text-white/20" />
                 立即加入好友
@@ -279,7 +279,6 @@ const App: React.FC = () => {
       const publicQueries = [
         supabase.from('activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
         supabase.from('member_activities').select('id, type, title, date, time, location, price, picture, status').order('date', { ascending: true }),
-        supabase.from('milestones').select('*').order('date', { ascending: false }),
       ];
 
       // 只有在確定有 currentUser 時才加入管理員查詢
@@ -292,13 +291,13 @@ const App: React.FC = () => {
         supabase.from('club_activities').select('*').order('date', { ascending: true }),
         supabase.from('members').select('*'),
         supabase.from('financial_records').select('*').order('date', { ascending: false }),
+        supabase.from('milestones').select('*').order('date', { ascending: false }),
       ] : [];
 
       const results = await Promise.all([...publicQueries, ...adminQueries]);
       
       const actData = results[0].data;
       const memActData = results[1].data;
-      const milestoneData = results[2].data;
 
       // 處理公開資料
       if (actData && actData.length > 0) {
@@ -313,18 +312,18 @@ const App: React.FC = () => {
       }
 
       if (memActData) setMemberActivities(memActData.map((a: any) => ({ ...a, status: a.status || 'active' })));
-      if (milestoneData) setMilestones(milestoneData);
       
-      // 處理管理員資料 (索引從 3 開始)
-      if (currentUser && results.length > 3) {
-        const regData = results[3]?.data;
-        const memRegData = results[4]?.data;
-        const userData = results[5]?.data;
-        const couponData = results[6]?.data;
-        const applicationData = results[7]?.data;
-        const clubData = results[8]?.data;
-        const memberData = results[9]?.data;
-        const financialData = results[10]?.data;
+      // 處理管理員資料 (索引從 2 開始)
+      if (currentUser && results.length > 2) {
+        const regData = results[2]?.data;
+        const memRegData = results[3]?.data;
+        const userData = results[4]?.data;
+        const couponData = results[5]?.data;
+        const applicationData = results[6]?.data;
+        const clubData = results[7]?.data;
+        const memberData = results[8]?.data;
+        const financialData = results[9]?.data;
+        const milestoneData = results[10]?.data;
 
         if (regData) setRegistrations(regData);
         if (memRegData) setMemberRegistrations(memRegData);
@@ -333,6 +332,7 @@ const App: React.FC = () => {
         if (applicationData) setMemberApplications(applicationData as MemberApplication[]);
         if (clubData) setClubActivities(clubData as ClubActivity[]);
         if (financialData) setFinancialRecords(financialData as FinancialRecord[]);
+        if (milestoneData) setMilestones(milestoneData);
         
         if (memberData && memberData.length > 0) {
           const sortedMembers = memberData.sort((a: any, b: any) => {
@@ -408,17 +408,21 @@ const App: React.FC = () => {
       const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
       const folder = fileExt === 'pdf' ? 'documents' : 'activity-covers';
       const filePath = `${folder}/${fileName}`;
+      
       const { error: uploadError } = await supabase.storage.from('activity-images').upload(filePath, file, { cacheControl: '3600', upsert: false });
-      if (uploadError) throw uploadError;
+      
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        alert(`圖片上傳失敗！\n請至 Supabase 後台建立名為 "activity-images" 的 Public Bucket，並設定允許上傳的 RLS 政策。\n錯誤訊息：${uploadError.message}`);
+        return '';
+      }
+      
       const { data } = supabase.storage.from('activity-images').getPublicUrl(filePath);
       return data.publicUrl;
     } catch (error: any) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => resolve(event.target?.result as string);
-        reader.onerror = () => reject(new Error('File load failed'));
-      });
+      console.error('Unexpected upload error:', error);
+      alert('圖片上傳發生未預期錯誤：' + error.message);
+      return '';
     }
   };
 
@@ -825,7 +829,7 @@ const App: React.FC = () => {
               <Route path="/pay-renewal/:id" element={<RenewalPayment />} />
               <Route path="/pay-activity/:id" element={<ActivityPayment />} />
               <Route path="/payment-result" element={<PaymentResult />} />
-              <Route path="/milestones" element={<MilestoneTimeline milestones={milestones} />} />
+              <Route path="/milestones" element={<MilestoneTimeline />} />
 
               <Route path="/admin/login" element={currentUser ? <Navigate to="/admin" /> : <LoginPage />} />
               

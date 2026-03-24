@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Milestone } from '../types';
 import { Calendar, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { supabase } from '../utils/supabaseClient';
 
-interface MilestoneTimelineProps {
-  milestones: Milestone[];
-}
+const MilestoneTimeline: React.FC = () => {
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const MilestoneTimeline: React.FC<MilestoneTimelineProps> = ({ milestones }) => {
+  useEffect(() => {
+    const fetchMilestones = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('milestones')
+          .select('*')
+          .order('date', { ascending: false });
+        
+        if (error) throw error;
+        if (data) setMilestones(data);
+      } catch (err) {
+        console.error('Error fetching milestones:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMilestones();
+  }, []);
+
   // Sort milestones by date descending
   const sortedMilestones = React.useMemo(() => 
     [...milestones].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())

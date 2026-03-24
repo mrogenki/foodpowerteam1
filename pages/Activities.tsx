@@ -16,7 +16,7 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
       case ActivityType.GATHERING: return 'bg-orange-600 text-white';
       case ActivityType.VISIT: return 'bg-blue-600 text-white';
       case ActivityType.COURSE: return 'bg-green-600 text-white';
-      case ActivityType.DINNER: return 'bg-pink-600 text-white';
+      case ActivityType.DINNER: return 'bg-pink-700 text-white';
       case ActivityType.PROJECT: return 'bg-purple-600 text-white';
       default: return 'bg-gray-800 text-white';
     }

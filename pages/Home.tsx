@@ -56,7 +56,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
       case '講座論壇': return 'bg-orange-600';
       case '企業參訪': return 'bg-blue-600';
       case '專業課程': return 'bg-green-600';
-      case '交流餐敘': return 'bg-pink-600';
+      case '交流餐敘': return 'bg-pink-700';
       case '專案活動': return 'bg-purple-600';
       default: return 'bg-gray-800';
     }
@@ -163,7 +163,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
                   >
                     <Link 
                       to={activity.isMemberActivity ? `/member-activity/${activity.id}` : `/activity/${activity.id}`} 
-                      className="inline-flex items-center gap-4 bg-white text-black hover:bg-red-600 hover:text-white px-10 py-5 rounded-full font-black text-lg transition-all shadow-2xl hover:-translate-y-1 active:translate-y-0"
+                      className="inline-flex items-center gap-4 bg-white text-black hover:bg-red-700 hover:text-white px-10 py-5 rounded-full font-black text-lg transition-all shadow-2xl hover:-translate-y-1 active:translate-y-0"
                     >
                       探索詳情
                       <ChevronRight size={24} />
@@ -222,7 +222,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
             <p className="text-xl md:text-2xl text-gray-300 max-w-2xl leading-relaxed mb-12 font-medium">
               食在力量致力於餐飲業與食品產業的交流與成長，匯聚各產業菁英，提供講座論壇、企業參訪與專業課程。
             </p>
-            <Link to="/activities" className="inline-flex items-center gap-4 bg-red-600 text-white hover:bg-white hover:text-black px-10 py-5 rounded-full font-black text-lg transition-all shadow-2xl">
+            <Link to="/activities" className="inline-flex items-center gap-4 bg-red-700 text-white hover:bg-white hover:text-black px-10 py-5 rounded-full font-black text-lg transition-all shadow-2xl">
               探索活動
               <ChevronRight size={24} />
             </Link>
@@ -245,7 +245,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
             <p className="text-gray-500 text-lg leading-relaxed mb-10">
               我們定期舉辦講座論壇、企業參訪與專業課程，歡迎報名參加，與我們一起成長。
             </p>
-            <Link to="/activities" className="inline-flex items-center gap-3 text-red-600 font-black text-xl hover:gap-5 transition-all">
+            <Link to="/activities" className="inline-flex items-center gap-3 text-red-700 font-black text-xl hover:gap-5 transition-all">
               查看所有活動
               <ChevronRight size={28} />
             </Link>
