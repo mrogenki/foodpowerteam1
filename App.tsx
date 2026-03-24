@@ -177,6 +177,7 @@ const App: React.FC = () => {
   const [clubActivities, setClubActivities] = useState<ClubActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const isFetching = React.useRef(false);
@@ -377,17 +378,115 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!authResolved) return;
 
-    // 安全機制：如果 30 秒後還在載入，強制停止轉圈圈並顯示錯誤
+    // 安全機制：如果 60 秒後還在載入，強制停止轉圈圈並顯示錯誤
     const timer = setTimeout(() => {
       if (loading) {
         setLoading(false);
         setDbError("連線逾時，請檢查網路或資料庫設定。");
       }
-    }, 30000);
+    }, 60000);
 
-    // 每次 authResolved 或 currentUser 改變時都重新抓取資料
-    // 確保管理員權限生效後能抓到管理員專屬資料
-    fetchData(true);
+    // 背景執行 Base64 圖片轉移至 Supabase Storage
+    const runMigrationAndFetch = async () => {
+      if (currentUser && currentUser.role === UserRole.SUPER_ADMIN && supabase) {
+        let hasMigrationError = false;
+        // 1. 轉移 picture 欄位
+        const tables = ['activities', 'member_activities', 'club_activities', 'milestones'];
+        for (const table of tables) {
+          try {
+            const { data, error } = await supabase.from(table).select('id').like('picture', 'data:image/%');
+            if (error || !data || data.length === 0) continue;
+            
+            console.log(`Found ${data.length} base64 images in ${table}. Migrating...`);
+            setMigrationStatus(`正在轉移 ${table} 的圖片 (${data.length} 筆)...`);
+            for (const row of data) {
+              const { data: rowData } = await supabase.from(table).select('picture').eq('id', row.id).single();
+              if (!rowData || !rowData.picture) continue;
+              
+              try {
+                const base64Data = rowData.picture.split(',')[1];
+                const mimeType = rowData.picture.split(';')[0].split(':')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: mimeType });
+                
+                const fileExt = mimeType.split('/')[1] || 'jpg';
+                const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+                const filePath = `activity-covers/${fileName}`;
+                
+                const { error: uploadError } = await supabase.storage.from('activity-images').upload(filePath, blob, { contentType: mimeType, upsert: false });
+                if (uploadError) throw uploadError;
+                
+                const { data: urlData } = supabase.storage.from('activity-images').getPublicUrl(filePath);
+                await supabase.from(table).update({ picture: urlData.publicUrl }).eq('id', row.id);
+                console.log(`Migrated image for ${table} ID ${row.id}`);
+              } catch (err) {
+                console.error(`Failed to migrate image for ${table} ID ${row.id}:`, err);
+                hasMigrationError = true;
+              }
+            }
+          } catch (err) {
+            console.error(`Migration error on ${table}:`, err);
+            hasMigrationError = true;
+          }
+        }
+
+        // 2. 轉移 financial_records 的 receipt_url 欄位
+        try {
+          const { data, error } = await supabase.from('financial_records').select('id').like('receipt_url', 'data:image/%');
+          if (!error && data && data.length > 0) {
+            console.log(`Found ${data.length} base64 images in financial_records. Migrating...`);
+            setMigrationStatus(`正在轉移財務紀錄的單據 (${data.length} 筆)...`);
+            for (const row of data) {
+              const { data: rowData } = await supabase.from('financial_records').select('receipt_url').eq('id', row.id).single();
+              if (!rowData || !rowData.receipt_url) continue;
+              
+              try {
+                const base64Data = rowData.receipt_url.split(',')[1];
+                const mimeType = rowData.receipt_url.split(';')[0].split(':')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: mimeType });
+                
+                const fileExt = mimeType.split('/')[1] || 'jpg';
+                const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+                const filePath = `transactions/${fileName}`;
+                
+                const { error: uploadError } = await supabase.storage.from('activity-images').upload(filePath, blob, { contentType: mimeType, upsert: false });
+                if (uploadError) throw uploadError;
+                
+                const { data: urlData } = supabase.storage.from('activity-images').getPublicUrl(filePath);
+                await supabase.from('financial_records').update({ receipt_url: urlData.publicUrl }).eq('id', row.id);
+                console.log(`Migrated document for financial_records ID ${row.id}`);
+              } catch (err) {
+                console.error(`Failed to migrate document for financial_records ID ${row.id}:`, err);
+                hasMigrationError = true;
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`Migration error on financial_records:`, err);
+          hasMigrationError = true;
+        }
+        
+        if (hasMigrationError) {
+          setMigrationStatus('圖片轉移過程中發生錯誤，請確保已在 Supabase 建立 activity-images Bucket。');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          setMigrationStatus(null);
+        } else {
+          setMigrationStatus(null);
+        }
+      }
+      // 每次 authResolved 或 currentUser 改變時都重新抓取資料
+      // 確保管理員權限生效後能抓到管理員專屬資料
+      fetchData(true);
+    };
+    
+    runMigrationAndFetch();
     
     return () => clearTimeout(timer);
   }, [authResolved, currentUser, fetchData]);
@@ -792,6 +891,11 @@ const App: React.FC = () => {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
       <Loader2 className="animate-spin text-red-600" size={56} />
+      {migrationStatus ? (
+        <p className="text-gray-600 font-medium animate-pulse">{migrationStatus}</p>
+      ) : (
+        <p className="text-gray-500 font-medium">系統載入中...</p>
+      )}
       {dbError && <p className="text-red-500 font-medium">{dbError}</p>}
     </div>
   );

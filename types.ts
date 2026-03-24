@@ -275,3 +275,17 @@ export interface FinanceRecord {
   note?: string;
   created_at?: string;
 }
+
+export interface Transaction {
+  id: string | number;
+  date: string;
+  type: 'income' | 'expenditure';
+  category: string;
+  amount: number;
+  entity?: string;
+  description?: string;
+  invoice_number?: string;
+  note?: string;
+  document_url?: string;
+  created_at?: string;
+}
