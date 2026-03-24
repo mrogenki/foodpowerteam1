@@ -1096,23 +1096,42 @@ const ActivityManager: React.FC<{
             return;
           }
 
-          const newRegs = data.map(row => ({
-            id: Date.now() + Math.random(),
-            activityId: currentActivity.id,
-            name: row['姓名'] || row['Name'] || '',
-            phone: String(row['手機號碼'] || row['電話'] || row['Phone'] || ''),
-            email: row['電子郵件'] || row['Email'] || '',
-            company: row['公司/品牌名稱'] || row['公司名稱'] || row['公司'] || row['Company'] || '',
-            company_title: row['公司抬頭 (收據用)'] || row['公司抬頭'] || '',
-            title: row['職務'] || row['職稱'] || row['Title'] || '',
-            tax_id: String(row['統一編號 (收據用)'] || row['統一編號'] || row['統編'] || row['TaxID'] || ''),
-            referrer: row['引薦人 (選填)'] || row['引薦人'] || row['Referrer'] || '',
-            payment_status: PaymentStatus.PAID, // 批量匯入預設為已付款
-            payment_method: 'manual_admin',
-            paid_amount: Number(row['報名金額'] || row['金額'] || row['Amount'] || currentActivity.price || 0),
-            notes: row['備註（選填）'] || row['備註'] || row['Notes'] || '批量匯入',
-            created_at: new Date().toISOString()
-          }));
+          const newRegs = data.map(row => {
+            const baseReg = {
+              id: crypto.randomUUID(),
+              activityId: currentActivity.id,
+              payment_status: PaymentStatus.PAID, // 批量匯入預設為已付款
+              payment_method: 'manual_admin',
+              paid_amount: Number(row['報名金額'] || row['金額'] || row['Amount'] || currentActivity.price || 0),
+              notes: row['備註（選填）'] || row['備註'] || row['Notes'] || '批量匯入',
+              created_at: new Date().toISOString()
+            };
+
+            if (type === 'member') {
+              const memberName = row['姓名'] || row['Name'] || '';
+              const memberPhone = String(row['手機號碼'] || row['電話'] || row['Phone'] || '');
+              const member = members?.find(m => m.name === memberName || (memberPhone && m.phone === memberPhone));
+              
+              return {
+                ...baseReg,
+                memberId: member?.id || '',
+                member_name: memberName,
+                member_no: member?.member_no || '',
+              };
+            } else {
+              return {
+                ...baseReg,
+                name: row['姓名'] || row['Name'] || '',
+                phone: String(row['手機號碼'] || row['電話'] || row['Phone'] || ''),
+                email: row['電子郵件'] || row['Email'] || '',
+                company: row['公司/品牌名稱'] || row['公司名稱'] || row['公司'] || row['Company'] || '',
+                company_title: row['公司抬頭 (收據用)'] || row['公司抬頭'] || '',
+                title: row['職務'] || row['職稱'] || row['Title'] || '',
+                tax_id: String(row['統一編號 (收據用)'] || row['統一編號'] || row['統編'] || row['TaxID'] || ''),
+                referrer: row['引薦人 (選填)'] || row['引薦人'] || row['Referrer'] || '',
+              };
+            }
+          });
 
           if (confirm(`確定要匯入 ${newRegs.length} 筆報名資料嗎？`)) {
             await onAddRegs(newRegs);
