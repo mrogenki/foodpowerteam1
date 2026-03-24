@@ -946,6 +946,9 @@ const ActivityManager: React.FC<{
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [receiptMap, setReceiptMap] = useState<Record<string, string>>({});
+  const [selectedRegIds, setSelectedRegIds] = useState<string[]>([]);
+  const [isBatchIssuing, setIsBatchIssuing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
   const fetchReceipts = async () => {
     try {
@@ -1150,6 +1153,101 @@ const ActivityManager: React.FC<{
     }
   };
 
+  const handleBatchIssueReceipts = async () => {
+    const regsToIssue = filteredRegs.filter(r => 
+      selectedRegIds.includes(String(r.id)) && 
+      r.payment_status === PaymentStatus.PAID &&
+      (!r.merchant_order_no || receiptMap[r.merchant_order_no] !== 'sent')
+    );
+
+    if (regsToIssue.length === 0) {
+      alert('請選擇已付款且尚未開立收據的報名者。');
+      return;
+    }
+
+    if (!confirm(`確定要批量開立 ${regsToIssue.length} 份收據嗎？\n這將會自動產生收據編號並儲存紀錄。`)) return;
+
+    setIsBatchIssuing(true);
+    setBatchProgress({ current: 0, total: regsToIssue.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (let i = 0; i < regsToIssue.length; i++) {
+        const reg = regsToIssue[i];
+        setBatchProgress(prev => ({ ...prev, current: i + 1 }));
+
+        const member = members?.find(m => String(m.id) === String(reg.memberId));
+        const name = reg.name || reg.member_name || member?.name || '';
+        const company = reg.company_title || reg.company || member?.company_title || member?.company || '';
+        const email = reg.email || member?.email || '';
+
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const datePrefix = `${year}${month}${day}`;
+
+        const { data: latestData } = await supabase
+          .from('receipts')
+          .select('receipt_no')
+          .like('receipt_no', `${datePrefix}%`)
+          .order('receipt_no', { ascending: false })
+          .limit(1);
+
+        let nextSeq = 1;
+        if (latestData && latestData.length > 0) {
+          const lastNo = latestData[0].receipt_no;
+          const lastSeq = parseInt(lastNo.substring(8), 10);
+          if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+        }
+        const receiptNo = `${datePrefix}${String(nextSeq).padStart(3, '0')}`;
+
+        const { error } = await supabase.from('receipts').insert({
+          receipt_no: receiptNo,
+          payer_name: company ? `${name}（${company}）` : name,
+          tax_id: reg.tax_id || member?.tax_id || null,
+          amount: reg.paid_amount || 0,
+          payment_method: translatePaymentMethod(reg.payment_method),
+          fee_type: 'donation',
+          order_no: reg.merchant_order_no || null,
+          issue_date: today.toISOString().split('T')[0],
+          handler_name: '許暐脡',
+          note: `活動：${currentActivity?.title || ''}`,
+          status: 'issued',
+          email: email || null
+        });
+
+        if (error) {
+          console.error(`Error issuing receipt for ${name}:`, error);
+          failCount++;
+        } else {
+          successCount++;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      alert(`批量開立完成！\n成功：${successCount} 份\n失敗：${failCount} 份\n\n提示：批量開立僅會產生收據紀錄，如需寄出電子收據，請至「收據管理」或個別點擊「檢視」進行寄送。`);
+      fetchReceipts();
+      setSelectedRegIds([]);
+    } catch (err) {
+      console.error('Batch issue error:', err);
+      alert('批量處理過程中發生錯誤');
+    } finally {
+      setIsBatchIssuing(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRegIds.length === filteredRegs.length && filteredRegs.length > 0) {
+      setSelectedRegIds([]);
+    } else {
+      setSelectedRegIds(filteredRegs.map(r => String(r.id)));
+    }
+  };
+
   if (view === 'registrations' && currentActivity) {
     return (
       <div className="space-y-6 animate-in slide-in-from-right duration-300">
@@ -1181,10 +1279,53 @@ const ActivityManager: React.FC<{
         <div className="bg-white p-6 rounded-2xl border border-gray-100">
           <h2 className="text-2xl font-bold mb-2">{currentActivity.title}</h2>
           <div className="flex gap-4 text-sm text-gray-500 mb-6"><span>總報名: {currentRegistrations.length} 人</span><span>已付款: {currentRegistrations.filter(r => r.payment_status === PaymentStatus.PAID).length} 人</span><span>已退費: {currentRegistrations.filter(r => r.payment_status === 'refunded').length} 人</span><span>已報到: {currentRegistrations.filter(r => r.check_in_status).length} 人</span></div>
-          <div className="flex gap-2 mb-4"><div className="relative flex-grow"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="搜尋姓名、電話、金流單號..." value={regSearch} onChange={e => setRegSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" /></div></div>
+          <div className="flex gap-2 mb-4">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input type="text" placeholder="搜尋姓名、電話、金流單號..." value={regSearch} onChange={e => setRegSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
+            </div>
+            {selectedRegIds.length > 0 && (
+              <button 
+                onClick={handleBatchIssueReceipts}
+                disabled={isBatchIssuing}
+                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-100 transition-all disabled:opacity-50"
+              >
+                {isBatchIssuing ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    處理中 ({batchProgress.current}/{batchProgress.total})
+                  </>
+                ) : (
+                  <>
+                    <FileText size={18} />
+                    批量開立收據 ({selectedRegIds.length})
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><th className="p-4 rounded-tl-lg">姓名/資訊</th>{type !== 'member' && <th className="p-4">引薦人</th>}<th className="p-4">備註</th><th className="p-4">報到狀態</th><th className="p-4">付款狀態 (點擊切換)</th><th className="p-4">付款方式</th><th className="p-4">金額</th><th className="p-4 rounded-tr-lg text-right">操作</th></tr></thead>
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                  <th className="p-4 rounded-tl-lg w-10">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedRegIds.length === filteredRegs.length && filteredRegs.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    />
+                  </th>
+                  <th className="p-4">姓名/資訊</th>
+                  {type !== 'member' && <th className="p-4">引薦人</th>}
+                  <th className="p-4">備註</th>
+                  <th className="p-4">報到狀態</th>
+                  <th className="p-4">付款狀態 (點擊切換)</th>
+                  <th className="p-4">付款方式</th>
+                  <th className="p-4">金額</th>
+                  <th className="p-4 rounded-tr-lg text-right">操作</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
                 {filteredRegs.map((reg: any) => {
                   const member = members?.find(m => String(m.id) === String(reg.memberId));
@@ -1195,6 +1336,20 @@ const ActivityManager: React.FC<{
                   
                   return (
                   <tr key={reg.id} className={`hover:bg-gray-50 ${reg.payment_status === 'refunded' ? 'bg-gray-50' : ''}`}>
+                    <td className="p-4">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedRegIds.includes(String(reg.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedRegIds(prev => [...prev, String(reg.id)]);
+                          } else {
+                            setSelectedRegIds(prev => prev.filter(id => id !== String(reg.id)));
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                    </td>
                     <td className="p-4">
                       <div className={`font-bold flex items-center gap-2 ${reg.payment_status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                         {name}
