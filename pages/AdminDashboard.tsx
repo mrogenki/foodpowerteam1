@@ -2514,13 +2514,34 @@ const FinancialManager: React.FC<{
   const [currentRecord, setCurrentRecord] = useState<Partial<FinancialRecord>>({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
-  const filteredRecords = records.filter(r => r.date.startsWith(selectedMonth));
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<'all' | FinancialType>('all');
+
+  const filteredRecords = useMemo(() => {
+    return records.filter(r => {
+      const matchesMonth = r.date.startsWith(selectedMonth);
+      const matchesType = filterType === 'all' || r.type === filterType;
+      const matchesSearch = 
+        r.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.party?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (r.description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (r.invoice_no?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+      return matchesMonth && matchesType && matchesSearch;
+    });
+  }, [records, selectedMonth, filterType, searchTerm]);
 
   const monthlySummary = useMemo(() => {
-    const income = filteredRecords.filter(r => r.type === FinancialType.INCOME).reduce((sum, r) => sum + r.amount, 0);
-    const expense = filteredRecords.filter(r => r.type === FinancialType.EXPENSE).reduce((sum, r) => sum + r.amount, 0);
+    const monthRecords = records.filter(r => r.date.startsWith(selectedMonth));
+    const income = monthRecords.filter(r => r.type === FinancialType.INCOME).reduce((sum, r) => sum + r.amount, 0);
+    const expense = monthRecords.filter(r => r.type === FinancialType.EXPENSE).reduce((sum, r) => sum + r.amount, 0);
     return { income, expense, profit: income - expense };
-  }, [filteredRecords]);
+  }, [records, selectedMonth]);
+
+  const totalBalance = useMemo(() => {
+    const income = records.filter(r => r.type === FinancialType.INCOME).reduce((sum, r) => sum + r.amount, 0);
+    const expense = records.filter(r => r.type === FinancialType.EXPENSE).reduce((sum, r) => sum + r.amount, 0);
+    return income - expense;
+  }, [records]);
 
   const handleSave = () => {
     if (!currentRecord.date || !currentRecord.type || !currentRecord.category || !currentRecord.amount) {
@@ -2561,20 +2582,54 @@ const FinancialManager: React.FC<{
       </div>
 
       {/* Monthly P&L Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-sm text-gray-500 font-bold mb-1">本月總收入</p>
-          <p className="text-2xl font-bold text-emerald-600">${monthlySummary.income.toLocaleString()}</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-xs text-gray-500 font-bold mb-1">本月總收入</p>
+          <p className="text-xl font-bold text-emerald-600">${monthlySummary.income.toLocaleString()}</p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-sm text-gray-500 font-bold mb-1">本月總支出</p>
-          <p className="text-2xl font-bold text-red-600">${monthlySummary.expense.toLocaleString()}</p>
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-xs text-gray-500 font-bold mb-1">本月總支出</p>
+          <p className="text-xl font-bold text-red-600">${monthlySummary.expense.toLocaleString()}</p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-sm text-gray-500 font-bold mb-1">本月淨損益</p>
-          <p className={`text-2xl font-bold ${monthlySummary.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-xs text-gray-500 font-bold mb-1">本月淨損益</p>
+          <p className={`text-xl font-bold ${monthlySummary.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
             ${monthlySummary.profit.toLocaleString()}
           </p>
+        </div>
+        <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800 shadow-sm text-white">
+          <p className="text-xs text-gray-400 font-bold mb-1">目前總餘額</p>
+          <p className={`text-xl font-bold ${totalBalance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            ${totalBalance.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      {/* Filters & Search */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="搜尋類別、對象、描述..."
+              className="pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-red-500 w-full md:w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select 
+            className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 text-sm"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as any)}
+          >
+            <option value="all">全部類型</option>
+            <option value={FinancialType.INCOME}>收入</option>
+            <option value={FinancialType.EXPENSE}>支出</option>
+          </select>
+        </div>
+        <div className="text-sm text-gray-500 font-medium">
+          顯示 {filteredRecords.length} 筆記錄
         </div>
       </div>
 
