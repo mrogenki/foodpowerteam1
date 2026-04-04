@@ -99,78 +99,30 @@ const MemberRenewalManager: React.FC = () => {
   }, []);
 
   const handleMarkAsPaid = async (renewal: MemberRenewal) => {
-    if (!confirm(`確定將 ${renewal.member_name} 的續約標記為已付款？\n這將會自動更新會員的會籍到期日。`)) return;
+    if (!confirm(`確定將 ${renewal.member_name} 的續約標記為已付款？\n這將會自動更新會員的會籍到期日與繳費紀錄。`)) return;
 
     try {
-      // 1. Update renewal status
-      const { error: updateError } = await supabase
-        .from('member_renewals')
-        .update({ 
-          payment_status: 'paid',
-          paid_at: new Date().toISOString(),
-          payment_method: 'manual_admin'
-        })
-        .eq('id', renewal.id);
-
-      if (updateError) throw updateError;
-
-      // 2. Update member expiry date
-      // Fetch current member data first to get current expiry and payment records
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('membership_expiry_date, payment_records')
-        .eq('id', renewal.member_id)
-        .single();
-        
-      if (memberError) throw memberError;
-
-      let newExpiryDate;
-      const currentExpiry = new Date(memberData.membership_expiry_date);
-      const today = new Date();
+      setLoading(true);
       
-      // Logic: If not expired, add 1 year to current expiry. If expired, add 1 year to today.
-      if (currentExpiry > today) {
-        newExpiryDate = new Date(currentExpiry.setFullYear(currentExpiry.getFullYear() + 1));
-      } else {
-        newExpiryDate = new Date(today.setFullYear(today.getFullYear() + 1));
-      }
+      // Use RPC to handle both member_renewals and members update in one transaction
+      const { error: rpcError } = await supabase.rpc('handle_renewal_payment', {
+        p_order_no: renewal.merchant_order_no || null,
+        p_amount: renewal.amount || 0,
+        p_pay_time: new Date().toISOString(),
+        p_pay_method: 'manual_admin',
+        p_renewal_id: renewal.id
+      });
 
-      // Append payment record
-      let currentRecords = [];
-      try {
-        if (memberData.payment_records) {
-          currentRecords = JSON.parse(memberData.payment_records);
-        }
-      } catch (e) {
-        currentRecords = [];
-      }
+      if (rpcError) throw rpcError;
 
-      const newRecord = {
-        id: Date.now(),
-        date: new Date().toISOString().slice(0, 10),
-        amount: renewal.amount || 0,
-        note: `會籍續約 (手動標記) - 訂單編號: ${renewal.merchant_order_no || '無'}`
-      };
-
-      currentRecords.push(newRecord);
-
-      const { error: extendError } = await supabase
-        .from('members')
-        .update({
-          membership_expiry_date: newExpiryDate.toISOString().split('T')[0],
-          status: 'active',
-          payment_records: JSON.stringify(currentRecords)
-        })
-        .eq('id', renewal.member_id);
-
-      if (extendError) throw extendError;
-
-      alert('更新成功！會籍已延長。');
+      alert('更新成功！會籍已延長並新增繳費紀錄。');
       fetchRenewals();
 
     } catch (err: any) {
       console.error('Error updating status:', err);
       alert('更新失敗: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 

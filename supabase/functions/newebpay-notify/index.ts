@@ -348,140 +348,76 @@ serve(async (req) => {
                 }
               }
 
-              if (!appData) {
-                // 6.4 If not found, Update 'member_renewals' (會員續約)
-                console.log(`[Notify] Attempting to update member_renewals for ${merchantOrderNo}`);
-                const { data: renewData, error: renewError } = await supabase
-                  .from('member_renewals')
-                  .update({
-                    payment_status: 'paid',
-                    paid_at: paidAtISO,
-                    payment_method: paymentMethod
-                  })
-                  .eq('merchant_order_no', merchantOrderNo)
-                  .select()
-                  .single()
-
-                if (renewError && renewError.code !== 'PGRST116') {
-                  console.error(`[Notify] member_renewals update error:`, renewError);
-                }
-                
-                if (renewData) {
-                  console.log(`[Notify] Success! Updated Member Renewal: ${merchantOrderNo}`)
+                if (!appData) {
+                  // 6.4 If not found, Update 'member_renewals' (會員續約)
+                  console.log(`[Notify] Attempting to update member_renewals via RPC for ${merchantOrderNo}`);
                   
-                  let memberName = '';
-                  let memberEmail = '';
-                  if (renewData.member_id) {
-                     const { data: memberRec } = await supabase.from('members').select('name, email').eq('id', renewData.member_id).single();
-                     if (memberRec) {
-                        memberName = memberRec.name;
-                        memberEmail = memberRec.email;
-                     }
-                  }
+                  // Use RPC to handle both member_renewals and members update in one transaction
+                  // This also bypasses RLS issues when running as anon
+                  const { error: rpcError } = await supabase.rpc('handle_renewal_payment', {
+                    p_order_no: merchantOrderNo,
+                    p_amount: amount,
+                    p_pay_time: paidAtISO,
+                    p_pay_method: paymentMethod
+                  });
 
-                  // --- NEW: Automatically extend membership expiry date and append payment record ---
-                  try {
-                    const memberId = renewData.member_id;
-                    const { data: memberData, error: memberError } = await supabase
-                      .from('members')
-                      .select('membership_expiry_date, payment_records')
-                      .eq('id', memberId)
-                      .single();
+                  if (rpcError) {
+                    console.error(`[Notify] handle_renewal_payment RPC error:`, rpcError);
+                    // Fallback to manual update if RPC fails (though it shouldn't)
+                    await supabase
+                      .from('member_renewals')
+                      .update({
+                        payment_status: 'paid',
+                        paid_at: paidAtISO,
+                        payment_method: paymentMethod
+                      })
+                      .eq('merchant_order_no', merchantOrderNo);
+                  }
+                  
+                  // Fetch the updated record to send notifications
+                  const { data: renewData } = await supabase
+                    .from('member_renewals')
+                    .select('*')
+                    .eq('merchant_order_no', merchantOrderNo)
+                    .single();
+                  
+                  if (renewData) {
+                    console.log(`[Notify] Success! Processed Member Renewal: ${merchantOrderNo}`)
                     
-                    if (!memberError && memberData) {
-                      let newExpiryDate;
-                      const currentExpiry = memberData.membership_expiry_date ? new Date(memberData.membership_expiry_date) : null;
-                      const today = new Date();
-                      
-                      if (currentExpiry && currentExpiry > today) {
-                        // If not expired, add 1 year to current expiry
-                        newExpiryDate = new Date(currentExpiry);
-                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                      } else {
-                        // If expired or no date, add 1 year to today
-                        newExpiryDate = new Date(today);
-                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                      }
-
-                      // Append payment record
-                      let currentRecords = [];
-                      try {
-                        if (memberData.payment_records) {
-                          currentRecords = JSON.parse(memberData.payment_records);
-                        }
-                      } catch (e) {
-                        currentRecords = [];
-                      }
-
-                      const translatePaymentMethod = (method?: string) => {
-                        if (!method) return '-';
-                        const map: Record<string, string> = {
-                          'CREDIT': '信用卡',
-                          'VACC': 'ATM轉帳',
-                          'WEBATM': 'WebATM',
-                          'CVS': '超商代碼',
-                          'BARCODE': '超商條碼',
-                          'LINEPAY': 'Line Pay',
-                          'manual_admin': '手動標記',
-                          'ALIPAY': '支付寶',
-                          'WECHATPAY': '微信支付'
-                        };
-                        return map[method] || method;
-                      };
-
-                      const newRecord = {
-                        id: Date.now(),
-                        date: paidAtISO.slice(0, 10),
-                        amount: renewData.amount || 0,
-                        note: `會籍續約 (${translatePaymentMethod(paymentMethod)}) - 訂單編號: ${merchantOrderNo}`
-                      };
-
-                      currentRecords.push(newRecord);
-
-                      const { error: extendError } = await supabase
-                        .from('members')
-                        .update({
-                          membership_expiry_date: newExpiryDate.toISOString().split('T')[0],
-                          status: 'active',
-                          payment_records: JSON.stringify(currentRecords)
-                        })
-                        .eq('id', memberId);
-                      
-                      if (extendError) {
-                        console.error('[Notify] Auto-extend membership error:', extendError);
-                      } else {
-                        console.log(`[Notify] Successfully extended membership for member ${memberId} to ${newExpiryDate.toISOString().split('T')[0]}`);
-                      }
+                    let memberName = '';
+                    let memberEmail = '';
+                    if (renewData.member_id) {
+                       const { data: memberRec } = await supabase.from('members').select('name, email').eq('id', renewData.member_id).single();
+                       if (memberRec) {
+                          memberName = memberRec.name;
+                          memberEmail = memberRec.email;
+                       }
                     }
-                  } catch (extendCatch) {
-                    console.error('[Notify] Exception during auto-extend:', extendCatch);
-                  }
-                  // --- End of Auto-extend ---
 
-                  // Send Email & Telegram
-                  try {
-                    console.log(`[Notify] Sending renewal email to ${memberEmail} for member ${memberName}`);
-                    await Promise.all([
-                      sendEmail(Deno.env.get('EMAILJS_RENEWAL_TEMPLATE_ID') || 'template_3bgk8ts', {
-                        to_name: memberName,
-                        to_email: memberEmail,
-                        activity_title: '【食在力量】會員續約成功',
-                        activity_date: new Date().toISOString().slice(0, 10),
-                        activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-                        activity_location: '線上續約 (已完成繳費)',
-                        activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
-                        message: `您的會員續約已完成繳費，會籍已自動延長。`
-                      }),
-                      sendTelegram('會員續約申請 (已付款)', `會員：${memberName}\n金額：NT$ ${renewData.amount?.toLocaleString()}`)
-                    ]);
-                    console.log(`[Notify] Finished awaiting notifications for member renewal`);
-                  } catch (emailErr) {
-                    console.error(`[Notify] Email process error:`, emailErr);
+                    // Send Email & Telegram
+                    try {
+                      console.log(`[Notify] Sending renewal email to ${memberEmail} for member ${memberName}`);
+                      await Promise.all([
+                        sendEmail(Deno.env.get('EMAILJS_RENEWAL_TEMPLATE_ID') || 'template_3bgk8ts', {
+                          to_name: memberName,
+                          to_email: memberEmail,
+                          activity_title: '【食在力量】會員續約成功',
+                          activity_date: new Date().toISOString().slice(0, 10),
+                          activity_time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                          activity_location: '線上續約 (已完成繳費)',
+                          activity_price: `NT$ ${renewData.amount?.toLocaleString()}`,
+                          message: `您的會員續約已完成繳費，會籍已自動延長。`
+                        }),
+                        sendTelegram('會員續約申請 (已付款)', `會員：${memberName}\n金額：NT$ ${renewData.amount?.toLocaleString()}`)
+                      ]);
+                      console.log(`[Notify] Finished awaiting notifications for member renewal`);
+                    } catch (emailErr) {
+                      console.error(`[Notify] Email process error:`, emailErr);
+                    }
+                  } else {
+                    console.warn(`[Notify] Warning: Order not found in any table: ${merchantOrderNo}`)
                   }
-                } else {
-                  console.warn(`[Notify] Warning: Order not found in any table: ${merchantOrderNo}`)
                 }
-              }
             }
           }
         } else {

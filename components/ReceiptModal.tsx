@@ -463,35 +463,37 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
               <tr>
                 <td className="border border-black bg-gray-100 font-bold py-3">款項項目</td>
                 <td className="border border-black py-3 px-4" colSpan={5}>
-                  <div className="flex flex-wrap items-center justify-around gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer relative">
+                  <div className="grid grid-cols-4 gap-4 items-center w-full">
+                    <label className="flex items-center gap-2 cursor-pointer relative whitespace-nowrap">
                       <input type="checkbox" checked={selectedFeeType === 'initiation'} onChange={() => setSelectedFeeType('initiation')} className="w-6 h-6 cursor-pointer" />
-                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
-                        {selectedFeeType === 'initiation' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white flex-shrink-0">
+                        {selectedFeeType === 'initiation' ? <div className="w-3 h-3 bg-blue-600 rounded-sm"></div> : <div className="w-3 h-3"></div>}
                       </div>
                       <span>入會費</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer relative">
+                    <label className="flex items-center gap-2 cursor-pointer relative whitespace-nowrap">
                       <input type="checkbox" checked={selectedFeeType === 'annual'} onChange={() => setSelectedFeeType('annual')} className="w-6 h-6 cursor-pointer" />
-                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
-                        {selectedFeeType === 'annual' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white flex-shrink-0">
+                        {selectedFeeType === 'annual' ? <div className="w-3 h-3 bg-blue-600 rounded-sm"></div> : <div className="w-3 h-3"></div>}
                       </div>
                       <span>年費</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer relative">
+                    <label className="flex items-center gap-2 cursor-pointer relative whitespace-nowrap">
                       <input type="checkbox" checked={selectedFeeType === 'donation'} onChange={() => setSelectedFeeType('donation')} className="w-6 h-6 cursor-pointer" />
-                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
-                        {selectedFeeType === 'donation' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white flex-shrink-0">
+                        {selectedFeeType === 'donation' ? <div className="w-3 h-3 bg-blue-600 rounded-sm"></div> : <div className="w-3 h-3"></div>}
                       </div>
                       <span>捐款</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer relative">
+                    <label className="flex items-center gap-2 cursor-pointer relative whitespace-nowrap">
                       <input type="checkbox" checked={selectedFeeType === 'goods_donation'} onChange={() => setSelectedFeeType('goods_donation')} className="w-6 h-6 cursor-pointer" />
-                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white">
-                        {selectedFeeType === 'goods_donation' && <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>}
+                      <div className="pdf-checkbox hidden w-6 h-6 border-2 border-gray-400 rounded-sm flex items-center justify-center bg-white flex-shrink-0">
+                        {selectedFeeType === 'goods_donation' ? <div className="w-3 h-3 bg-blue-600 rounded-sm"></div> : <div className="w-3 h-3"></div>}
                       </div>
-                      <span>捐物</span>
-                      <span className="text-gray-400 text-sm font-normal ml-1">(若為捐物請於備註說明品項)</span>
+                      <div className="flex flex-col items-start">
+                        <span>捐物</span>
+                        <span className="text-gray-400 text-[10px] font-normal leading-none">(若為捐物請於備註說明品項)</span>
+                      </div>
                     </label>
                   </div>
                 </td>
@@ -586,7 +588,22 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
           background-color: #2563eb !important;
         }
         .pdf-generating .border-gray-400 {
-          border-color: #9ca3af !important;
+          border: 2px solid #9ca3af !important;
+        }
+        .pdf-generating .print\:hidden {
+          display: none !important;
+        }
+        .pdf-generating .grid {
+          display: grid !important;
+        }
+        .pdf-generating .grid-cols-4 {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        }
+        .pdf-generating .whitespace-nowrap {
+          white-space: nowrap !important;
+        }
+        .pdf-generating .flex-shrink-0 {
+          flex-shrink: 0 !important;
         }
         .pdf-generating .flex {
           display: flex !important;
