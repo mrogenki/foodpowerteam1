@@ -1,12 +1,28 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Users, Ban, History } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, ChevronRight, Clock, Crown, Ban, History } from 'lucide-react';
 import { Activity, MemberActivity, ActivityType } from '../types';
 
 interface ActivitiesProps {
   activities: Activity[];
   memberActivities: MemberActivity[];
+  loading?: boolean;
 }
+
+// Skeleton card for loading state
+const SkeletonCard: React.FC = () => (
+  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden animate-pulse">
+    <div className="aspect-video bg-gray-200" />
+    <div className="p-6 space-y-3">
+      <div className="h-5 bg-gray-200 rounded w-3/4" />
+      <div className="h-4 bg-gray-100 rounded w-1/2" />
+      <div className="h-4 bg-gray-100 rounded w-2/3" />
+      <div className="h-4 bg-gray-100 rounded w-1/3" />
+      <div className="h-px bg-gray-100 my-2" />
+      <div className="h-4 bg-gray-100 rounded w-1/4" />
+    </div>
+  </div>
+);
 
 const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActivity?: boolean }> = ({ activity, isMemberActivity = false }) => {
   const isClosed = activity.status === 'closed';
@@ -83,7 +99,7 @@ const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActi
   );
 };
 
-const ActivitiesPage: React.FC<ActivitiesProps> = ({ activities, memberActivities }) => {
+const ActivitiesPage: React.FC<ActivitiesProps> = ({ activities, memberActivities, loading = false }) => {
   const now = new Date();
 
   useEffect(() => {
@@ -133,7 +149,11 @@ const ActivitiesPage: React.FC<ActivitiesProps> = ({ activities, memberActivitie
               </h2>
             </div>
             
-            {upcomingActivities.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : upcomingActivities.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {upcomingActivities.map(activity => (
                   <ActivityCard key={`${activity.isMemberActivity ? 'm' : 'g'}-${activity.id}`} activity={activity} isMemberActivity={activity.isMemberActivity} />
@@ -158,7 +178,11 @@ const ActivitiesPage: React.FC<ActivitiesProps> = ({ activities, memberActivitie
               </h2>
             </div>
             
-            {pastActivities.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 opacity-70">
+                {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : pastActivities.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 opacity-80">
                 {pastActivities.map(activity => (
                   <ActivityCard key={`${activity.isMemberActivity ? 'm' : 'g'}-${activity.id}`} activity={activity} isMemberActivity={activity.isMemberActivity} />

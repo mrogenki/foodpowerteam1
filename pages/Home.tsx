@@ -105,7 +105,7 @@ const Home: React.FC<HomeProps> = ({ activities, memberActivities }) => {
                 transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute inset-0 z-10"
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-20"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30 z-20"></div>
                 <img 
                   src={optimizeImageUrl(activity.picture, 1920)} 
                   alt={activity.title} 

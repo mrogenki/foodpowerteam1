@@ -25,6 +25,15 @@ import { INITIAL_ACTIVITIES, INITIAL_MEMBERS, EMAIL_CONFIG } from './constants';
 import { notifyAdmin } from './utils/notification';
 import { supabase } from './utils/supabaseClient';
 
+// 換頁自動回頂：解決 HashRouter SPA 切換不 reset scroll 的問題
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+};
+
 // 載入中元件
 const PageLoader = () => (
   <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
@@ -102,57 +111,44 @@ const Footer: React.FC = () => {
   const location = useLocation();
   if (location.pathname.startsWith('/admin')) return null;
   return (
-    <footer className="bg-white border-t py-20">
+    <footer className="bg-white border-t py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           {/* Logo & Copyright */}
-          <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-sm">
-                <img src="/logo.svg" alt="" className="w-full h-full object-cover" />
-              </div>
-              <span className="font-bold text-gray-900 tracking-wider text-2xl whitespace-nowrap">食在力量</span>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+              <img src="/logo.svg" alt="食在力量" className="w-full h-full object-cover" />
             </div>
-            <p className="text-gray-500 text-lg max-w-md leading-relaxed mb-8">
-              連結產業，創造共好。匯聚各產業菁英，提供講座論壇、企業參訪、專業課程等活動。
-            </p>
-            <p className="text-gray-500 text-sm">
-              &copy; 2026 食在力量活動報名系統 v2.0.<br/>
-              <Link to="/admin" className="text-gray-500 hover:text-red-700 transition-colors">All rights reserved.</Link>
-            </p>
+            <div>
+              <span className="font-bold text-gray-900 text-base">食在力量</span>
+              <p className="text-gray-400 text-xs mt-0.5">
+                &copy; 2026 食在力量活動報名系統 v2.0.&nbsp;
+                <Link to="/admin" className="hover:text-red-600 transition-colors">All rights reserved.</Link>
+              </p>
+            </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-4">
-            <h2 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-6">官方帳號</h2>
-            <div className="bg-[#05A044]/5 p-6 rounded-3xl border border-[#05A044]/10 hover:bg-[#05A044]/10 transition-all group">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="bg-white p-2 rounded-xl shadow-sm group-hover:scale-105 transition-transform">
-                  <img 
-                    src="https://qr-official.line.me/gs/M_736bgkpm_BW.png?oat__id=6378179&oat_content=qr" 
-                    alt="LINE QR Code" 
-                    className="w-16 h-16" 
-                    width={64}
-                    height={64}
-                    loading="lazy"
-                  />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#05A044] text-sm">LINE 官方帳號</h3>
-                  <p className="text-xs text-gray-600">掌握最新動態</p>
-                </div>
-              </div>
-              <a 
-                href="https://lin.ee/oIeFIMO" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#05A044] hover:bg-[#048b3b] text-white w-full py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-100"
-              >
-                <MessageCircle size={18} fill="currentColor" className="text-white/20" />
-                立即加入好友
-              </a>
+          {/* LINE Official Account */}
+          <a
+            href="https://lin.ee/oIeFIMO"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-[#05A044]/10 hover:bg-[#05A044]/20 border border-[#05A044]/20 px-5 py-2.5 rounded-full transition-all group"
+          >
+            <img
+              src="https://qr-official.line.me/gs/M_736bgkpm_BW.png?oat__id=6378179&oat_content=qr"
+              alt="LINE QR Code"
+              className="w-7 h-7 rounded"
+              width={28}
+              height={28}
+              loading="lazy"
+            />
+            <div>
+              <p className="text-[#05A044] font-bold text-sm leading-tight">LINE 官方帳號</p>
+              <p className="text-gray-500 text-xs">掌握最新動態</p>
             </div>
-          </div>
+            <MessageCircle size={18} className="text-[#05A044] group-hover:scale-110 transition-transform" />
+          </a>
         </div>
       </div>
     </footer>
@@ -916,13 +912,14 @@ const App: React.FC = () => {
 
   return (
     <Router>
+      <ScrollToTop />
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-grow bg-gray-50/30">
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Home activities={activities} memberActivities={memberActivities} />} />
-              <Route path="/activities" element={<ActivitiesPage activities={activities} memberActivities={memberActivities} />} />
+              <Route path="/activities" element={<ActivitiesPage activities={activities} memberActivities={memberActivities} loading={loading} />} />
               <Route path="/about" element={<AboutUs />} />
               <Route path="/members" element={<MemberList members={members} />} />
               <Route path="/join" element={<MemberJoin />} />
