@@ -88,8 +88,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = (props) => {
     return <div className="p-20 text-center">活動不存在</div>;
   }
 
-  // 檢查活動是否已關閉
-  const isClosed = activity.status === 'closed';
+  // 檢查活動是否已關閉（手動截止或日期已過）
+  const isPast = new Date(`${activity.date.replace(/-/g, '/')} ${activity.time}`) <= new Date();
+  const isClosed = activity.status === 'closed' || isPast;
 
   // 判斷會員是否有效 (前端顯示邏輯)
   const isMemberActive = (m: Member): boolean => {
