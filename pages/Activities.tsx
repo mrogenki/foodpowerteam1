@@ -24,8 +24,13 @@ const SkeletonCard: React.FC = () => (
   </div>
 );
 
+const isPastDate = (date: string, time: string) => {
+  const activityFullDate = new Date(`${date.replace(/-/g, '/')} ${time}`);
+  return activityFullDate <= new Date();
+};
+
 const ActivityCard: React.FC<{ activity: Activity | MemberActivity, isMemberActivity?: boolean }> = ({ activity, isMemberActivity = false }) => {
-  const isClosed = activity.status === 'closed';
+  const isClosed = activity.status === 'closed' || isPastDate(activity.date, activity.time);
 
   const getTypeColor = (type: ActivityType) => {
     switch(type) {
