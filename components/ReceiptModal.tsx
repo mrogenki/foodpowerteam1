@@ -428,8 +428,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
             <tbody>
               {/* Row 1 */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3 w-[12%]">茲收到</td>
-                <td className="border border-black py-3 w-[58%] text-left px-4" colSpan={3}>
+                <td className="border border-black bg-gray-100 font-bold py-3 w-[13%] whitespace-nowrap">茲收到</td>
+                <td className="border border-black py-3 w-[57%] text-left px-4" colSpan={3}>
                   <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)} className="w-full outline-none print:appearance-none font-bold" />
                   <span className="pdf-text w-full font-bold">{payerName}</span>
                 </td>
@@ -461,7 +461,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
 
               {/* Row 3 - Combined Income Types */}
               <tr>
-                <td className="border border-black bg-gray-100 font-bold py-3">款項項目</td>
+                <td className="border border-black bg-gray-100 font-bold py-3 whitespace-nowrap">款項項目</td>
                 <td className="border border-black py-3 px-4" colSpan={5}>
                   <div className="grid grid-cols-4 gap-4 items-center w-full">
                     <label className="flex items-center gap-2 cursor-pointer relative whitespace-nowrap">
@@ -649,8 +649,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, initialDat
         .pdf-generating .ml-2 { margin-left: 0.5rem !important; }
         .pdf-generating .ml-1 { margin-left: 0.25rem !important; }
         .pdf-generating .w-full { width: 100% !important; }
-        .pdf-generating .w-\[12\%\] { width: 12% !important; }
-        .pdf-generating .w-\[58\%\] { width: 58% !important; }
+        .pdf-generating .w-\[13\%\] { width: 13% !important; }
+        .pdf-generating .w-\[57\%\] { width: 57% !important; }
         .pdf-generating .w-\[15\%\] { width: 15% !important; }
         .pdf-generating .min-w-\[280px\] { min-width: 280px !important; }
         .pdf-generating .h-full { height: 100% !important; }
